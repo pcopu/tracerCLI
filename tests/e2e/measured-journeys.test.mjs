@@ -288,3 +288,67 @@ test('measured journey: blank exclusion changes only manual totals, never captur
   assert.equal(f.json(...f.args).changed, false); assert.deepEqual(readFileSync(join(f.root, dataPath)), before);
   assert.deepEqual(f.json('report').totals, manual); assert.deepEqual(f.json('measure', 'check').invalid, []);
 });
+
+test('measured journey: reject unsafe external input files before creating evidence and recover with the original inputs', t => {
+  const f = project(t), withBefore = path => f.args.map((arg, index) => index === 3 ? path : arg);
+  const reject = (path, message) => { assert.match(f.run(withBefore(path), 1).stderr, message); f.absent(); };
+  reject(' ', /Provide an input file path/);
+  mkdirSync(join(f.root, 'input-directory'));
+  reject('input-directory', /regular unsymlinked files/);
+  symlinkSync(join(f.root, 'before.lcov'), join(f.root, 'input-link.lcov'));
+  reject('input-link.lcov', /regular unsymlinked files/);
+  mkdirSync(join(f.root, 'capture-inputs')); f.put('capture-inputs/before.lcov', readFileSync(join(f.root, 'before.lcov')));
+  symlinkSync(join(f.root, 'capture-inputs'), join(f.root, 'input-alias'));
+  reject('input-alias/before.lcov', /regular unsymlinked files/);
+  f.put('invalid-input.lcov', Buffer.from([0xff]));
+  reject('invalid-input.lcov', /encoded data.*valid|valid.*UTF-8/i);
+  f.put('invalid-input.lcov', 'SF:src/app.py\nDA:1,0\0\nend_of_record\n');
+  reject('invalid-input.lcov', /UTF-8 text without NUL/);
+  f.put('invalid-input.lcov', Buffer.alloc(64 * 1024 * 1024 + 1, 32));
+  reject('invalid-input.lcov', /no larger than 64 MiB/);
+  assert.equal(f.json(...f.args).changed, true);
+  assert.equal(f.json('measure', 'report').intervals[0].totals.observedLines, 2);
+  assert.deepEqual(f.json('measure', 'check').invalid, []);
+});
+
+test('measured journey: validate explicit prefixes and accept repository-relative LCOV without a prefix', t => {
+  const f = project(t);
+  for (const prefix of [' ', '/capture', '/capture\\/', '/capture/../', '/capture/./']) {
+    const args = [...f.args.slice(0, -1), prefix];
+    assert.match(f.run(args, 1).stderr, /--strip-prefix must be an exact path prefix/); f.absent();
+  }
+  for (const path of ['before.lcov', 'after.lcov']) {
+    f.put(path, readFileSync(join(f.root, path), 'utf8').replace('/capture/src/app.py', 'src/app.py'));
+  }
+  f.refresh();
+  const args = f.args.slice(0, -2), imported = f.json(...args);
+  assert.equal(imported.changed, true);
+  const bytes = readFileSync(join(f.root, dataPath)), stored = JSON.parse(bytes);
+  assert.equal(stored.intervals[0].stripPrefix, '');
+  assert.equal(stored.intervals[0].files[0].path, 'src/app.py');
+  assert.equal(f.json(...args).changed, false);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), bytes);
+  assert.equal(f.json('measure', 'report').intervals[0].totals.observedLines, 2);
+});
+
+test('measured journey: report attribution and instrumentation limits without creating or rewriting evidence', t => {
+  const f = project(t), notice = 'LCOV COUNTER DELTAS: observed during the whole recorded interval, not caused by each action. Supplied provenance is not a build attestation or proof of correctness. Manual links and their minimums are separate.';
+  const limitations = [
+    'Background activity, transport and snapshot work may overlap the interval.',
+    'Snapshots may not be globally atomic; nonnegative deltas alone cannot prove consistency.',
+    'Only supplied instrumented line records are represented; absent lines are unknown.',
+    'A counter increase does not establish test assertions, branch coverage or causal attribution.',
+    'Only DA line counters are used; function, branch, LF and LH exporter summaries are not denominators.',
+  ];
+  const empty = f.json('measure', 'report');
+  assert.deepEqual(empty, { kind: 'lcov-intervals', notice, limitations, intervals: [] }); f.absent();
+  const imported = f.json(...f.args); assert.equal(imported.notice, notice);
+  const bytes = readFileSync(join(f.root, dataPath)), stored = JSON.parse(bytes);
+  assert.equal(stored.kind, 'lcov-intervals'); assert.equal(stored.intervals.length, 1);
+  const report = f.json('measure', 'report');
+  assert.equal(report.notice, notice); assert.deepEqual(report.limitations, limitations);
+  assert.equal(report.intervals[0].totals.instrumentedLines, 3, 'LCOV LF/LH summaries do not replace the supplied DA denominator');
+  assert.equal(f.json('measure', 'check').notice, notice);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), bytes);
+  assert.equal(existsSync(join(f.root, 'docs/testing/code-e2e-links.json')), false);
+});
