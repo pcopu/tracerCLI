@@ -145,7 +145,7 @@ test('updates.local-edits: refuse replacing edited managed runtime or launcher w
 
 test('updates.downgrade: old source CLI cannot downgrade a newer managed target', t => {
   const f = journey(t, releaseFixture('0.3.0')); f.install();
-  assert.equal(f.ok(['--version']).stdout, '0.1.0\n');
+  assert.equal(f.ok(['--version']).stdout.trim(), JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version);
   f.use(releaseFixture('0.2.0')); f.bad(['update'], /Downgrades/);
   assert.ok(f.active().current.startsWith('0.3.0-'));
   assert.equal(f.ok(['--version'], { managed: true }).stdout, '0.3.0\n');

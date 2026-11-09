@@ -88,3 +88,7 @@ A missing skill is installed only after its own affirmative prompt or `--install
 Codex uses `${CODEX_HOME:-$HOME/.codex}/skills/tracer/SKILL.md` and repository `AGENTS.md`. Claude uses `~/.claude/skills/tracer/SKILL.md` and repository `CLAUDE.md`. Existing skills are preserved, including customized contents. An existing incomplete skill directory is a blocker rather than an excuse to overwrite it. Instruction appends preserve preceding bytes and newline convention, and a marker prevents duplicate additions. Symlinked destinations or parents are rejected. No global permissions or security settings are changed.
 
 The project instruction is only a short pointer to the installed skill and CLI; the workflow lives in the versioned skill. Skill discovery is agent-dependent. A new agent session or restart may be needed, and active agents are not guaranteed to hot-reload changed skill files.
+
+## Actual instrumented observations
+
+Use the separate `tracer measure import`, `report` and `check` workflow for provenance-bound LCOV pairs. It does not change manual trace counts or infer causality. See [measured evidence](measured.md).

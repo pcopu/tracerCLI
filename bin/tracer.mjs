@@ -3,6 +3,7 @@ import { Tracer, VERSION, NOTICE, location, validateMinimum } from '../src/trace
 import { initialize, runApp } from '../src/project.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate } from '../src/update.mjs';
+import { importMeasured, reportMeasured, checkMeasured } from '../src/measured.mjs';
 let selectedCommand;
 
 const help = `Tracer ${VERSION} — source ↔ ordered CLI actions ↔ test steps
@@ -22,6 +23,10 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   unlink ID
   update [--check | --status | --install-managed | --rollback | --auto off|check|apply]
          [--version VERSION | --commit FULL_SHA] [--json]
+  measure import --before FILE --after FILE --manifest FILE --sources FILE
+                 [--strip-prefix PREFIX/] [--allow-stale] [--json]
+  measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
+  measure check [--json]
   --help | --version
 
 init never overwrites existing config/map or executes an app. In a terminal it may
@@ -62,8 +67,41 @@ async function main(args) {
   }
   const [command, ...rest] = args;
   if (rest.length === 1 && rest[0] === '--help') { console.log(help); return; }
-  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'config', 'update'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
+  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'config', 'update', 'measure'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
   selectedCommand = command;
+  if (command === 'measure') {
+    const [mode, ...flags] = rest, options = {};
+    const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
+      report: ['--source', '--action', '--sequence', '--json'], check: ['--json'] }[mode];
+    if (!allowed) fail('Use measure import, report or check.');
+    for (let i = 0; i < flags.length; i++) {
+      const flag = flags[i];
+      if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
+      options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
+    }
+    if (mode === 'import' && ['--before', '--after', '--manifest', '--sources'].some(flag => !options[flag])) fail('measure import requires --before, --after, --manifest and --sources.');
+    const selectors = ['--source', '--action', '--sequence'].filter(flag => options[flag] !== undefined);
+    if (selectors.length > 1) fail('measure report accepts one selector.');
+    const flag = selectors[0], query = flag ? { kind: flag.slice(2), value: flag === '--sequence' ? JSON.parse(options[flag]) : options[flag] } : undefined;
+    const tracer = new Tracer(settings);
+    const result = mode === 'import' ? importMeasured(tracer.root, { before: options['--before'], after: options['--after'],
+      manifest: options['--manifest'], sources: options['--sources'], stripPrefix: options['--strip-prefix'], allowStale: !!options['--allow-stale'] })
+      : mode === 'report' ? reportMeasured(tracer.root, query) : checkMeasured(tracer.root);
+    if (options['--json']) console.log(JSON.stringify(result, null, 2));
+    else {
+      console.log(result.notice);
+      if (mode === 'import') console.log(`${result.changed ? 'Imported' : 'Already imported'} interval: ${result.id}`);
+      else if (mode === 'check') {
+        console.log(`${result.intervals} interval(s); ${result.invalid.length} stale source file(s).`);
+        for (const item of result.invalid) console.log(`STALE ${item.path}: ${item.error}`);
+      } else for (const interval of result.intervals) {
+        console.log(`INTERVAL ${interval.id} run ${interval.manifest.runId}: ${JSON.stringify(interval.manifest.actions)}`);
+        for (const file of interval.files) console.log(`  ${file.path}: ${file.observedLines}/${file.instrumentedLines} instrumented lines increased; ${file.status}\n    Observed: ${formatRanges(file.observedRanges)}`);
+      }
+    }
+    if (mode === 'check' && result.invalid.length) process.exitCode = 1;
+    return;
+  }
   if (command === 'update') {
     const options = {};
     for (let i = 0; i < rest.length; i++) {

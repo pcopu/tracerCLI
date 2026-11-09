@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve, sep } from 'node:path';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 export const NOTICE = 'MANUAL LINKS ONLY. A current link is not observed execution, test coverage or proof of correctness.';
 export const DEFAULT_MAP = 'docs/testing/code-e2e-links.json';
 export const SOURCE_EXTENSIONS = ('.swift .ts .tsx .mts .cts .js .jsx .mjs .cjs .m .mm .h .hpp .hxx .c .cc .cpp .cxx '
@@ -98,7 +98,7 @@ export class Tracer {
       const parts = path.split('/'), name = parts.at(-1), absolute = resolve(this.root, path);
       const source = this.extensions.has(extname(name).toLowerCase()) || sourceNames.has(name) || isConfigSource(parts);
       let reason;
-      if (path === this.map || path.startsWith(`${this.map}.`)) reason = 'Tracer sidecar or working file';
+      if (path === this.map || path.startsWith(`${this.map}.`) || path === 'docs/testing/code-e2e-measurements.json' || path.startsWith('docs/testing/code-e2e-measurements.json.')) reason = 'Tracer sidecar or working file';
       else if (parts.slice(0, -1).some(p => excludedDirectories.has(p))) reason = 'dependency/build/generated directory';
       else if (/(?:\.generated\.|_generated\.)/i.test(name)) reason = 'generated filename';
       else if (!existsSync(absolute)) reason = 'missing tracked file or dangling symlink';

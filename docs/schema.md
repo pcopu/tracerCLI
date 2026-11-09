@@ -53,3 +53,7 @@ Constructor options: `root`, `map`, `extensions`. Methods: `report(query?, {mini
 ## Project app configuration
 
 `tracer.json` is separate from the link sidecar. `version` must be 1. Optional `app` is a nonempty argv array of strings, starting with an executable; optional `actions` is a nonempty discovery argv array and requires `app`. Empty non-executable arguments are retained; control characters are rejected. Unknown fields are preserved but not executed. This file is read only by init and explicit app/discovery commands, not by mapping reports/checks. The map cannot occupy `tracer.json`.
+
+## Separate measured evidence
+
+Optional `tracer measure` uses its own version-1 interval dataset, never manual sidecar fields. See [the LCOV manifest and dataset schema](measured.md).

@@ -1,6 +1,6 @@
 ---
 name: tracer
-description: Maintain source-to-CLI-action-to-test links with Tracer, identify unmapped or stale code, and build or extend an application's CLI interaction surface for end-to-end testing within the user's requested scope. Use for declared trace mapping and CLI testability, not as a substitute for runtime coverage measurement.
+description: Maintain source-to-CLI-action-to-test links with Tracer, identify unmapped or stale code, and build or extend an application's CLI interaction surface for end-to-end testing within the user's requested scope. Use for declared trace mapping, CLI testability and optional separate LCOV interval evidence, never to infer execution from manual links.
 ---
 
 # Tracer
@@ -70,6 +70,16 @@ Report the total declared manual traces and the subset with current test witness
 4. **Measured execution coverage:** only what a real coverage/instrumentation tool observed, with its scope and limitations.
 
 Never call linked-line percentages measured coverage. Never claim full application coverage, native input parity, passing tests or completed migration from mapping counts alone. Even all lines meeting a minimum can coexist with no tests having run. Preserve explicit gaps and blockers in the final result.
+
+## Import real measured intervals separately
+
+When authorized instrumentation can export LCOV, capture cumulative before/after snapshots around the actual ordered sequence. Preserve the exact run ID, unchanged executable hash, probe hash, capture-time per-file source manifest, tool versions/hash timing, and export hashes. Do not fabricate build-time hashes from today's checkout. A tool hash retrieved after export must say `after-export`; an unavailable hash must remain null. Preserve background/polling overlap and non-atomic snapshot limitations.
+
+Read `docs/measured.md` in the installed Tracer package (also in the official `pcopu/tracerCLI` GitHub repository) for the manifest schema. Use `tracer measure import --before FILE --after FILE --manifest FILE --sources FILE` with an explicit `--strip-prefix` if the exporter uses an absolute source root. Never guess paths by basename. Import writes only the separate measurement dataset, not manual links. It neither runs the app nor supplies an instrumentation adapter.
+
+Use `tracer measure report --source PATH:RANGE`, `--action TEXT` or `--sequence JSON` to navigate the interval. An individual action lookup retains the whole sequence: it does not attribute shared/background execution to that action. Do not sum overlapping intervals or interpret tool counters as universal exact execution counts. Zero increments are not observed lines; absent instrumentation is unknown. Manual minimums remain unrelated.
+
+After source changes, run `tracer measure check`; preserve stale history and exclude it from current observations. Default import rejects changed source. Only use explicit `--allow-stale` when retaining historical evidence with its original hashes, never to make changed code appear tested. Recapture authorized instrumentation to obtain fresh evidence. Supplied hashes establish integrity and staleness, not a cryptographic source-to-build attestation or proof of assertions.
 
 ## Updating the CLI and skill
 

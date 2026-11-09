@@ -6,7 +6,23 @@
 
 Tracer is a local, dependency-free navigation tool for any Git repository. Connect source ranges to ordered CLI actions and optional test witnesses, look up those relationships in either direction, and catch links that go stale after edits.
 
-**Manual links are not measured code coverage.** Tracer never runs the described actions or claims a test executed a line. The animation above is an illustrated workflow, using generated artwork, not an execution recording.
+**Manual links are not measured code coverage.** The manual map never runs its described actions or claims a test executed a line. Optional LCOV imports keep measured interval evidence separate. The animation above is an illustrated workflow, using generated artwork, not an execution recording.
+
+## Import measured interval evidence
+
+If your app can export cumulative LCOV snapshots, connect an actual action sequence to the line counters that increased during its interval:
+
+```sh
+tracer measure import --before before.lcov --after after.lcov \
+  --manifest interval.json --sources build-sources.json --strip-prefix /capture/
+tracer measure report --action 'app select --index 1'
+tracer measure report --source src/app.py:12 --json
+tracer measure check
+```
+
+The required manifest pins the run, application build, probe, tools, exact exports and capture-time source manifest. It preserves tool-hash timing and missing hashes explicitly. The source manifest must come from the recorded build, not a hash of today's files invented after the fact. See [the measured-evidence guide and complete schema](docs/measured.md).
+
+An increase means **observed during the whole interval**, not caused by each listed action. Background activity and snapshot work can overlap. Zero deltas are retained but not counted as observed. Only matching instrumented `DA` line records form this denominator; missing lines are unknown. Changed source becomes stale and contributes zero current observations. Import normally rejects stale source; explicit `--allow-stale` preserves a historical interval without rebinding it to changed code. Measured evidence never alters the manual map or its minimum gate.
 
 ## Install
 
