@@ -109,22 +109,22 @@ test('updates.integrity: reject corrupt blobs, malformed trees, truncation, syml
 test('updates.rollback: update real managed CLI, run it, then roll back without network or skill downgrade', t => {
   const f = journey(t); f.init(['--agent', 'codex', '--install-skill']);
   f.install(); const original = f.active().current;
-  f.use(releaseFixture('0.3.0'));
+  f.use(releaseFixture('9.8.0'));
   const next = f.output(['update', '--json'], { managed: true });
   assert.equal(next.status, 'updated'); assert.equal(next.skills[0].status, 'updated');
-  assert.equal(f.active().previous, original); assert.equal(f.ok(['--version'], { managed: true }).stdout, '0.3.0\n');
+  assert.equal(f.active().previous, original); assert.equal(f.ok(['--version'], { managed: true }).stdout, '9.8.0\n');
   const count = f.requests().length;
   assert.equal(f.output(['update', '--rollback', '--json'], { managed: true }).status, 'rolled-back');
   assert.equal(f.active().current, original); assert.equal(f.requests().length, count);
   assert.equal(f.ok(['--version'], { managed: true }).stdout, `${f.sourceRelease.version}\n`);
-  assert.match(readFileSync(f.skill('codex'), 'utf8'), /0\.3\.0/);
+  assert.match(readFileSync(f.skill('codex'), 'utf8'), /9\.8\.0/);
   assert.equal(existsSync(join(f.managedHome, 'releases', `${next.version}-${next.commit}`)), true);
 });
 
 test('updates.atomic: failed next download leaves active CLI, skill and prior source bytes unchanged', t => {
   const f = journey(t); f.init(['--agent', 'codex', '--install-skill']); f.install();
   const pointer = readFileSync(join(f.managedHome, 'active.json'), 'utf8'), skill = readFileSync(f.skill('codex'));
-  const next = releaseFixture('0.3.0'), entry = next.tree.find(item => item.path === 'skills/tracer/SKILL.md');
+  const next = releaseFixture('9.8.0'), entry = next.tree.find(item => item.path === 'skills/tracer/SKILL.md');
   delete next.routes[`/git/blobs/${entry.sha}`]; f.use(next);
   f.bad(['update'], /source blob/, { managed: true });
   assert.equal(readFileSync(join(f.managedHome, 'active.json'), 'utf8'), pointer);
@@ -136,19 +136,19 @@ test('updates.atomic: failed next download leaves active CLI, skill and prior so
 test('updates.local-edits: refuse replacing edited managed runtime or launcher while preserving every edit', t => {
   const f = journey(t); f.install(); const original = f.active().current;
   const path = join(f.managedHome, 'releases', original, 'src/tracer.mjs'); writeFileSync(path, 'custom code');
-  f.use(releaseFixture('0.3.0')); f.bad(['update'], /Managed file changed/);
+  f.use(releaseFixture('9.8.0')); f.bad(['update'], /Managed file changed/);
   assert.equal(readFileSync(path, 'utf8'), 'custom code'); assert.equal(f.active().current, original);
   const clean = journey(t); clean.install(); const launcher = join(clean.managedHome, 'bin/tracer');
-  writeFileSync(launcher, 'custom launcher'); clean.use(releaseFixture('0.3.0'));
+  writeFileSync(launcher, 'custom launcher'); clean.use(releaseFixture('9.8.0'));
   clean.bad(['update'], /launcher was edited/); assert.equal(readFileSync(launcher, 'utf8'), 'custom launcher');
 });
 
 test('updates.downgrade: old source CLI cannot downgrade a newer managed target', t => {
-  const f = journey(t, releaseFixture('0.3.0')); f.install();
+  const f = journey(t, releaseFixture('9.8.0')); f.install();
   assert.equal(f.ok(['--version']).stdout.trim(), JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version);
   f.use(releaseFixture('0.2.0')); f.bad(['update'], /Downgrades/);
-  assert.ok(f.active().current.startsWith('0.3.0-'));
-  assert.equal(f.ok(['--version'], { managed: true }).stdout, '0.3.0\n');
+  assert.ok(f.active().current.startsWith('9.8.0-'));
+  assert.equal(f.ok(['--version'], { managed: true }).stdout, '9.8.0\n');
 });
 
 test('updates.retag: preserve same-version release, then accept an explicitly reviewed full commit', t => {

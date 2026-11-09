@@ -582,7 +582,7 @@ test('mapping journey: ignore only whitespace-only physical lines, including all
   const humanReport = f.ok('report');
   assert.match(humanReport, /7 nonblank lines/);
   assert.match(humanReport, /5 blank lines excluded/);
-  assert.match(humanReport, /Unmarked comments, tests and tooling stay counted; whitespace-only lines and current comment declarations are excluded/);
+  assert.match(humanReport, /Unmarked comments, tests and tooling stay counted unless explicitly ignored above; whitespace-only lines and current comment declarations are excluded/);
   assert.match(f.expect(['check', '--require-minimum'], 1).stdout, /7 nonblank source lines below project minimum 1; 5 blank lines excluded/);
   assert.match(f.ok('config'), /per nonblank source line/);
   assert.deepEqual(report.totals, { files: 3, physicalLines: 12, blankLines: 5, commentLines: 0,

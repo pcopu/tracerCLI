@@ -105,6 +105,8 @@ Reports show each line/range's trace count and the subset with a test witness. P
 
 ## Keep the map current
 
+To keep scenario and test-only support code outside an application's manual mapping denominator, use [project mapping ignores](docs/ignores.md): `tracer ignore tests/ --why 'Test-only scenarios and fixtures.'`. Restore the exact path with `tracer unignore tests/`. Ignored scope is reported separately; its tests still run and all stored source/witness links remain integrity-checked. Ignoring is not measured coverage and does not remove code or links.
+
 Tracer hashes the exact source and witness snippets. After changing, moving or deleting linked code or test steps:
 
 1. Run `tracer check` and inspect each affected relationship.
@@ -152,7 +154,7 @@ Skills newly installed through Tracer are registered with their original checksu
 ## Boundaries and documentation
 
 - No runtime dependencies, telemetry, application hooks or language parsers. Explicit app forwarding is separate from mapping; optional GitHub updates are documented separately.
-- Reads working-tree files, including tracked and nonignored untracked files. Source totals include tests, tooling and unmarked comments; whitespace-only blanks and current declared comment ranges are excluded. Physical line numbers and exact byte hashes stay unchanged. See [blank-line counting](docs/blank-lines.md).
+- Reads working-tree files, including tracked and nonignored untracked files. Included source totals include tests, tooling and unmarked comments unless explicitly ignored for project mapping scope; whitespace-only blanks and current declared comment ranges are excluded. Physical line numbers and exact byte hashes stay unchanged. See [blank-line counting](docs/blank-lines.md).
 - Explicit source inventory and build/dependency exclusions. Add an unlisted language with `--include-ext .zig` before the command.
 - Source lookup, reverse witness lookup, action and exact-sequence lookup; text and structured JSON reports.
 - Symlink/path validation, atomic writes and an exclusive writer lock. Not a sandbox against concurrent hostile filesystem changes.

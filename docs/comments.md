@@ -37,3 +37,5 @@ Files expose current original `comments` records and effective `commentRanges`, 
 Checks add `commentTotal`, `commentValid` and `invalidComments`. A valid hash proves only that declared bytes/context are unchanged, not that they are comments. Older Tracer versions can preserve this v1 extension but do not apply its exclusions; update the shared installation to use the same behavior across projects. There is no per-project version pin.
 
 Measured LCOV remains separate. Comment marks and automatic blank exclusion never drop instrumented `DA` records, alter captured counters or rewrite interval history.
+
+Project [mapping ignores](ignores.md) are independent of comment declarations. Ignoring a file moves its complete record to separate ignored scope; it never suppresses stale or malformed comment diagnostics or changes measured evidence.

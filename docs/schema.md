@@ -24,6 +24,12 @@ Default path: `docs/testing/code-e2e-links.json`. Old maps with `version: 1`, a 
 
 Ranges are 1-based inclusive safe integers within current files. SHA-256 hashes cover exact snippet bytes, including line endings and UTF-8 BOM. Unrecognized top-level/link fields are preserved when unrelated records change, but no unknown field is treated as execution evidence. `minimumTraces` is a positive safe integer.
 
+## Optional project mapping scope
+
+`ignoredSources` is an optional array of `{ "path": "tests/", "why": "Test-only scenarios and support." }`. Exact file paths or directory prefixes ending in `/` are supported; unsafe paths, globs, malformed reasons and duplicate exact paths are rejected. Missing targets remain visible with zero matches. This field changes only manual reporting/minimum scope, never source/witness integrity or measured evidence. See [project mapping scope](ignores.md) for commands and compatibility.
+
+Reports add `ignoredFiles`, `ignoredTotals`, `ignoredSources` and `scopeNotice`. Included `files`/`totals` remain separate. Ignored file records retain normal fields plus `ignoredBy`; ignored totals have the same shape as included totals. Global rules add numeric `matchedFiles`, even for filtered reports. Checks add global `ignoredSources`, ignored source-path strings in `ignoredFiles`, and `scopeNotice`; threshold checks also return `ignoredTotals`.
+
 ## Optional comment declarations
 
 The v1 map may include `commentExclusions: [{id, source: {path, start, end, sha256}, fileSha256}]`. Both snippet and full-file SHA-256 bind current declarations; there is no syntax parser or extra audit workflow. Missing `commentExclusions` means none. Existing link data and unrelated fields remain intact. See [declaration behavior and agent rules](comments.md).
@@ -38,11 +44,11 @@ The v1 map may include `commentExclusions: [{id, source: {path, start, end, sha2
 - `traceCounts`: adjacent physical lines with equal counts compressed into `{start, end, count, withStepCount}`. Expand each inclusive range for an individual physical line's count, including blank lines. `links` and physical `traceCounts` remain navigable even when the counted denominator is zero.
 - `invalid`: `{link, errors}` records. Invalid records never contribute to trace counts.
 - `invalidComments`: `{comment, errors}` declarations with stale or malformed metadata; global diagnostics remain visible in filtered reports.
-- `excluded`: `{path, reason}` for source candidates excluded by explicit rules.
+- `excluded`: `{path, reason}` for source candidates excluded by built-in inventory rules. Project mapping ignores appear separately in `ignoredFiles` and `ignoredSources`.
 
 Ranges such as `linkedRanges` are arrays of `[start, end]`, even for one line. Empty files have `start: 1`, `end: 0`, zero counts and empty range arrays.
 
-`tracer check --json` returns `kind: "manual-link-integrity"`, `notice`, `total`, `valid` and `invalid`. Threshold-enabled checks also include `minimumTraces`, `belowMinimum`, `lineBasis`, `physicalLines`, `blankLines` and `commentLines`. All checks also expose `commentTotal`, `commentValid` and `invalidComments`; stale/invalid declarations fail integrity checks and never exclude lines. Only nonblank lines outside current comment declarations participate in the minimum gate. Exit status, not JSON presence, determines success.
+`tracer check --json` returns `kind: "manual-link-integrity"`, `notice`, `total`, `valid` and `invalid`. Threshold-enabled checks also include `minimumTraces`, `belowMinimum`, `lineBasis`, `physicalLines`, `blankLines` and `commentLines`. All checks also expose `commentTotal`, `commentValid` and `invalidComments`; stale/invalid declarations fail integrity checks and never exclude lines. Only included nonblank lines outside current comment declarations participate in the minimum gate. Exit status, not JSON presence, determines success.
 
 The nonblank denominator is an intentional report-semantic change in 0.2.0; 0.1.x reports counted all physical lines. Sidecar v1, source coordinates and exact hashes are unchanged. See [blank-line details](blank-lines.md).
 
@@ -55,7 +61,7 @@ const report = tracer.report({ kind: 'source', value: 'src/cart.py:12' });
 const integrity = tracer.check();
 ```
 
-Constructor options: `root`, `map`, `extensions`. Methods: `comment(source)`, `uncomment(id)`, `report(query?, {minimumTraces}?)`, `check({requireMinimum, minimumTraces}?)`, `config(minimumTraces?)`, `link({source, actions, step?, why})`, `unlink(id)`, `inventory()`, `readMap()`. Source/step inputs to `link` use `path:range` strings. Methods throw on fatal errors; check returns invalid records without throwing for individual broken links. Imports do not inspect files or execute CLI entrypoints.
+Constructor options: `root`, `map`, `extensions`. Methods: `ignore(path, why)`, `unignore(path)`, `comment(source)`, `uncomment(id)`, `report(query?, {minimumTraces}?)`, `check({requireMinimum, minimumTraces}?)`, `config(minimumTraces?)`, `link({source, actions, step?, why})`, `unlink(id)`, `inventory()`, `readMap()`. Source/step inputs to `link` use `path:range` strings. Methods throw on fatal errors; check returns invalid records without throwing for individual broken links. Imports do not inspect files or execute CLI entrypoints.
 
 ## Project app configuration
 

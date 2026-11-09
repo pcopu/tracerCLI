@@ -16,7 +16,7 @@ test('self-host journey: discover Tracer project actions, delegate help, reject 
   const actions = JSON.parse(discovery.stdout);
   assert.equal(actions.application, 'tracercli-self-host');
   assert.ok(actions.actions.some(action => JSON.stringify(action.command) === '["test"]'));
-  for (const group of ['mapping', 'comments', 'measured', 'project', 'update', 'self-host']) {
+  for (const group of ['mapping', 'comments', 'ignore', 'measured', 'project', 'update', 'self-host']) {
     assert.ok(actions.actions.some(action => JSON.stringify(action.command) === JSON.stringify(['test', group])));
   }
   const help = run('app', '--', '--help'); assert.equal(help.status, 0); assert.match(help.stdout, /Run through Tracer/);
@@ -26,4 +26,9 @@ test('self-host journey: discover Tracer project actions, delegate help, reject 
   const report = run('report', '--json'); assert.equal(report.status, 0);
   const mapping = JSON.parse(report.stdout); assert.equal(mapping.kind, 'manual-links'); assert.match(mapping.notice, /not observed execution/);
   assert.ok(mapping.files.some(file => file.path === 'bin/tracer.mjs'));
+  for (const path of ['src/tracer.mjs', 'scripts/project-cli.mjs', 'package.json']) assert.ok(mapping.files.some(file => file.path === path));
+  assert.equal(mapping.files.some(file => file.path.startsWith('tests/')), false);
+  assert.ok(mapping.ignoredFiles.some(file => file.path.startsWith('tests/e2e/')));
+  assert.deepEqual(integrity.ignoredFiles, mapping.ignoredFiles.map(file => file.path));
+  assert.equal(integrity.ignoredSources.find(rule => rule.path === 'tests/').matchedFiles, mapping.ignoredTotals.files);
 });

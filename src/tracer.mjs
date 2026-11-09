@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve, sep } from 'node:path';
 
-export const VERSION = '0.2.1';
+export const VERSION = '0.3.0';
 export const NOTICE = 'MANUAL LINKS ONLY. A current link is not observed execution, test coverage or proof of correctness.';
 export const DEFAULT_MAP = 'docs/testing/code-e2e-links.json';
 export const SOURCE_EXTENSIONS = ('.swift .ts .tsx .mts .cts .js .jsx .mjs .cjs .m .mm .h .hpp .hxx .c .cc .cpp .cxx '
@@ -226,7 +226,7 @@ export class Tracer {
     const data = JSON.parse(readFileSync(this.mapPath, 'utf8'));
     if (!data || data.version !== 1 || !Array.isArray(data.links)) fail('Expected sidecar version 1 and links array.');
     if (Object.hasOwn(data, 'commentExclusions') && !Array.isArray(data.commentExclusions)) fail('Expected commentExclusions to be an array.');
-    validateMinimum(Object.hasOwn(data, 'minimumTraces') ? data.minimumTraces : 1);
+    validateMinimum(Object.hasOwn(data, 'minimumTraces') ? data.minimumTraces : 1); validateIgnoredSources(data);
     return data;
   }
   inspect(data, state) {
@@ -363,15 +363,17 @@ export class Tracer {
   }
   check({ requireMinimum = false, minimumTraces } = {}) {
     const data = this.readMap(), state = this.inventory(), inspected = this.inspect(data, state), comments = this.inspectComments(data, state);
+    const ignoredSources = ignoredScope(data, state);
     const invalid = inspected.filter(row => row.errors.length);
     const result = { kind: 'manual-link-integrity', notice: NOTICE, total: inspected.length,
       valid: inspected.length - invalid.length, invalid, commentTotal: comments.length,
-      commentValid: comments.filter(row => !row.errors.length).length, invalidComments: comments.filter(row => row.errors.length) };
+      commentValid: comments.filter(row => !row.errors.length).length, invalidComments: comments.filter(row => row.errors.length),
+      ignoredSources, ignoredFiles: [...state.files.keys()].filter(path => ignoredSources.some(rule => matchesIgnored(path, rule.path))), scopeNotice: IGNORE_NOTICE };
     if (requireMinimum) {
       const report = this.#report(undefined, minimumTraces, state, data, inspected, comments);
       result.minimumTraces = report.minimumTraces; result.belowMinimum = report.totals.belowMinimum;
       result.lineBasis = report.lineBasis; result.physicalLines = report.totals.physicalLines; result.blankLines = report.totals.blankLines;
-      result.commentLines = report.totals.commentLines;
+      result.commentLines = report.totals.commentLines; result.ignoredTotals = report.ignoredTotals;
     }
     return result;
   }
@@ -414,7 +416,8 @@ export class Tracer {
       if (!comments) { comments = []; commentsByFile.set(comment.source.path, comments); }
       comments.push(comment);
     }
-    const files = [], totals = { files: 0, lines: 0, linked: 0, withStep: 0, unlinked: 0, belowMinimum: 0, physicalLines: 0, blankLines: 0, commentLines: 0 };
+    const files = [], ignoredFiles = [], totals = { files: 0, lines: 0, linked: 0, withStep: 0, unlinked: 0, belowMinimum: 0, physicalLines: 0, blankLines: 0, commentLines: 0 };
+    const ignoredTotals = Object.fromEntries(Object.keys(totals).map(key => [key, 0])), ignoredSources = ignoredScope(data, state);
     for (const [path, lines] of state.files) {
       if (sourceFilter && sourceFilter.path !== path) continue;
       if (query && !sourceFilter && !byFile.has(path)) continue;
@@ -422,12 +425,67 @@ export class Tracer {
       const links = (byFile.get(path) ?? []).filter(link => link.source.end >= start && link.source.start <= end);
       const comments = (commentsByFile.get(path) ?? []).filter(comment => comment.source.end >= start && comment.source.start <= end);
       const counts = countIntervals(links, start, end, minimumTraces, lines, comments);
-      files.push({ path, start, end, ...counts, links, comments });
-      totals.files++;
-      for (const key of ['lines', 'linked', 'withStep', 'unlinked', 'belowMinimum', 'physicalLines', 'blankLines', 'commentLines']) totals[key] += counts[key];
+      const ignoredBy = ignoredSources.filter(rule => matchesIgnored(path, rule.path)).map(rule => rule.path);
+      (ignoredBy.length ? ignoredFiles : files).push({ path, start, end, ...counts, links, comments, ...(ignoredBy.length ? { ignoredBy } : {}) });
+      const aggregate = ignoredBy.length ? ignoredTotals : totals;
+      aggregate.files++;
+      for (const key of ['lines', 'linked', 'withStep', 'unlinked', 'belowMinimum', 'physicalLines', 'blankLines', 'commentLines']) aggregate[key] += counts[key];
     }
     return { kind: 'manual-links', notice: NOTICE, minimumTraces, traceIdentity: 'exact-ordered-action-sequence', query: query ?? null, totals, files,
       lineBasis: 'nonblank-undeclared-comment-lines', commentNotice: 'Comment exclusions are declarations, not verified syntax or execution evidence.',
+      ignoredFiles, ignoredTotals, ignoredSources, scopeNotice: IGNORE_NOTICE,
       excluded: state.excluded, invalid: inspected.filter(row => row.errors.length), invalidComments: inspectedComments.filter(row => row.errors.length) };
   }
+  ignore(path, why) {
+    const requested = ignoredPath(path), plain = requested.replace(/\/$/, ''), absolute = resolve(this.root, plain);
+    if (typeof why !== 'string' || !why.trim() || /[\x00-\x1f\x7f]/.test(why)) fail('ignore requires --why with a nonempty single-line explanation.');
+    let stat;
+    try { stat = lstatSync(absolute); } catch { fail(`Ignore target must exist inside the repository: ${requested}`); }
+    if (stat.isSymbolicLink() || realpathSync(absolute) !== absolute || !stat.isFile() && !stat.isDirectory()) fail(`Ignore target must be a regular, unsymlinked file or directory: ${requested}`);
+    if (requested.endsWith('/') && !stat.isDirectory()) fail(`Ignore path ending in / must name a directory: ${requested}`);
+    const canonical = stat.isDirectory() ? `${plain}/` : plain;
+    return this.mutate(data => {
+      const rules = data.ignoredSources ?? [], previous = rules.find(rule => rule.path === canonical);
+      if (previous) {
+        if (previous.why !== why.trim()) fail(`Ignore rule already has a different reason: ${canonical}. Review it, then unignore and add it again.`);
+        return { changed: false, ignored: previous };
+      }
+      const ignored = { path: canonical, why: why.trim() };
+      data.ignoredSources = [...rules, ignored].sort((a, b) => compare(a.path, b.path));
+      return { changed: true, ignored };
+    });
+  }
+  unignore(path) {
+    const exact = ignoredPath(path);
+    return this.mutate(data => {
+      const rules = data.ignoredSources ?? [];
+      if (!rules.some(rule => rule.path === exact)) fail(`Unknown exact ignore path: ${exact}. Use the saved path, including a directory's trailing slash.`);
+      data.ignoredSources = rules.filter(rule => rule.path !== exact);
+      return { changed: true, path: exact };
+    });
+  }
+}
+
+const IGNORE_NOTICE = 'Project ignores exclude files only from manual mapping totals and minimum thresholds, not from tests, link integrity or measured evidence. An empty included scope is not full coverage.';
+function ignoredPath(path) {
+  if (typeof path !== 'string') fail('Ignore path must be a repository-relative file or directory.');
+  const plain = safePath(path.endsWith('/') ? path.slice(0, -1) : path);
+  if (plain.split('/').includes('.git') || /[*?\[\]]/.test(plain)) fail('Ignore paths cannot target .git or use glob patterns.');
+  return path;
+}
+function validateIgnoredSources(data) {
+  if (!Object.hasOwn(data, 'ignoredSources')) return;
+  if (!Array.isArray(data.ignoredSources)) fail('Expected ignoredSources to be an array.');
+  const paths = new Set();
+  for (const rule of data.ignoredSources) {
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) fail('Invalid ignoredSources rule.');
+    const path = ignoredPath(rule.path);
+    if (paths.has(path)) fail(`Duplicate ignoredSources path: ${path}`);
+    if (typeof rule.why !== 'string' || !rule.why.trim() || rule.why !== rule.why.trim() || /[\x00-\x1f\x7f]/.test(rule.why)) fail(`Invalid ignoredSources reason: ${path}`);
+    paths.add(path);
+  }
+}
+function matchesIgnored(path, rule) { return rule.endsWith('/') ? path.startsWith(rule) : path === rule; }
+function ignoredScope(data, state) {
+  return (data.ignoredSources ?? []).map(rule => ({ ...rule, matchedFiles: [...state.files.keys()].filter(path => matchesIgnored(path, rule.path)).length }));
 }

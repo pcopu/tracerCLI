@@ -14,6 +14,8 @@ By default Tracer chooses the Git repository containing the current working dire
 - `check [--require-minimum] [--minimum-traces N] [--json]`
 - `config [--minimum-traces N] [--json]`
 - `unlink ID`
+- `ignore PATH --why TEXT`
+- `unignore EXACT_PATH`
 
 Ranges are 1-based and inclusive, and `:N` means one line. Paths with spaces and colons work when quoted. Source and witness files must exist, be valid UTF-8, and stay inside the repository without symlinks. Witnesses may be any eligible text file, including Markdown, YAML, an extensionless script, or helper. Tracer does not infer whether a witness is actually a test or whether the selected step asserts the linked behavior.
 
@@ -29,9 +31,9 @@ Tracer cannot determine whether two differently spelled commands are semanticall
 
 Project `minimumTraces` defaults to 1. `config --minimum-traces N` saves it in the sidecar. Thresholds accept positive safe integers, not fractions, exponent notation, zero or infinity. A report or threshold-enabled check may override it for that invocation. Normal `check` is link-integrity-only; threshold failure is opt-in via `--require-minimum`. Both are unrelated to actual test results.
 
-All nonblank inventoried physical source lines outside current declared comment ranges participate in the denominator, including unmarked comments, application tests and tooling. Whitespace-only lines (`line.trim() === ''`) are excluded automatically; agents can explicitly mark confirmed comment-only ranges with `tracer comment` and remove them with `tracer uncomment` (see [comment declarations](comments.md)); physical coordinates and hashes stay unchanged. See [blank-line counting](blank-lines.md). Empty files contribute zero lines; a final newline does not invent a line. This is intentionally not an executable-line or production-only denominator. Missing tracked source files and explicitly excluded sources are listed with reasons but do not participate. Git-ignored untracked files never appear.
+All included nonblank inventoried physical source lines outside current declared comment ranges participate in the denominator, including unmarked comments, application tests and tooling. Whitespace-only lines (`line.trim() === ''`) are excluded automatically; agents can explicitly mark confirmed comment-only ranges with `tracer comment` and remove them with `tracer uncomment` (see [comment declarations](comments.md)); physical coordinates and hashes stay unchanged. See [blank-line counting](blank-lines.md). Empty files contribute zero lines; a final newline does not invent a line. This is intentionally not an executable-line or production-only denominator. Missing tracked source files and explicitly excluded sources are listed with reasons but do not participate. Git-ignored untracked files never appear.
 
-Filtered reports show only the selected source scope or associations matching an action/sequence/witness. Their counts and threshold totals describe that filtered subset, not the entire repository or all traces that might exist for the same lines. `check --require-minimum` always examines the full source inventory using the current global extension and sidecar options.
+Filtered reports show only the selected source scope or associations matching an action/sequence/witness. Their counts and threshold totals describe that filtered subset, not the entire repository or all traces that might exist for the same lines. `check --require-minimum` checks integrity across the full source inventory, but applies the minimum to included project mapping scope using the current global extension and sidecar options.
 
 ## Stale links and editing
 
@@ -39,11 +41,13 @@ Exact UTF-8 snippet hashes preserve CRLF, LF and BOM. Inserting lines before a r
 
 `unlink` removes one exact ID without editing sources or tests. It can remove a stale or malformed entry with a unique ID. Duplicate IDs require explicit sidecar repair to avoid ambiguous removal. `check` diagnoses malformed records. `link` refuses to add records while structural/range errors remain, but unrelated stale hashes alone do not prevent a new association.
 
-Mapping writes come from `link`, `unlink`, and setting `config`. Project setup and expressly approved agent integration can also create/update their own files. They use an exclusive `.lock` sidecar, write a temporary file and atomically replace the map. Read-only commands do not create directories. A lock left by a killed process requires checking that no writer is active before manually removing it. Never delete a live writer's lock. Atomic rename protects against partial JSON, not hardware failure durability; no fsync guarantee is made. This tool is not a security sandbox against simultaneous filesystem replacement.
+Mapping writes come from `link`, `unlink`, `comment`, `uncomment`, `ignore`, `unignore`, and setting `config`. Project setup and expressly approved agent integration can also create/update their own files. They use an exclusive `.lock` sidecar, write a temporary file and atomically replace the map. Read-only commands do not create directories. A lock left by a killed process requires checking that no writer is active before manually removing it. Never delete a live writer's lock. Atomic rename protects against partial JSON, not hardware failure durability; no fsync guarantee is made. This tool is not a security sandbox against simultaneous filesystem replacement.
 
 ## Inventory boundary
 
-Inventory comes from `git ls-files --cached --others --exclude-standard -z`, sorted and deduplicated. Working-tree bytes are read. Tracked files remain eligible even if a new ignore rule matches them.
+Project-level [mapping ignores](ignores.md) place explicit files/directories outside manual totals and minimum thresholds. `report` retains their navigation records in `ignoredFiles` and counts in `ignoredTotals`, with global rules and reasons visible in `ignoredSources`. `check` still validates ignored source and witness links. These rules do not disable tests or change measured evidence. Use `tracer ignore PATH --why TEXT` and restore with `tracer unignore EXACT_PATH`; directory rules end in `/` and no globs are supported.
+
+Inventory comes from `git ls-files --cached --others --exclude-standard -z`, sorted and deduplicated. Working-tree bytes are read. Tracked files remain eligible even if a new Git ignore rule matches them.
 
 Source extensions (case-insensitive): `.swift`, `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.m`, `.mm`, `.h`, `.hpp`, `.hxx`, `.c`, `.cc`, `.cpp`, `.cxx`, `.py`, `.sh`, `.bash`, `.zsh`, `.sql`, `.css`, `.scss`, `.sass`, `.html`, `.htm`, `.vue`, `.svelte`, `.rs`, `.go`, `.java`, `.kt`, `.kts`, `.rb`, `.php`, `.cs`, `.ps1`, `.lua`, `.metal`, `.proto`. Exact names `Makefile`, `Dockerfile`, `CMakeLists.txt`, `Gemfile`, `Rakefile` also count. Add extensions per invocation with repeatable `--include-ext .ext`. Use the same extension options for mapping and checking; they are not saved by `config`.
 
@@ -55,7 +59,7 @@ Symlinks, dangling symlinks, files behind symlinked directories, missing tracked
 
 ## Exit codes and integration
 
-Exit 0 means the requested operation completed. `report` remains informational even when it lists invalid links or below-minimum lines. `check` exits 1 for stale/invalid links or comment declarations; with `--require-minimum`, it also exits 1 when any nonblank inventoried line is below the minimum. Usage, Git, file and sidecar errors exit 1 and print `tracer: ...` on stderr. `--json` emits one JSON object on stdout for a successfully constructed report/check/config, including failed integrity or threshold checks. Fatal errors are stderr text, not JSON.
+Exit 0 means the requested operation completed. `report` remains informational even when it lists invalid links or below-minimum lines. `check` exits 1 for stale/invalid links or comment declarations; with `--require-minimum`, it also exits 1 when any included nonblank inventoried line is below the minimum. Usage, Git, file and sidecar errors exit 1 and print `tracer: ...` on stderr. `--json` emits one JSON object on stdout for a successfully constructed report/check/config, including failed integrity or threshold checks. Fatal errors are stderr text, not JSON.
 
 No test runner or CI is installed. You may add `tracer check` to your own existing validation workflow, and opt into a threshold only after agreeing on the inventory and meaningful trace conventions. Running actual tests, native builds and coverage instrumentation remains a separate operation.
 

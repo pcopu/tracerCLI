@@ -12,10 +12,12 @@ Tracer never strips or rewrites source files. Version-1 maps and exact UTF-8/BOM
 
 JSON reports identify `lineBasis: "nonblank-undeclared-comment-lines"`. Each file and the totals add `physicalLines` and `blankLines`; each file also exposes `blankRanges` as inclusive `[start, end]` pairs. With declared comments, the invariant is `lines + blankLines + commentLines === physicalLines`. These counts describe the requested subset in a filtered report. Empty files have zero physical and counted lines.
 
-`check --require-minimum` applies the same nonblank, undeclared-comment basis to the full inventory and includes `lineBasis`, `physicalLines` and `blankLines`. Ordinary `check` remains a link-integrity check. An all-blank source contributes no minimum deficit; that is not a claim of 100% execution coverage.
+`check --require-minimum` applies the same nonblank, undeclared-comment basis to the included project mapping scope and includes `lineBasis`, `physicalLines` and `blankLines`. Ordinary `check` remains a link-integrity check. An all-blank source contributes no minimum deficit; that is not a claim of 100% execution coverage.
 
 ## Compatibility and measured evidence
 
 This intentionally changes report/threshold counting from 0.1.x, which counted every physical line. It does not change sidecar version 1, stored source ranges, ordered actions, witness hashes, stale detection or the shared installation model. Updating the shared CLI updates the behavior used by every project that invokes it; no per-project pin is introduced.
 
 Measured LCOV intervals remain independent. Their denominator is the matched instrumented `DA` records supplied by the exporter, even when an exporter associates a counter with a blank-looking line. Tracer does not drop or reclassify captured counters, change interval identities or manufacture execution evidence from manual links.
+
+Project mapping ignores are a separate scope choice from blank/comment counting. Ignored files retain their physical records in separate `ignoredFiles` and `ignoredTotals`; all link integrity checks still apply. See [project scope](ignores.md).

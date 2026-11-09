@@ -23,6 +23,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   unlink ID
   comment SOURCE:START-END  Declare reviewed comment lines (not syntax-verified)
   uncomment ID             Remove a comment declaration after review
+  ignore PATH --why TEXT    Exclude a file/directory from manual mapping totals only
+  unignore EXACT_PATH      Restore a saved ignored path (directories end in /)
   update [--check | --status | --install-managed | --rollback | --auto off|check|apply]
          [--version VERSION | --commit FULL_SHA] [--json]
   measure import --before FILE --after FILE --manifest FILE --sources FILE
@@ -41,7 +43,7 @@ Ranges are 1-based, inclusive. Mapped actions are literal descriptions, never ex
 One distinct exact ordered action sequence is one manual trace per nonblank line, regardless
 of duplicate links or witnesses. Repeated actions inside it remain ordered steps.
 The project minimum defaults to 1. check gates integrity; --require-minimum also
-gates declared trace counts across the source inventory. Neither measures execution.
+gates declared trace counts across included project mapping scope. Neither measures execution.
 ${NOTICE}`;
 const fail = message => { throw new Error(message); };
 const formatRanges = ranges => ranges.map(([start, end]) => start === end ? `${start}` : `${start}-${end}`).join(', ') || 'none';
@@ -71,7 +73,7 @@ async function main(args) {
   }
   const [command, ...rest] = args;
   if (rest.length === 1 && rest[0] === '--help') { console.log(help); return; }
-  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'config', 'update', 'measure'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
+  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore', 'config', 'update', 'measure'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
   selectedCommand = command;
   if (command === 'measure') {
     const [mode, ...flags] = rest, options = {};
@@ -146,17 +148,17 @@ async function main(args) {
   }
   // Validate CLI arguments before resolving or changing a repository.
   const options = {}, actions = [];
-  let source, id;
+  let source, id, path;
   const optionArgs = [...rest];
-  if (['link', 'unlink', 'comment', 'uncomment'].includes(command)) {
+  if (['link', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore'].includes(command)) {
     const positional = optionArgs.shift();
-    if (!positional || positional.startsWith('--')) fail(`${command} requires ${['link', 'comment'].includes(command) ? 'a source range' : 'an exact id'} first.`);
-    if (['link', 'comment'].includes(command)) source = positional; else id = positional;
+    if (!positional || positional.startsWith('--')) fail(`${command} requires ${['link', 'comment'].includes(command) ? 'a source range' : ['ignore', 'unignore'].includes(command) ? 'a repository-relative path' : 'an exact id'} first.`);
+    if (['link', 'comment'].includes(command)) source = positional; else if (['ignore', 'unignore'].includes(command)) path = positional; else id = positional;
   }
   const allowed = {
     init: ['--app-json', '--actions-json', '--minimum-traces', '--agent', '--install-skill', '--add-instruction'],
     link: ['--action', '--step', '--why'], report: ['--source', '--action', '--step', '--sequence', '--json', '--minimum-traces'],
-    check: ['--json', '--require-minimum', '--minimum-traces'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [],
+    check: ['--json', '--require-minimum', '--minimum-traces'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [], ignore: ['--why'], unignore: [],
   }[command];
   for (let i = 0; i < optionArgs.length; i++) {
     const flag = optionArgs[i];
@@ -206,6 +208,11 @@ async function main(args) {
     console.log(`${result.changed ? 'Marked comment' : 'Already marked comment'}: ${result.comment.id}\n${location(result.comment.source)}\nComment exclusions are declarations, not verified syntax or execution evidence.`);
   } else if (command === 'uncomment') {
     tracer.uncomment(id); console.log(`Removed comment declaration: ${id}. No source or links changed.`);
+  } else if (command === 'ignore') {
+    const result = tracer.ignore(path, options['--why']);
+    console.log(`${result.changed ? 'Ignored' : 'Already ignored'}: ${result.ignored.path}\n${result.ignored.why}\nOnly manual mapping totals and minimum thresholds change. Tests, source files, links and measured evidence are preserved.`);
+  } else if (command === 'unignore') {
+    tracer.unignore(path); console.log(`Removed project mapping ignore: ${path}. Other matching rules may still apply. No source files, links or tests changed.`);
   } else if (command === 'config') {
     const result = tracer.config(minimumTraces);
     console.log(options['--json'] ? JSON.stringify(result, null, 2) : `Project minimum: ${result.minimumTraces} distinct manual trace(s) per nonblank source line.\n${NOTICE}`);
@@ -217,6 +224,8 @@ async function main(args) {
       for (const { link, errors } of result.invalid) console.log(`INVALID LINK ${link.id ?? '(no id)'}: ${errors.join('; ')}`);
       console.log(`${result.commentValid}/${result.commentTotal} comment declarations have current source hashes. Comment syntax is not verified.`);
       for (const { comment, errors } of result.invalidComments) console.log(`INVALID COMMENT ${comment.id ?? '(no id)'}: ${errors.join('; ')}`);
+      console.log(`${result.scopeNotice}\nIgnored scope: ${result.ignoredFiles.length} inventoried source files.`);
+      for (const rule of result.ignoredSources) console.log(`IGNORE RULE ${rule.path}: ${rule.matchedFiles} source files; ${rule.why}`);
       if (result.minimumTraces !== undefined) console.log(`${result.belowMinimum} nonblank source lines below project minimum ${result.minimumTraces}; ${result.blankLines} blank lines excluded; ${result.commentLines} declared comment lines excluded.`);
     }
     if (result.invalid.length || result.invalidComments.length || result.belowMinimum) process.exitCode = 1;
@@ -225,8 +234,10 @@ async function main(args) {
     if (options['--json']) { console.log(JSON.stringify(result, null, 2)); return; }
     console.log(`${NOTICE}\n${result.commentNotice}\nMinimum: ${result.minimumTraces} distinct manual trace(s) per included nonblank line. Counts deduplicate exact ordered action sequences. Physical trace counts and links remain navigable, including blanks and declared comments.`);
     if (query) console.log(`LOOKUP ${query.kind}: ${JSON.stringify(query.value)}. Counts describe matching source, not test execution.`);
-    for (const file of result.files) {
-      console.log(`${file.path}: ${file.linked} linked / ${file.lines} nonblank lines; ${file.belowMinimum} below minimum; ${file.blankLines} blank lines excluded; ${file.commentLines} declared comment lines excluded`);
+    console.log(result.scopeNotice);
+    for (const rule of result.ignoredSources) console.log(`IGNORE RULE ${rule.path}: ${rule.matchedFiles} source files; ${rule.why}`);
+    for (const file of [...result.files, ...result.ignoredFiles]) {
+      console.log(file.ignoredBy ? `IGNORED ${file.path}: ${file.lines} manual source lines omitted from totals; ${file.physicalLines} physical lines; rules ${JSON.stringify(file.ignoredBy)}` : `${file.path}: ${file.linked} linked / ${file.lines} nonblank lines; ${file.belowMinimum} below minimum; ${file.blankLines} blank lines excluded; ${file.commentLines} declared comment lines excluded`);
       for (const comment of file.comments) console.log(`  DECLARED COMMENT ${location(comment.source)} [${comment.id}]`);
       console.log(`  Linked: ${formatRanges(file.linkedRanges)}\n  Unlinked: ${formatRanges(file.unlinkedRanges)}`);
       for (const range of file.traceCounts) console.log(`  ${range.start}${range.end !== range.start ? `-${range.end}` : ''}: ${range.count} manual trace(s), ${range.withStepCount} with test witnesses`);
@@ -234,7 +245,8 @@ async function main(args) {
     }
     const t = result.totals;
     console.log(`TOTAL: ${t.files} files; ${t.lines} nonblank lines; ${t.linked} linked (${t.withStep} with a test witness); ${t.unlinked} unlinked; ${t.belowMinimum} below minimum; ${t.blankLines} blank lines excluded; ${t.commentLines} declared comment lines excluded.`);
-    console.log(`Inventory: ${t.physicalLines} physical lines in tracked + nonignored untracked source. Unmarked comments, tests and tooling stay counted; whitespace-only lines and current comment declarations are excluded. Ignored/non-source files are outside the count.`);
+    console.log(`IGNORED TOTAL: ${result.ignoredTotals.files} files; ${result.ignoredTotals.lines} manual source lines; ${result.ignoredTotals.physicalLines} physical lines. These are outside the totals above, not proven covered.`);
+    console.log(`Included inventory: ${t.physicalLines} physical lines in tracked + Git-unignored untracked source. Unmarked comments, tests and tooling stay counted unless explicitly ignored above; whitespace-only lines and current comment declarations are excluded. Built-in exclusions and non-source files are outside the count.`);
     for (const item of result.excluded) console.log(`EXCLUDED ${item.path}: ${item.reason}`);
     for (const { link, errors } of result.invalid) console.log(`INVALID LINK ${link.id ?? '(no id)'}: ${errors.join('; ')}`);
     for (const { comment, errors } of result.invalidComments) console.log(`INVALID COMMENT ${comment.id ?? '(no id)'}: ${errors.join('; ')}`);

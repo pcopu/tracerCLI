@@ -8,6 +8,7 @@ const journeys = {
   measured: { file: 'tests/e2e/measured-journeys.test.mjs', description: 'Pinned LCOV pair import, interval lookup, provenance, staleness and atomic rejection.' },
   mapping: { file: 'tests/e2e/mapping-journeys.test.mjs', description: 'Code/action/witness lifecycle, per-line traces, bytes, inventory and safe writes.' },
   comments: { file: 'tests/e2e/comment-journeys.test.mjs', description: 'Explicit comment declarations, excluded manual counts, exact hashes, staleness and recovery.' },
+  ignore: { file: 'tests/e2e/ignore-journeys.test.mjs', description: 'Explicit project mapping scope, ignored source/witness integrity, restoration and unchanged test execution.' },
   project: { file: 'tests/e2e/project-journeys.test.mjs', description: 'Project init, app discovery/forwarding/cancellation, agent consent and preservation.' },
   update: { file: 'tests/e2e/update-journeys.test.mjs', description: 'Official update integrity, managed activation/rollback, automatic mode and skill preservation.' },
   'self-host': { file: 'tests/e2e/self-host-journey.test.mjs', description: 'Tracer discovers and delegates to its own project CLI and checks its reviewed map.' },
@@ -19,7 +20,7 @@ if (args[0] === 'actions' && args.length === 2 && args[1] === '--json') {
     ...Object.entries(journeys).map(([name, value]) => ({ command: ['test', name], description: value.description })),
   ] }, null, 2));
 } else if (!args.length || args.length === 1 && ['--help', 'help'].includes(args[0])) {
-  console.log('Tracer self-host project CLI\n  actions --json\n  test [mapping|comments|measured|project|update|self-host]\nRun through Tracer: tracer app -- test');
+  console.log('Tracer self-host project CLI\n  actions --json\n  test [mapping|comments|ignore|measured|project|update|self-host]\nRun through Tracer: tracer app -- test');
 } else if (args[0] === 'test' && args.length <= 2 && (!args[1] || Object.hasOwn(journeys, args[1]))) {
   const files = args[1] ? [journeys[args[1]].file] : Object.values(journeys).map(value => value.file);
   const child = spawn(process.execPath, ['--test', '--test-concurrency=1', ...files], {
