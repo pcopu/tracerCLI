@@ -104,23 +104,28 @@ class MeasuredStore extends Tracer {
     const file = readInput(this.mapPath), data = JSON.parse(file.content);
     keys(data, ['version', 'kind', 'intervals'], 'measurement dataset');
     if (data.version !== 1 || data.kind !== 'lcov-intervals' || !Array.isArray(data.intervals)) fail('Expected measurement dataset version 1.');
-    const ids = new Set();
+    const ids = new Set(), occurrences = new Set();
     for (const interval of data.intervals) {
       validateInterval(interval);
-      if (ids.has(interval.id)) fail('Duplicate measured interval identity.');
-      ids.add(interval.id);
+      const occurrence = intervalId(interval);
+      if (ids.has(interval.id) || occurrences.has(occurrence)) fail('Duplicate measured interval identity.');
+      ids.add(interval.id); occurrences.add(occurrence);
     }
     return data;
   }
 }
-function intervalId(value) {
+function captureContentId(value) {
   return sha(JSON.stringify([value.manifest.before.sha256, value.manifest.after.sha256,
     value.manifest.before.buildSha256]));
+}
+function intervalId(value) {
+  return sha(JSON.stringify([captureContentId(value), value.manifest.runId]));
 }
 function validateInterval(value) {
   keys(value, ['id', 'manifest', 'manifestSha256', 'stripPrefix', 'files', 'payloadSha256'], 'interval');
   validateManifest(value.manifest); validatePrefix(value.stripPrefix || undefined);
-  if (!hex(value.manifestSha256) || value.id !== intervalId(value) || !Array.isArray(value.files) || !value.files.length) fail('Invalid interval identity or files.');
+  // Legacy version-1 records used only capture content identity. Preserve them unchanged.
+  if (!hex(value.manifestSha256) || ![intervalId(value), captureContentId(value)].includes(value.id) || !Array.isArray(value.files) || !value.files.length) fail('Invalid interval identity or files.');
   const paths = new Set();
   for (const file of value.files) {
     keys(file, ['path', 'sha256', 'rows'], 'measured source'); safePath(file.path);
@@ -180,10 +185,12 @@ export function importMeasured(root, { before, after, manifest, sources, stripPr
   const interval = { ...payload, payloadSha256: sha(JSON.stringify(payload)) };
   validateInterval(interval);
   return store.mutate(data => {
-    const existing = data.intervals.find(item => item.id === interval.id);
+    const existing = data.intervals.find(item => intervalId(item) === interval.id);
     if (existing) {
-      if (existing.payloadSha256 !== interval.payloadSha256) fail('This LCOV pair already exists with conflicting provenance or labels. Never relabel captured evidence silently.');
-      return { changed: false, id: interval.id, notice: MEASURED_NOTICE };
+      // Compare the exact payload under its stored ID, including legacy IDs, without rewriting it.
+      const existingIdPayload = { ...payload, id: existing.id };
+      if (existing.payloadSha256 !== sha(JSON.stringify(existingIdPayload))) fail('This LCOV pair already exists in this run with conflicting provenance or labels. Never relabel captured evidence silently.');
+      return { changed: false, id: existing.id, notice: MEASURED_NOTICE };
     }
     data.intervals.push(interval);
     if (Buffer.byteLength(JSON.stringify(data, null, 2)) > 64 * 1024 * 1024) fail('Measurement dataset exceeds 64 MiB.');

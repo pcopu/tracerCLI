@@ -205,3 +205,69 @@ test('measured journey: reject contradictory LCOV test scopes/source versions an
   f.put('after.lcov', original.replace('SF:/capture/src/app.py', 'SF:/capture/src/app.py\nVER:matching-version')); f.refresh();
   f.json(...f.args); assert.equal(f.json('measure', 'report').intervals[0].totals.observedLines, 2);
 });
+
+for (const legacy of [false, true]) {
+  test(`measured journey: retain byte-identical independent runs alongside ${legacy ? 'legacy' : 'current'} evidence without relabeling`, t => {
+    const f = project(t), firstManifest = structuredClone(f.manifest);
+    const manual = f.json('report').totals;
+    f.json(...f.args);
+    const dataset = JSON.parse(readFileSync(join(f.root, dataPath)));
+    if (legacy) {
+      // Reproduce the version-1 identity and payload emitted before run-scoped IDs.
+      const interval = dataset.intervals[0];
+      interval.id = sha(JSON.stringify([f.manifest.before.sha256, f.manifest.after.sha256, f.manifest.before.buildSha256]));
+      const { payloadSha256, ...payload } = interval;
+      interval.payloadSha256 = sha(JSON.stringify(payload));
+      f.jsonFile(dataPath, dataset);
+    }
+    const firstInterval = dataset.intervals[0], original = readFileSync(join(f.root, dataPath));
+    const repeat = f.json(...f.args);
+    assert.equal(repeat.changed, false); assert.equal(repeat.id, firstInterval.id);
+    assert.deepEqual(readFileSync(join(f.root, dataPath)), original, 'exact reimport preserves existing identity and bytes');
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = 'synthetic-run-2'; f.save();
+    const second = f.json(...f.args);
+    assert.equal(second.changed, true); assert.notEqual(second.id, firstInterval.id);
+    assert.equal(f.json(...f.args).changed, false);
+    const afterRepeat = readFileSync(join(f.root, dataPath)), stored = JSON.parse(afterRepeat);
+    assert.deepEqual(stored.intervals[0], firstInterval, 'adding a run never rewrites historical evidence');
+    const secondManifest = structuredClone(f.manifest);
+    for (const manifest of [firstManifest, secondManifest]) {
+      f.jsonFile('manifest.json', manifest);
+      const reimport = f.json(...f.args);
+      assert.equal(reimport.changed, false);
+      assert.equal(reimport.id, manifest.runId === firstManifest.runId ? firstInterval.id : second.id);
+      for (const edit of [
+        value => { value.actions = ['different action']; },
+        value => { value.probeSha256 = sha('different probe'); },
+        value => {
+          value.tools[0].version = 'different version';
+          value.before.toolchainSha256 = value.after.toolchainSha256 = sha(JSON.stringify(value.tools));
+        },
+      ]) {
+        const changed = structuredClone(manifest); edit(changed); f.jsonFile('manifest.json', changed);
+        assert.match(f.run(f.args, 1).stderr, /conflicting provenance or labels/);
+      }
+      f.put('manifest.json', JSON.stringify(manifest));
+      assert.match(f.run(f.args, 1).stderr, /conflicting provenance or labels/, 'original manifest byte hash stays pinned');
+    }
+    assert.deepEqual(readFileSync(join(f.root, dataPath)), afterRepeat, 'reimports and rejected relabels leave both runs intact');
+    const report = f.json('measure', 'report', '--sequence', JSON.stringify(firstManifest.actions));
+    assert.deepEqual(report.intervals.map(interval => interval.manifest.runId), ['synthetic-run-1', 'synthetic-run-2']);
+    assert.deepEqual(report.intervals.map(interval => interval.totals.observedLines), [2, 2]);
+    assert.equal(report.totals, undefined, 'independent intervals do not create a summed observation count');
+    assert.deepEqual(f.json('measure', 'check').invalid, []);
+    assert.deepEqual(f.json('report').totals, manual, 'repeat measurements never change manual counts');
+    // A mixed legacy/current encoding must not disguise a duplicate occurrence.
+    const duplicate = structuredClone(firstInterval);
+    const contentId = sha(JSON.stringify([firstManifest.before.sha256, firstManifest.after.sha256, firstManifest.before.buildSha256]));
+    duplicate.id = legacy ? sha(JSON.stringify([contentId, firstManifest.runId])) : contentId;
+    const { payloadSha256, ...payload } = duplicate;
+    duplicate.payloadSha256 = sha(JSON.stringify(payload));
+    stored.intervals.push(duplicate); f.jsonFile(dataPath, stored);
+    const corrupt = readFileSync(join(f.root, dataPath));
+    assert.match(f.run(['measure', 'report'], 1).stderr, /Duplicate measured interval identity/);
+    f.jsonFile('manifest.json', secondManifest);
+    assert.match(f.run(f.args, 1).stderr, /Duplicate measured interval identity/);
+    assert.deepEqual(readFileSync(join(f.root, dataPath)), corrupt);
+  });
+}
