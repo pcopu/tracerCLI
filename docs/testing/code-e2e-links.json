@@ -1,0 +1,1102 @@
+{
+  "version": 1,
+  "links": [
+    {
+      "id": "01c62eee168a7d6e",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 133,
+        "end": 139,
+        "sha256": "1ab3c37babd60e477eb3f1c98005887287e9f0ce148c46374e1c979dbe7c1e1d"
+      },
+      "actions": [
+        "tracer report --json",
+        "tracer check --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 279,
+        "end": 318,
+        "sha256": "6c8ed5aa639bd706ca4fb40aa7418ed64362edc08b11c7374b4f8ce9fec0c282"
+      },
+      "why": "Malformed sidecars fail closed and preserve bytes; individual invalid links remain diagnosable."
+    },
+    {
+      "id": "01e72fc85afcf312",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 91,
+        "end": 110,
+        "sha256": "cbe8400a08912e4b6ee337576aaaf6d15a17b970fc3fae29c46f8b10ba9a1006"
+      },
+      "actions": [
+        "tracer report --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 205,
+        "end": 224,
+        "sha256": "2c15eb83c07beba1ce21e4619a632ced32da754b516f7b4e5ba2f5fe0cb325b9"
+      },
+      "why": "Git inventory includes tracked/nonignored source, reports explicit exclusions and does not count arbitrary data as source."
+    },
+    {
+      "id": "0ab88fb8b9af04f9",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 160,
+        "end": 180,
+        "sha256": "4494e2c48a8004090a0c51bc593c38fb20eb007efb81ecf4d9d81892e4ad304a"
+      },
+      "actions": [
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'",
+        "tracer config --minimum-traces 2"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 390,
+        "end": 417,
+        "sha256": "bd2518135fdc8c9d2c23af5b88c640ee7ba2ec43903ba04c52e1ceafbd9509a5"
+      },
+      "why": "A pre-existing writer lock blocks writes and failed operations preserve map bytes and lock ownership."
+    },
+    {
+      "id": "0c066bc559a541ff",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 387,
+        "end": 397,
+        "sha256": "aa0cf90bc8579c79ff96b73894b9f2f6fbf82138bf0d797c23f0548442460514"
+      },
+      "actions": [
+        "tracer update",
+        "tracer update --rollback",
+        "tracer --version"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 113,
+        "end": 121,
+        "sha256": "9a831099f1d2d0958e1373137a4e8dd12bc410c0a6c42ab47b389d3f9705b795"
+      },
+      "why": "Rollback selects the retained CLI without network requests or a silent skill downgrade."
+    },
+    {
+      "id": "0c31a4d3ffcd04dc",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 81,
+        "end": 93,
+        "sha256": "58d73c2f0695a318fe8dd7d9a640dbe0a6ae7a56074a5e323e8e07e72adad06d"
+      },
+      "actions": [
+        "tracer init",
+        "tracer init --agent codex --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 111,
+        "end": 117,
+        "sha256": "86df9bfb3cf52581cfbbf08ebc52b8d244f6c8433a80f3593a5a54a2f724151b"
+      },
+      "why": "Noninteractive setup does not consent automatically; the explicit installation flag is separate from project-instruction permission."
+    },
+    {
+      "id": "16a1b6b332dd62bf",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 95,
+        "end": 103,
+        "sha256": "ec5bbbfdfc0770e7397d315588d7c8a21ea2087b131c8fc5a053770136e1ca73"
+      },
+      "actions": [
+        "tracer app -- exit 7"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 64,
+        "end": 68,
+        "sha256": "c1c799d3a9757ce987c1a0c8009c0da96ebf86bec854457790a3712facb1d260"
+      },
+      "why": "Pass-through requires the explicit separator and preserves application exit status, stdin and stderr. Signal propagation has a separate reviewed link."
+    },
+    {
+      "id": "1945bd76ac8154bc",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 42,
+        "end": 50,
+        "sha256": "0477e2cf51828122aea85bb6ea5f43ad62eb88b769e64b4b7a526e5d99384c46"
+      },
+      "actions": [
+        "tracer config --minimum-traces 0",
+        "tracer report --sequence \"[]\""
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 422,
+        "end": 454,
+        "sha256": "eb756cda571abd06e77a4487f4dd4ec6d160951a9066e7cd72b1cbd0ae769d0c"
+      },
+      "why": "CLI diagnostics reject invalid thresholds and action sequences without changing fixture files."
+    },
+    {
+      "id": "1f70dfc3d4c6dbb1",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 91,
+        "end": 108,
+        "sha256": "9919ec303ccf4ea418c08575a1596edc0b341c750d7432605287350f2cc9d55b"
+      },
+      "actions": [
+        "tracer app --",
+        "kill -TERM \"$TRACER_PID\"",
+        "kill -TERM \"$TRACER_PID\""
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 99,
+        "end": 105,
+        "sha256": "4189b59de6b7816020270bf557d2997c976eba89637cfdedb54cf41e377f366d"
+      },
+      "why": "Repeated cancellation of a signal-resistant fixture child escalates to SIGKILL without abandoning it."
+    },
+    {
+      "id": "1f78ccd1c99c9a74",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 266,
+        "end": 297,
+        "sha256": "9f18f050d2140416e41f2821f777994ebe689026bfc19902009e92eb44c199f4"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer update"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 136,
+        "end": 143,
+        "sha256": "9bf89a2895d2e56a49927ccc589ea8e717ddf5c294ecff130eac3fabaf20088f"
+      },
+      "why": "Edited managed runtime files and launcher are preserved by refusing replacement."
+    },
+    {
+      "id": "203d291e625ce0cf",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 217,
+        "end": 232,
+        "sha256": "acaf32d61d1f5a6e11bb14f9bfca600cc2e801aeee58bb7350ec54554e33453a"
+      },
+      "actions": [
+        "tracer config --minimum-traces 2",
+        "tracer check --require-minimum --minimum-traces 2",
+        "tracer check --require-minimum --minimum-traces 3"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 173,
+        "end": 191,
+        "sha256": "bfcc589cff9610494097aafb4e390b1b4d7da88411ade701ff6ac8c9637756ed"
+      },
+      "why": "Project threshold persists, read-only overrides do not change it, and gates distinguish two from three declared sequences."
+    },
+    {
+      "id": "2935d052bcca591f",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 171,
+        "end": 179,
+        "sha256": "3cad98cfe36efa19766c41c053266f83ca8fa0033b05f4574bef942183cd7ccc"
+      },
+      "actions": [
+        "tracer update --install-managed"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 56,
+        "end": 64,
+        "sha256": "271cbcd990a1907b6ed8121f3222c1e62785ab96de3f4715388fbf0bf9c34ad5"
+      },
+      "why": "Foreign package identity, dependencies and lifecycle hooks are rejected before a managed pointer appears."
+    },
+    {
+      "id": "3119a29a662704ec",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 259,
+        "end": 284,
+        "sha256": "bafe8daa730ae318164aecfae23ad86ca8202c8de347e7c3d7af37940ef4f775"
+      },
+      "actions": [
+        "tracer report --json",
+        "tracer report --sequence \"$ORDERED_ACTIONS\""
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 151,
+        "end": 191,
+        "sha256": "611925af6c42e75e3a59ac2a9dd0f914a4da8c62cca4e1563a3c82a0e3eeefd5"
+      },
+      "why": "Overlaps, copied rows and alternate witnesses deduplicate exact action arrays; witness subsets and minimum counts remain separate."
+    },
+    {
+      "id": "3546c662de174fd0",
+      "source": {
+        "path": "scripts/project-cli.mjs",
+        "start": 14,
+        "end": 20,
+        "sha256": "895466e19293e172754a2a667beb38840ce508e405f7d6bfc6a5bb40a9aaf23b"
+      },
+      "actions": [
+        "tracer actions",
+        "tracer app -- --help"
+      ],
+      "step": {
+        "path": "tests/e2e/self-host-journey.test.mjs",
+        "start": 15,
+        "end": 22,
+        "sha256": "595f949b661584b0028a7700a81572513f9c5abd5d799e14145967853d2764ab"
+      },
+      "why": "The repository actually discovers its project CLI and verifies advertised journey commands and delegated help."
+    },
+    {
+      "id": "3b7c67890a4d1252",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 450,
+        "end": 481,
+        "sha256": "798aba81b16fc428237c114c6cff572af5039335b0ed9b117a5d8e1fb3ee8b33"
+      },
+      "actions": [
+        "tracer update --auto check",
+        "tracer app -- read",
+        "tracer app -- again",
+        "tracer app -- tomorrow"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 175,
+        "end": 188,
+        "sha256": "5afc49ecab290db87ea785b286d44eacd2901e91b0637557f797ea04b1485d9a"
+      },
+      "why": "Automatic checks are throttled to one daily opportunity and synthetic offline failures do not change successful app output."
+    },
+    {
+      "id": "418674b1304bd7e1",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 207,
+        "end": 215,
+        "sha256": "552d06f940a353ed3c197f3ce19019b3bb4ccbbf8af15e052f92646a7e3e2b94"
+      },
+      "actions": [
+        "tracer unlink \"$LINK_ID\"",
+        "tracer check --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 128,
+        "end": 145,
+        "sha256": "8339d15b1dfb5032ee9960612514a712771ed9fd7c8f5f26e8dc609bfac14734"
+      },
+      "why": "Explicit unlink repairs stale associations without recreating source or editing the witness."
+    },
+    {
+      "id": "421b85dbb9659280",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 145,
+        "end": 169,
+        "sha256": "c94fb63c425585ea6ddf91fb7f7c140de994015fa5e451b0e327ef375f53050d"
+      },
+      "actions": [
+        "tracer update --check --json",
+        "tracer update --check"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 41,
+        "end": 53,
+        "sha256": "0aa3d53041f2446d914024d8b42bcd9c61b0a0734775de9fcd78aa081166f680"
+      },
+      "why": "Annotated-tag success and a subsequent changed-tag identity failure use controlled official-origin fixtures. Invalid selector assertions are also present in the witness; these labels do not invent successful separate pin requests."
+    },
+    {
+      "id": "481d1c37d4ac4676",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 49,
+        "end": 49,
+        "sha256": "bc22911defee16bbd16859c9122fa8891c1315564b23b884e6fb81b85f553622"
+      },
+      "actions": [
+        "tracer --version"
+      ],
+      "step": {
+        "path": "tests/e2e/self-host-journey.test.mjs",
+        "start": 13,
+        "end": 14,
+        "sha256": "1d6f427a4af33332ddc3c0b202daa5a6fe00213bca64423d0dcceaace8781298"
+      },
+      "why": "CLI-reported version must match package metadata, preventing independent version constants from drifting."
+    },
+    {
+      "id": "52fa2a82fbca3a94",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 182,
+        "end": 205,
+        "sha256": "5ba9e35f7df976da6b3a1ebbc91892962ef2cf0e34d094b7ebcde3a43baba52b"
+      },
+      "actions": [
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'",
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 102,
+        "end": 120,
+        "sha256": "e4d3bc11ab7c4141c7a665cafb2267885a424c4e268127fb37cd0f7fb34b1833"
+      },
+      "why": "Idempotent linking preserves bytes and legacy IDs; changed explanations require explicit removal and re-link."
+    },
+    {
+      "id": "56b914978e91bc36",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 88,
+        "end": 108,
+        "sha256": "cb00c551b6c3e8d9e325a63d46c9d7bc8be87d78eec85b942c9223481339fb87"
+      },
+      "actions": [
+        "tracer app --",
+        "kill -INT \"$TRACER_PID\""
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 84,
+        "end": 98,
+        "sha256": "90e9e523b6867239cffbd104589465aee3b891d0f40cbe55b61c6c2b22d65522"
+      },
+      "why": "A separate fixture invocation receives wrapper-only SIGINT and must finish owned-child cleanup before exiting."
+    },
+    {
+      "id": "5a22f2ee4eef5d2e",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 54,
+        "end": 69,
+        "sha256": "9da98c8e0c62f1436f0003af0c3bc0f74cbc489a0d4b4a8f05990d87011a4377"
+      },
+      "actions": [
+        "tracer init --app-json \"$APP_ARGV\" --actions-json '[\"actions\",\"--json\"]' --minimum-traces 2",
+        "tracer init --app-json \"$APP_ARGV\" --actions-json '[\"actions\",\"--json\"]' --minimum-traces 2"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 40,
+        "end": 46,
+        "sha256": "ba29aed696c44983073b6a1350e77de415567643c920aabcd31b318dc67b9d9d"
+      },
+      "why": "Initial creation and repeat setup preserve exact project/map bytes and do not execute the connected app."
+    },
+    {
+      "id": "5b428e9618d3984f",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 141,
+        "end": 158,
+        "sha256": "03cd2de02f89e1b1ccd8d8d31d18adddf85f0112604314326cf6720c1d26f11c"
+      },
+      "actions": [
+        "tracer check --json",
+        "tracer report --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 122,
+        "end": 145,
+        "sha256": "86c4d72d3148c222ddbb209a4d9cc5fff358c8ed35858dca38c1e0a7748f59f0"
+      },
+      "why": "Changed source/witness, removed files and invalid ranges become stale/invalid rather than contributing mapped lines."
+    },
+    {
+      "id": "611510930002b65e",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 67,
+        "end": 83,
+        "sha256": "acefbe5b9153d125f29330416b4c3640747ea3358e485a34e8fd125119d8d453"
+      },
+      "actions": [
+        "tracer update --status --json",
+        "tracer update --auto apply",
+        "tracer update --auto off"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 155,
+        "end": 168,
+        "sha256": "6e3ab1daaf1e2150e4ade825c39bebdc38b0ae0f081919adfd6873b8cb730846"
+      },
+      "why": "Update dispatch works outside Git, rejects conflicting modes and keeps read-only reports deterministic."
+    },
+    {
+      "id": "78fa4501ecd78959",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 9,
+        "end": 35,
+        "sha256": "a0fc8ac81629f1db0cab94b611a0d82e267ced1a35d6c8ccd4652b40b6680256"
+      },
+      "actions": [
+        "tracer init",
+        "tracer actions"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 135,
+        "end": 144,
+        "sha256": "a65d1c3baf3d3e968694b0d47d99d9c155fff76b9f997c717b65ce514d5172ed"
+      },
+      "why": "Malformed fixture app argv/schema and redirected project files are rejected before execution."
+    },
+    {
+      "id": "84fcc824d631151a",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 419,
+        "end": 438,
+        "sha256": "3ec59297614c7c9fc5d958d1f4ae52e7b87e82ecad4a0f1447a44d1ec619a687"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill",
+        "tracer update --install-managed"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 238,
+        "end": 252,
+        "sha256": "95464cf692b921444f1052a469efffce171477e84e2c41e3b20bd647165d9b60"
+      },
+      "why": "Missing or symlinked skills and forged instruction targets remain untouched; reinstallation cannot bless edited hashes."
+    },
+    {
+      "id": "8ba1dbe2a79312e4",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 35,
+        "end": 46,
+        "sha256": "42cbd4d20669e63f911bce36a7e1645a93e6c8614baf37c4a602efa6a893320f"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 121,
+        "end": 122,
+        "sha256": "88d6204216ea8dc78de67d25d8c057a5fc3307deb1f9f129e14b2df1e37b0c8c"
+      },
+      "why": "Re-installing an existing customized skill preserves it. Same action sequence is intentionally not an extra per-line trace."
+    },
+    {
+      "id": "8bf8883172389f02",
+      "source": {
+        "path": "scripts/project-cli.mjs",
+        "start": 38,
+        "end": 39,
+        "sha256": "e02ffe14eac6e1f2ee854b92ad8bfb20eff464843beb69f043400379407cc659"
+      },
+      "actions": [
+        "tracer app -- test unknown-journey"
+      ],
+      "step": {
+        "path": "tests/e2e/self-host-journey.test.mjs",
+        "start": 23,
+        "end": 23,
+        "sha256": "a03319ed199b69b6b4566f3969286eb35101663664cb69d48350c9c203879ee3"
+      },
+      "why": "Unknown self-host journey names fail instead of becoming shell commands or arbitrary paths."
+    },
+    {
+      "id": "8d48572426671d75",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 338,
+        "end": 365,
+        "sha256": "649309327bb522260e10e91cb0c4ccd26417c3c36e6b0fb21c98bbfb05dd0e95"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer update"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 146,
+        "end": 159,
+        "sha256": "ef2762a9cf34abf651a5f64c442cba4f5da3d87547e9b52486e0dff0189d9205"
+      },
+      "why": "An older invoking CLI cannot downgrade the managed target; same-version retags need an explicit reviewed commit."
+    },
+    {
+      "id": "94835a543654ba25",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 315,
+        "end": 333,
+        "sha256": "cc95a6e73e0190eba085af44be48a8fb4c6bc5564886b3791cd1ce8f06dd632f"
+      },
+      "actions": [
+        "tracer update --status --json",
+        "tracer update --auto apply",
+        "tracer report --json",
+        "tracer update --auto off"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 162,
+        "end": 172,
+        "sha256": "c19dbe5e662d69b07608b6db38d861e572c67bbef04e3b5fadd6233ec64fa6ee"
+      },
+      "why": "User opt-in persists while read-only commands, CI and per-process opt-out make no update requests."
+    },
+    {
+      "id": "94eb2e40684eba82",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 37,
+        "end": 53,
+        "sha256": "5b582d59ab771fbb884868468204a9b0e3b5828067a57c5038bc15f28943235b"
+      },
+      "actions": [
+        "tracer init --app-json \"$APP_ARGV\" --actions-json '[\"actions\",\"--json\"]' --minimum-traces 2",
+        "tracer init --app-json '[\"different\"]'"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 40,
+        "end": 54,
+        "sha256": "76abecd4104ed905585bbac0b69d40da766415674e7a15904e19ec040902254e"
+      },
+      "why": "The fixture supplies real argv JSON; repeated setup preserves existing configuration and conflicting values fail."
+    },
+    {
+      "id": "967a9e057b0e03ce",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 25,
+        "end": 41,
+        "sha256": "1b9519fcf28b98177095f0836ab8ab6fde9b67dbc92b652755c6d46906c112c8"
+      },
+      "actions": [
+        "tracer link ../a.py:1 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'",
+        "tracer link src/cart.py:0 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 323,
+        "end": 345,
+        "sha256": "7ae2d7f899d4a7a72e1962d7452a545eaef9f04e8755f5ffbeb25edcf729cb5d"
+      },
+      "why": "Fixture journey rejects traversal, malformed ranges and unsafe map locations through the public CLI."
+    },
+    {
+      "id": "a1fd5cacddfcc60e",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 111,
+        "end": 120,
+        "sha256": "5378d31984de86b02f34e6670d51a5e98aa35ce743957eb8a5ddba71fd909774"
+      },
+      "actions": [
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 84,
+        "end": 100,
+        "sha256": "5e1e6c62ccc339bf9cc4fb9ff86ed4e65b6fc6e8376445f253279541eada20b9"
+      },
+      "why": "Link creation snapshots source and witness, and source/reverse lookups assert the stored relationship."
+    },
+    {
+      "id": "a6a9af2a939e2dc7",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 98,
+        "end": 102,
+        "sha256": "dae53a1438e36ef90afa88ab8fe35eb6d41cf7ab91a0cbb9d3b59951902da5cc"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 118,
+        "end": 120,
+        "sha256": "ed7674e4b0843623d531da7587f501d66b8c219807a79394913a1d307b065b42"
+      },
+      "why": "The separately authorized instruction path invokes the append operation; interactive prompt behavior is not inferred from this fixture."
+    },
+    {
+      "id": "a79d86ad18965169",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 450,
+        "end": 481,
+        "sha256": "798aba81b16fc428237c114c6cff572af5039335b0ed9b117a5d8e1fb3ee8b33"
+      },
+      "actions": [
+        "tracer update --auto apply",
+        "tracer app -- read",
+        "tracer app -- read-again",
+        "tracer update --status --json"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 200,
+        "end": 217,
+        "sha256": "6c41ca9f4548181175ffb6cb1fe340fd957d24a7b5899b4ef732b98e77bc11f0"
+      },
+      "why": "Managed automatic updates require descendant history, preserve the triggering command, and execute new code only on the next invocation."
+    },
+    {
+      "id": "ac000e51eafa508c",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 99,
+        "end": 102,
+        "sha256": "6efa5df45f8ad77cb18d1f5af1d97f827b3391852b46a4921a9a8478df3b828b"
+      },
+      "actions": [
+        "tracer app -- signal"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 81,
+        "end": 83,
+        "sha256": "157606d7599cfa2dd1780e7a3a8dafd03eb773c2e387e6401fe1e613038c2d6b"
+      },
+      "why": "A fixture child terminates itself with SIGTERM; the real wrapper must report that signal rather than a successful exit."
+    },
+    {
+      "id": "aeb1b8b9578af452",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 29,
+        "end": 42,
+        "sha256": "2d926e42fdc57c9548b843be2e7da06931d368a5fc2e160688c7bf2221fe1c52"
+      },
+      "actions": [
+        "tracer update --auto apply"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 255,
+        "end": 263,
+        "sha256": "5dfa31cd98a1ad6694c4a19c1dc5ef3f127daf965a782d507ad89067ea05e846"
+      },
+      "why": "A symlinked managed-state directory and existing writer lock do not redirect or overwrite updates."
+    },
+    {
+      "id": "b0717cc88bd18344",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 13,
+        "end": 25,
+        "sha256": "78c9d285ac9ef44bd8460772883dcff75048bc7dc221a0d6ffaf6d109e6472b7"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 147,
+        "end": 152,
+        "sha256": "1bfa6d26c12a2a9831fa7e731a77305f258ce22db8020737671d895abeab4d0f"
+      },
+      "why": "Redirected skill and instruction paths are rejected while their target files remain unchanged."
+    },
+    {
+      "id": "b21763c9103aa628",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 115,
+        "end": 143,
+        "sha256": "f251b5bd36c73b861514c1c1d9b4bbcac353af9c193339bba8f32ddaf3f1078f"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer update --check"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 265,
+        "end": 273,
+        "sha256": "5d45a8db5ba1a52c1b2a533e5c4454e87953395b074c88e1ae983d26279f0441"
+      },
+      "why": "Offline fixture transport exercises real CLI HTTP reading, HTTP errors and foreign-origin rejection; no live remote service is modified."
+    },
+    {
+      "id": "b3439a802668d51d",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 27,
+        "end": 33,
+        "sha256": "a58da11dcafa3c8649d3e4384bf67ab1acd1c00e6463851c5074e0cfad06323d"
+      },
+      "actions": [
+        "tracer init --agent claude --install-skill --add-instruction",
+        "tracer init --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 123,
+        "end": 126,
+        "sha256": "dbe5ed7d70b8a1c3ba025781ef1f22bda572e5332a77883813d6408cbed94147"
+      },
+      "why": "Supported agent locations stay separate and ambiguous automatic selection fails rather than guessing."
+    },
+    {
+      "id": "c7fc78568c7e709b",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 35,
+        "end": 46,
+        "sha256": "42cbd4d20669e63f911bce36a7e1645a93e6c8614baf37c4a602efa6a893320f"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 113,
+        "end": 117,
+        "sha256": "f9abafbc8621f479eb62d5edafb6b4bdade609b4f4f123d6eb039664dcb8c734"
+      },
+      "why": "Explicit skill installation creates the skill and registers its original checksum without changing AGENTS."
+    },
+    {
+      "id": "c96cf8f9d3235131",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 182,
+        "end": 219,
+        "sha256": "342edb6d3cfffb75ee1a1104829996c22a8027cb0bfd4d179a05a59746975813"
+      },
+      "actions": [
+        "tracer update --check --json",
+        "tracer update --install-managed --commit \"$REVIEWED_SHA\""
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 26,
+        "end": 38,
+        "sha256": "b1717550cf41130e794b6385e0d782171389e33bfa0665b5dab820907326f3f1"
+      },
+      "why": "Pinned commit and main bootstrap paths use immutable fixture commits; an absent release/main returns unavailable."
+    },
+    {
+      "id": "cb9981a38082d227",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 48,
+        "end": 59,
+        "sha256": "ab9730ff5b42fa8ad3f3f724abb9011be5467f367922c4b6cecb7780a5fcb44d"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 118,
+        "end": 120,
+        "sha256": "ed7674e4b0843623d531da7587f501d66b8c219807a79394913a1d307b065b42"
+      },
+      "why": "Separate instruction consent appends one generic pointer, preserves CRLF/user text, and is idempotent."
+    },
+    {
+      "id": "d68021a4a3c9bcff",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 234,
+        "end": 258,
+        "sha256": "0601a70e9990dbafbd5ebf50aed54222f39c366da755f8f4625a3d4f4095508b"
+      },
+      "actions": [
+        "tracer report --source src/cart.py:2",
+        "tracer report --step tests/cart.spec:3",
+        "tracer report --action \"cart total\""
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 90,
+        "end": 100,
+        "sha256": "e41efd3f0ccad52079bb00fdf9c4ea27ae8eb94b70063548b1c1ce2fe9c05e99"
+      },
+      "why": "Forward and reverse selectors return the current source/action/witness relationships."
+    },
+    {
+      "id": "d841a232ea529fd1",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 50,
+        "end": 80,
+        "sha256": "3c5105b894d27d68828d5963346379d535e54e61cd40aa7a520d5fca90f62119"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer update"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 124,
+        "end": 133,
+        "sha256": "90c29d8bf282a6089ab14245d514b01abddb8b2400c2910527f61359259dcb57"
+      },
+      "why": "A failed later download leaves active pointer, installed skill and prior version unchanged; staging does not become active."
+    },
+    {
+      "id": "d857ce383851ae75",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 366,
+        "end": 385,
+        "sha256": "9e9e87cc816dbf2d38ff7ae6a7a6ab0a6da73268860874cc64061f508be043ab"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer update"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 109,
+        "end": 121,
+        "sha256": "00e7c60fdc5c885150a55b5c7da3b9efd601da016023302bd7f143ff56103840"
+      },
+      "why": "A verified next managed version activates, retains the previous version and refreshes the pristine registered skill."
+    },
+    {
+      "id": "d8f8529db92f4c8e",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 78,
+        "end": 85,
+        "sha256": "71ac9fd75b8d6e5d88ecaa6fa19172079fa108b34f5d2e7518211efccc800b1d"
+      },
+      "actions": [
+        "tracer actions",
+        "tracer app -- read '' 'space here' 'a,b:1' '; touch NEVER' '$(touch NEVER)' '*' --help",
+        "tracer app -- stdin"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 58,
+        "end": 68,
+        "sha256": "1f2dd94bfede7bd9afb8aaacc1b85b13fab8099e576ea8db0ab8f1ae1d92aaeb"
+      },
+      "why": "Literal argv, repository cwd, unchanged stdout/stderr, input forwarding and nonzero exit codes are asserted through the real app wrapper."
+    },
+    {
+      "id": "da0c9205df1a85c3",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 88,
+        "end": 108,
+        "sha256": "cb00c551b6c3e8d9e325a63d46c9d7bc8be87d78eec85b942c9223481339fb87"
+      },
+      "actions": [
+        "tracer app --",
+        "kill -TERM \"$TRACER_PID\""
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 84,
+        "end": 98,
+        "sha256": "90e9e523b6867239cffbd104589465aee3b891d0f40cbe55b61c6c2b22d65522"
+      },
+      "why": "Wrapper-only SIGTERM is injected with the subprocess signal API; the assertion waits for child cleanup and verifies no surviving child."
+    },
+    {
+      "id": "da0cc67f71d605ce",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 82,
+        "end": 90,
+        "sha256": "a2466d73b406937f3e6b73cdaf5e0bf547be0339eaab9fc778b82d7ac50e704c"
+      },
+      "actions": [
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:1-3 --why 'Add an item, then assert the total.'",
+        "tracer check --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 246,
+        "end": 272,
+        "sha256": "3a465820200883ad13dc4478704cba82f4399742c418716a0dcab6b969b8eab3"
+      },
+      "why": "Fixture checks exact BOM/CRLF bytes, witness hashes, invalid UTF-8 and NUL rejection."
+    },
+    {
+      "id": "db795f9009b3058f",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 400,
+        "end": 438,
+        "sha256": "d2200fc91080cf29c0e2241755cdeb097d89231e3738ad60fc105bc775a08a30"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill",
+        "tracer init --agent claude --install-skill",
+        "tracer update --install-managed"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 220,
+        "end": 235,
+        "sha256": "d325e3f7233cef31cb029cd1cc9e4e6223b31e67638bf9a811a5d92a87645514"
+      },
+      "why": "Only pristine registered skills refresh; edited and unregistered skills plus both project instruction files remain unchanged."
+    },
+    {
+      "id": "dd19c81e8ae8be85",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 68,
+        "end": 80,
+        "sha256": "b096759775671557e41f2a98dabcafb69f77a1cb7cbcd200dfd0bdc03f451ee2"
+      },
+      "actions": [
+        "tracer --include-ext .zig report --source src/main.zig"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 225,
+        "end": 238,
+        "sha256": "b6ea8ed87bc356113bf7a32bca0c11f3bec9698ca77c7d97eac89481a5a05cf5"
+      },
+      "why": "Extension opt-in is exercised by a real CLI invocation in an isolated Git repository."
+    },
+    {
+      "id": "e491ca05f1cc9650",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 299,
+        "end": 313,
+        "sha256": "f7d0d199b479423dfdc7d1cdcd7b102451d537902da9a93d7f9d38d6b2746511"
+      },
+      "actions": [
+        "tracer update --install-managed",
+        "tracer --version"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 75,
+        "end": 86,
+        "sha256": "cb4e746808ed4c1cc579f434e3f852a77a2ff2abae7a629d0b42d577876c8062"
+      },
+      "why": "Downloaded runtime is verified without executing it during install; only the next explicit managed invocation runs it."
+    },
+    {
+      "id": "ece3a1ff485fef75",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 51,
+        "end": 56,
+        "sha256": "0cf0b14d27e0bd34fec42a9c8d607c3a1ea82227b6dc8016b7073cddb60297be"
+      },
+      "actions": [
+        "tracer report --json"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 205,
+        "end": 224,
+        "sha256": "2c15eb83c07beba1ce21e4619a632ced32da754b516f7b4e5ba2f5fe0cb325b9"
+      },
+      "why": "Mixed-language fixture asserts configuration-source boundaries and physical-line totals; this is manual inventory mapping."
+    },
+    {
+      "id": "f3cdd7ec4c4d85a9",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 141,
+        "end": 149,
+        "sha256": "9869e227afb8b97ade87c23686d3765394df0fac192ab38b1c8644ebf8f73094"
+      },
+      "actions": [
+        "tracer init --agent invalid-agent",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 129,
+        "end": 133,
+        "sha256": "8bf3be3cacd73ab4cece84fef9aecd89a0d7844f3e4466bf244e73a8a5709b6c"
+      },
+      "why": "Unsupported agent arguments fail before initialization writes; missing skill does not imply consent to install it."
+    },
+    {
+      "id": "f432aa5aa5496c87",
+      "source": {
+        "path": "src/tracer.mjs",
+        "start": 122,
+        "end": 131,
+        "sha256": "29d2dda62a0992e44c89d9be4e4dddedb2597883b3732873284a6c958eb6900e"
+      },
+      "actions": [
+        "tracer link src/cart.py:1-2 --action 'cart add --price 4' --action 'cart total' --step tests/cart.spec:2-3 --why 'Add an item, then assert the total.'"
+      ],
+      "step": {
+        "path": "tests/e2e/mapping-journeys.test.mjs",
+        "start": 350,
+        "end": 385,
+        "sha256": "b9dc372f727a7aedc6252c230d77aa98d9a792964601a9be4effa90807fd9bf9"
+      },
+      "why": "The fixture redirects the map or its parent, then attempts the exact default link; path validation rejects the write without changing the target."
+    },
+    {
+      "id": "f4bf9e354a1bd747",
+      "source": {
+        "path": "src/project.mjs",
+        "start": 100,
+        "end": 102,
+        "sha256": "1f6c8ea9cf499300099c9e520e868593eed16be21395ef8c1fe13b4299bb7c64"
+      },
+      "actions": [
+        "tracer actions"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 77,
+        "end": 78,
+        "sha256": "51dd8611d959884a1df988f3a2f8346d3de991a14fbcbda5b5699f8b519bad85"
+      },
+      "why": "A configured missing executable produces the expected actionable error; no fallback command is guessed."
+    },
+    {
+      "id": "f873dc54f274b10c",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 221,
+        "end": 264,
+        "sha256": "c2588db90ea176e38c58555a4007b28bbe5cbaefcd112b7949bd216a65bea8ab"
+      },
+      "actions": [
+        "tracer update --install-managed"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 89,
+        "end": 106,
+        "sha256": "03cf9abbcfdbece95174826240de988fee9f88e15469809cc9a13cc9ac0dbd69"
+      },
+      "why": "Corrupt blobs, malformed/truncated trees, symlinks, duplicate names and escaping paths fail before activation."
+    }
+  ]
+}

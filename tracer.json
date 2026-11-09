@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "app": ["node", "scripts/project-cli.mjs"],
+  "actions": ["actions", "--json"]
+}
