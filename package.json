@@ -1,0 +1,30 @@
+{
+  "name": "@pcopu/tracercli",
+  "version": "0.1.0",
+  "description": "Language-neutral navigation between source ranges, CLI actions and test steps. Manual links, never runtime coverage.",
+  "type": "module",
+  "bin": {
+    "tracer": "bin/tracer.mjs",
+    "tracercli": "bin/tracer.mjs"
+  },
+  "exports": "./src/tracer.mjs",
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "README.md",
+    "docs"
+  ],
+  "scripts": {
+    "test": "node bin/tracer.mjs app -- test",
+    "check": "node --check bin/tracer.mjs && node --check src/tracer.mjs && node --check src/project.mjs && node --check src/agent-setup.mjs && node --check src/update.mjs && node --check scripts/project-cli.mjs && npm test && node bin/tracer.mjs check"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pcopu/tracerCLI.git"
+  },
+  "license": "UNLICENSED"
+}
