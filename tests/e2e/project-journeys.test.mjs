@@ -398,3 +398,101 @@ test('terminal consent journey: preserve customized skills and default-deny inst
   assert.equal(p.read('fake-home/.codex/skills/tracer/SKILL.md'), '# Customized skill\nKeep my workflow.\n');
   assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
 });
+
+test('agent recovery journey: preserve incomplete custom-home skills and malformed instruction bytes until explicit repair', t => {
+  const p = project(t), customHome = join(p.root, 'custom-agent-home');
+  p.env.CODEX_HOME = customHome;
+  p.ok('init', '--app-json', p.app);
+  const config = p.read('tracer.json'), map = p.read(mapPath), settings = join(p.home, '.local/share/tracer/settings.json');
+  p.put('custom-agent-home/skills/tracer/README.txt', 'Keep this unfinished installation.\n');
+  p.put('AGENTS.md', 'Original project instructions.\n');
+  const incomplete = p.run('init', '--agent', 'codex', '--install-skill');
+  assert.equal(incomplete.status, 1); assert.match(incomplete.stderr, /Existing skill directory has no SKILL.md and was preserved/);
+  assert.equal(p.read('custom-agent-home/skills/tracer/README.txt'), 'Keep this unfinished installation.\n');
+  assert.equal(existsSync(join(customHome, 'skills/tracer/SKILL.md')), false);
+  assert.equal(existsSync(settings), false); assert.equal(p.read('AGENTS.md'), 'Original project instructions.\n');
+
+  // Simulate the owner's explicit repair, not an automatic overwrite by Tracer.
+  const customSkill = '# Recovered customized skill\nKeep my local workflow.\n';
+  p.put('custom-agent-home/skills/tracer/SKILL.md', customSkill);
+  for (const [bytes, error] of [
+    [Buffer.from([0x4b, 0x65, 0x65, 0x70, 0xc3, 0x28]), /encoded data was not valid/],
+    [Buffer.from('Keep this\0instruction file\n'), /Instruction file contains NUL bytes and was preserved/],
+  ]) {
+    p.put('AGENTS.md', bytes);
+    const rejected = p.run('init', '--agent', 'codex', '--add-instruction');
+    assert.equal(rejected.status, 1); assert.match(rejected.stderr, error);
+    assert.deepEqual(readFileSync(join(p.root, 'AGENTS.md')), bytes);
+    assert.equal(p.read('custom-agent-home/skills/tracer/SKILL.md'), customSkill);
+    assert.equal(existsSync(settings), false, 'A reviewed custom skill is not registered as an installed pristine skill.');
+    assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+  }
+
+  const repaired = '\ufeffKeep my repaired instructions.\r\nNo final newline';
+  p.put('AGENTS.md', repaired);
+  assert.match(p.ok('init', '--agent', 'codex', '--add-instruction').stdout, /Added Tracer guidance/);
+  const expected = `${repaired}\r\n\r\n<!-- tracer:agent-guidance -->\r\nUse the installed tracer skill and tracer CLI for this project’s Tracer workflow.\r\n<!-- /tracer:agent-guidance -->\r\n`;
+  assert.deepEqual(readFileSync(join(p.root, 'AGENTS.md')), Buffer.from(expected));
+  assert.match(p.ok('init', '--agent', 'codex', '--add-instruction').stdout, /Preserved existing Tracer guidance/);
+  assert.deepEqual(readFileSync(join(p.root, 'AGENTS.md')), Buffer.from(expected));
+  assert.equal(p.read('custom-agent-home/skills/tracer/SKILL.md'), customSkill);
+  assert.equal(p.read('custom-agent-home/skills/tracer/README.txt'), 'Keep this unfinished installation.\n');
+  assert.equal(existsSync(join(p.home, '.codex')), false); assert.equal(existsSync(settings), false);
+  assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+  assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+});
+
+test('agent path recovery journey: reject nonregular ancestors and skill or instruction targets before using repaired paths', t => {
+  for (const kind of ['home-file', 'skills-symlink', 'skill-directory', 'instruction-directory']) {
+    const p = project(t), customHome = join(p.root, 'custom-agent-home'), skill = join(customHome, 'skills/tracer/SKILL.md');
+    p.env.CODEX_HOME = customHome;
+    p.ok('init', '--app-json', p.app);
+    const config = p.read('tracer.json'), map = p.read(mapPath), custom = '# Reviewed local skill\n';
+    p.put('AGENTS.md', 'Preserve my project guidance.\n');
+    p.put('outside/sentinel.txt', 'Outside target stays untouched.\n');
+    let obstruction;
+    if (kind === 'home-file') {
+      obstruction = customHome; p.put('custom-agent-home', 'Not an agent directory.\n');
+    } else if (kind === 'skills-symlink') {
+      mkdirSync(customHome); obstruction = join(customHome, 'skills');
+      symlinkSync(join(p.root, 'outside'), obstruction);
+    } else if (kind === 'skill-directory') {
+      obstruction = skill; mkdirSync(skill, { recursive: true });
+      p.put('custom-agent-home/skills/tracer/SKILL.md/keep.txt', 'Not a skill file.\n');
+    } else {
+      p.put('custom-agent-home/skills/tracer/SKILL.md', custom);
+      obstruction = join(p.root, 'AGENTS.md'); rmSync(obstruction); mkdirSync(obstruction);
+      p.put('AGENTS.md/keep.txt', 'Not an instruction file.\n');
+    }
+    const args = ['init', '--agent', 'codex', kind === 'instruction-directory' ? '--add-instruction' : '--install-skill'];
+    const rejected = p.run(...args);
+    assert.equal(rejected.status, 1, kind); assert.match(rejected.stderr, /Agent setup requires regular, unsymlinked paths/);
+    if (kind === 'home-file') assert.equal(p.read('custom-agent-home'), 'Not an agent directory.\n');
+    if (kind === 'skills-symlink') assert.equal(realpathSync(obstruction), join(p.root, 'outside'));
+    if (kind === 'skill-directory') assert.equal(p.read('custom-agent-home/skills/tracer/SKILL.md/keep.txt'), 'Not a skill file.\n');
+    if (kind === 'instruction-directory') {
+      assert.equal(p.read('AGENTS.md/keep.txt'), 'Not an instruction file.\n');
+      assert.equal(readFileSync(skill, 'utf8'), custom);
+    } else assert.equal(p.read('AGENTS.md'), 'Preserve my project guidance.\n');
+    assert.equal(p.read('outside/sentinel.txt'), 'Outside target stays untouched.\n');
+    assert.equal(existsSync(join(p.root, 'outside/tracer')), false);
+    assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
+    assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+
+    // Only the fixture owner removes its synthetic obstruction and supplies a reviewed skill.
+    rmSync(obstruction, { recursive: true });
+    p.put('custom-agent-home/skills/tracer/SKILL.md', custom);
+    p.put('AGENTS.md', 'Preserve my project guidance.\n');
+    assert.match(p.ok('init', '--agent', 'codex', '--add-instruction').stdout, /Added Tracer guidance/);
+    const instruction = p.read('AGENTS.md');
+    assert.ok(instruction.startsWith('Preserve my project guidance.\n'));
+    assert.equal(instruction.split('<!-- tracer:agent-guidance -->').length - 1, 1);
+    p.ok('init', '--agent', 'codex', '--add-instruction'); assert.equal(p.read('AGENTS.md'), instruction);
+    assert.equal(readFileSync(skill, 'utf8'), custom); assert.equal(p.read('outside/sentinel.txt'), 'Outside target stays untouched.\n');
+    assert.equal(existsSync(join(p.root, 'outside/tracer')), false);
+    assert.equal(existsSync(join(p.home, '.codex')), false);
+    assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
+    assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+    assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+  }
+});

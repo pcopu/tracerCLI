@@ -121,6 +121,28 @@
       "why": "The package version and public CLI version remain equal after the shared implementation update."
     },
     {
+      "id": "0ba53bb7295957fb",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 10,
+        "end": 12,
+        "sha256": "808d3d3e00967c2bcab641a2dec8adcf65d4189663bda2d8b7583e2e31ffca89"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 418,
+        "end": 442,
+        "sha256": "7606de7134a0d4d15276c50bbdc6e3b76ef71b53b5e3d02e26570e328e844669"
+      },
+      "why": "Two malformed instruction inputs fail without mutation, followed by a repaired instruction and idempotent repeat. The exact emitted marker and guidance text are asserted as bytes."
+    },
+    {
       "id": "0c066bc559a541ff",
       "source": {
         "path": "src/update.mjs",
@@ -180,6 +202,25 @@
         "sha256": "fa6851625b00f68ee297b8b3c8a272e245f83f0eb947cd60998276d6b696f6df"
       },
       "why": "Blank-only links preserve v1 byte hashes, legacy identity and navigation; whitespace edits still become stale without refreshing history."
+    },
+    {
+      "id": "0e5c7bbefa9f147c",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 35,
+        "end": 41,
+        "sha256": "78c4d509bc532a89e168d90e7ad52f37f4b25adce99f320903b7a32f8618b595"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 407,
+        "end": 413,
+        "sha256": "f815cacfb1ae3c2eeeccdf6788c60f54a216557a0c608541927c19a484d8bc2d"
+      },
+      "why": "An existing custom-home skill directory without SKILL.md is rejected through the public CLI; its README, project instructions and absent update registry remain unchanged."
     },
     {
       "id": "0ea9ea2a85297cf2",
@@ -1576,6 +1617,26 @@
       "why": "Configuration inventory policy is witnessed with root package metadata, source YAML, and excluded fixture, lock, documentation and arbitrary JSON data."
     },
     {
+      "id": "7504a426b3d38bc5",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 48,
+        "end": 54,
+        "sha256": "c56a67f71f3665b9fdc931c0fa3d4e7e801644a088c4b8a1b7fba69bdb4e696f"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 418,
+        "end": 429,
+        "sha256": "588badd29faecf2420fffc04218e7d2c8fbf6338da0f1b680d6f668d979c176c"
+      },
+      "why": "The fixture supplies invalid UTF-8 and then NUL-containing instruction bytes. Both CLI attempts fail, preserve the exact bytes and custom skill, and leave project config, map and registry unchanged."
+    },
+    {
       "id": "788abaa1aaf17089",
       "source": {
         "path": "src/measured.mjs",
@@ -1705,6 +1766,26 @@
         "sha256": "5fe1b35f1b491bae69b71a6820cda8205c405183b3c46f81aa29019b3943b6e6"
       },
       "why": "The directory exclusion catalog supplies reviewed vendor/build exclusions and disallows excluded vendor text as a witness; other catalog entries are not independently asserted here."
+    },
+    {
+      "id": "7de2470b31b4a691",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 54,
+        "end": 60,
+        "sha256": "0c6388e4da0467eb1cbc2d88edd17c20b69b8ca96826a0168be9706057d82f46"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 431,
+        "end": 442,
+        "sha256": "6653eca9a601d7403b21eb15e648bda5756c7d81e57862d72e488304ff2866a4"
+      },
+      "why": "After an explicit fixture repair, guidance is appended with exact BOM and CRLF preservation, correct missing-final-newline separation and byte-idempotent repetition. The custom skill and default home remain untouched."
     },
     {
       "id": "7ea63f82e6e8044e",
@@ -2018,6 +2099,25 @@
         "sha256": "eb04f31c231beaa2e229c98013bd9ccc95fb948e6bc68ad598f8871720e6d9cd"
       },
       "why": "Match explicit directory boundaries, expose global rule counts and union overlapping exclusions without double counting."
+    },
+    {
+      "id": "8eac7143642c7c9a",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 13,
+        "end": 26,
+        "sha256": "e7abc1acf6137dbdd85c51cce8b5ab69f816dcdf0b9f9303e744146d6ac4572e"
+      },
+      "actions": [
+        "tracer init --agent codex --install-skill"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 445,
+        "end": 480,
+        "sha256": "52d104a9e42e9deaecc1a811a9d0fa72c84372263e0983112ea2d693bba4f845"
+      },
+      "why": "The install action in the parameterized recovery journey rejects a regular file used as the agent root, a symlinked skills ancestor and a directory used as SKILL.md; each obstruction and outside sentinel is preserved. The descriptor is the failed install subsequence, not the later owner repair."
     },
     {
       "id": "8eae20d69339905e",
@@ -2512,6 +2612,26 @@
         "sha256": "ea96f3758a66302841df0023cc7cd0137d5b5e2cb88eae09170e90606a4642da"
       },
       "why": "Managed automatic updates require descendant history, preserve the triggering command, and execute new code only on the next invocation."
+    },
+    {
+      "id": "a84b1efad834cdd6",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 27,
+        "end": 31,
+        "sha256": "ea02bd55f96b9a2b4826d85559deddae6daab8ff17f3fa9dab7f95ec445b9468"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction",
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 431,
+        "end": 442,
+        "sha256": "6653eca9a601d7403b21eb15e648bda5756c7d81e57862d72e488304ff2866a4"
+      },
+      "why": "Guidance insertion uses the fixture CODEX_HOME rather than the default home, preserves the supplied custom skill and does not create or adopt a default Codex skill location."
     },
     {
       "id": "a8ba0a14c2019a6d",
@@ -3429,6 +3549,25 @@
         "sha256": "7c2292de9f3b3635ded651a641a95202754edefa1d7dd06b6884b65d1d0ea8fd"
       },
       "why": "A verified next managed version activates, retains the previous version and refreshes the pristine registered skill."
+    },
+    {
+      "id": "da17c37768800c6c",
+      "source": {
+        "path": "src/agent-setup.mjs",
+        "start": 49,
+        "end": 51,
+        "sha256": "10e6b910d6e927cf1c40314c213d7905cb595f4b5b493e49427e306e955cb356"
+      },
+      "actions": [
+        "tracer init --agent codex --add-instruction"
+      ],
+      "step": {
+        "path": "tests/e2e/project-journeys.test.mjs",
+        "start": 445,
+        "end": 480,
+        "sha256": "52d104a9e42e9deaecc1a811a9d0fa72c84372263e0983112ea2d693bba4f845"
+      },
+      "why": "The instruction-directory variant supplies a reviewed custom skill and attempts only guidance insertion. The CLI refuses the directory without changing its contained file, custom skill, project state or outside target."
     },
     {
       "id": "da6df192c8034278",
