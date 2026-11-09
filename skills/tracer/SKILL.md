@@ -9,7 +9,11 @@ description: Maintain source-to-CLI-action-to-test links with Tracer, identify u
 
 Use the application's existing repository and read its agent guidance. Discover `tracer --help` (or the installed repository's `bin/tracer.mjs`) and the app's actual CLI before inventing commands. Tracer requires Node.js 20+ and Git. Default mapping is `docs/testing/code-e2e-links.json`; preserve a project's chosen `--map` and any `--include-ext` settings. Keep unrelated work intact.
 
-When the user requests full CLI coverage, audit supported application interactions, screens, state transitions, persistence and error/recovery paths. Create or extend the app CLI and its E2E tests to expose that complete authorized interaction surface, reusing real application handlers where appropriate. List unimplemented routes, platform constraints and deliberately restricted actions. An exposed command is not proof of UI or behavioral parity. Preserve authentication, safety checks, input-route semantics and user data. Additions to an app require that app's authorized work scope; a mapping-only request is not permission to modify a different project or bypass a restricted interaction.
+Before starting application coverage or new link-mapping work, first audit every supported application feature: interactions, screens, state transitions, persistence and error/recovery paths. Establish an app CLI that exposes every authorized application feature, building it if missing and extending it wherever routes are absent. Reuse real application handlers where appropriate and add real CLI E2E journeys with observable assertions. CLI feature parity is a prerequisite, not an optional follow-up or something to infer from a command list.
+
+Explain this prerequisite during setup: an application CLI is a way for agents and tests to operate the app through commands. If none exists, one must be built before complete CLI-driven testing is possible; Tracer does not create it automatically. A missing Tracer app connection does not prove the app has no CLI. Inspect the repository first, explain whether an existing CLI needs connecting or extending, and obtain any missing authorization before modifying the app. A mapping-only request does not authorize application changes. If blocked, report the precise missing features, permission or platform limits; independent read-only diagnostics may continue, but do not claim the prerequisite or full coverage is satisfied.
+
+Preserve authentication, consent, safety checks, input-route semantics and user data. Never bypass a restricted interaction to achieve parity. List unimplemented routes, platform constraints and deliberately restricted actions honestly. An exposed command is not proof of UI, native-input or behavioral parity, and a manual link is not proof of execution.
 
 ## Initialize, discover and delegate explicitly
 
@@ -37,6 +41,8 @@ tracer check
 Substitute actual paths, ranges and supported commands. Omit `--step` when no test witness exists; report that gap rather than inventing one. Do not put credentials, customer records or sensitive command arguments in maps.
 
 ## Maintain links with every relevant change
+
+Keep the app CLI at feature parity whenever application features are added, changed or removed. In the same authorized change, update commands, discovery/help, CLI behavior and E2E journeys to reflect the current app, then update the related map. Do not leave newly added features accessible only through the UI without explicitly reporting the CLI gap and its blocker. Recheck existing routes for regressions; a previously complete CLI is not a permanent guarantee.
 
 As part of authorized code/test work, update the map when code is added, changed, moved or deleted, and when CLI actions, test steps, assertions or prerequisites change. Reassess semantic changes even if hashes remain unchanged.
 

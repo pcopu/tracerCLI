@@ -1,4 +1,4 @@
-![Tracer: source ranges connect to ordered CLI actions and manual test witnesses; changed snippets require review.](docs/assets/tracer-demo.gif)
+![Tracer: connect app features, CLI journeys, source code and tests. Illustrated workflow, not recorded execution.](docs/assets/tracer-features-code-tests.gif)
 
 # Tracer CLI
 
@@ -49,6 +49,8 @@ Or run without installing: `node /path/to/tracerCLI/bin/tracer.mjs --root /path/
 
 ## Initialize a project and connect its CLI
 
+An application CLI lets agents and tests operate the app through commands. Before coverage work, audit the app's features and build or extend its CLI to expose every authorized feature. If the app has no CLI, one must be built; Tracer does not create one automatically. The setup output explains this prerequisite and distinguishes a missing connection from an existing CLI whose feature parity has not been verified.
+
 Inside an application's Git repository:
 
 ```sh
@@ -59,6 +61,8 @@ tracer app -- status --json
 ```
 
 Use the app's actual executable and supported discovery arguments. `tracer init` with no app flags is also valid for mapping-only projects. It creates `tracer.json` and an empty link map if absent, preserves existing files, and never runs app code. Conflicting existing configuration fails instead of being overwritten. Project trace minimum remains in the link map.
+
+If setup says no application CLI is connected, inspect the repository before deciding it needs a new one. Ask your agent to explain what must be connected or built and obtain any missing authorization. Once ready, explicitly review/edit an existing `tracer.json` to add its app arguments; `init --app-json` is for a new configuration or a matching existing one, not an overwrite. Keep the CLI, discovery/help and tests current whenever app features change. Preserve consent, authentication and safety checks, and report inaccessible or unimplemented routes rather than claiming full coverage. Read-only mapping inspection can continue while an app change is blocked.
 
 `tracer actions` **executes** the configured discovery argv. Without an `actions` array, it invokes the app's `--help`; it never guesses another command after failure. `tracer app -- ...` explicitly runs the configured app, forwarding arguments literally without a shell, with the repository as cwd and inherited stdin/stdout/stderr. Exit codes and cancellation signals are propagated. Inspect and trust `tracer.json` before either command: executable configuration is code, not passive metadata. Mapping commands do not read or execute it.
 
@@ -112,7 +116,7 @@ Hashes are never silently refreshed. The version-1 sidecar lives at `docs/testin
 
 ## Agent skill
 
-The reusable [Tracer skill](skills/tracer/SKILL.md) teaches an agent to maintain links as code changes, audit an application's CLI interaction surface, and create or extend that CLI within the user's authorized scope. It keeps manual mapping, CLI parity, real test results and measured coverage separate.
+The reusable [Tracer skill](skills/tracer/SKILL.md) requires agents to first audit and establish the complete authorized app CLI surface before new coverage/mapping work, then maintain CLI parity and links whenever app features change. If app changes are not authorized or a route is restricted, it requires explicit gaps rather than bypasses or claims of completion. It keeps manual mapping, CLI parity, real test results and measured coverage separate.
 
 `tracer init` detects existing Codex/Claude configuration directories as a hint, not proof of agent availability. In an interactive terminal it asks before installing a missing skill, then asks separately before appending one short pointer to `AGENTS.md` or `CLAUDE.md`. In noninteractive use, no agent files change without explicit flags:
 

@@ -167,3 +167,83 @@ test('local update settings journey: status outside Git, explicit opt-in, determ
   p.ok('report', '--json'); p.ok('check'); assert.equal(p.read('fake-home/.local/share/tracer/settings.json'), before);
   p.ok('update', '--auto', 'off'); assert.equal(JSON.parse(p.ok('update', '--status', '--json').stdout).auto, 'off');
 });
+
+test('skill parity journey: install the checked-in prerequisite and maintenance guidance without replacing user content', t => {
+  const p = project(t), source = readFileSync(new URL('../../skills/tracer/SKILL.md', import.meta.url), 'utf8');
+  p.put('AGENTS.md', 'Keep Codex project instructions.\r\n'); p.put('CLAUDE.md', 'Keep Claude project instructions.\n');
+  for (const agent of ['codex', 'claude']) {
+    p.ok('init', '--agent', agent, '--install-skill');
+    const installed = readFileSync(join(p.home, `.${agent}/skills/tracer/SKILL.md`), 'utf8');
+    assert.equal(installed, source);
+    assert.match(installed, /Before starting application coverage or new link-mapping work, first audit every supported application feature/);
+    assert.match(installed, /exposes every authorized application feature, building it if missing and extending it wherever routes are absent/);
+    assert.match(installed, /CLI feature parity is a prerequisite/);
+    assert.match(installed, /A mapping-only request does not authorize application changes/);
+    assert.match(installed, /Preserve authentication, consent, safety checks, input-route semantics and user data/);
+    assert.match(installed, /List unimplemented routes, platform constraints and deliberately restricted actions honestly/);
+    assert.match(installed, /Keep the app CLI at feature parity whenever application features are added, changed or removed/);
+    assert.match(installed, /update commands, discovery\/help, CLI behavior and E2E journeys to reflect the current app, then update the related map/);
+    assert.match(installed, /a manual link is not proof of execution/);
+  }
+  const custom = `${source}\nKeep my project-specific skill additions.\n`;
+  writeFileSync(join(p.home, '.codex/skills/tracer/SKILL.md'), custom);
+  p.ok('init', '--agent', 'codex', '--install-skill');
+  assert.equal(readFileSync(join(p.home, '.codex/skills/tracer/SKILL.md'), 'utf8'), custom);
+  assert.equal(p.read('AGENTS.md'), 'Keep Codex project instructions.\r\n');
+  assert.equal(p.read('CLAUDE.md'), 'Keep Claude project instructions.\n');
+});
+
+test('setup prerequisite journey: explain an unconnected CLI without guessing, executing or granting agent consent', t => {
+  for (const existing of [false, true]) {
+    const p = project(t); mkdirSync(join(p.home, '.codex'));
+    p.put('AGENTS.md', 'Preserve instructions exactly.\r\n');
+    p.put('app.mjs', "import {writeFileSync} from 'node:fs'; writeFileSync('app-ran.json', 'executed');\n");
+    if (existing) p.put('tracer.json', '{"version":1,"custom":"keep mapping-only configuration"}\n');
+    const priorConfig = existing ? p.read('tracer.json') : undefined, app = p.read('app.mjs'), source = p.read('src/example.js');
+    const first = p.ok('init').stdout, config = p.read('tracer.json'), map = p.read(mapPath);
+    if (existing) assert.equal(config, priorConfig);
+    for (const output of [first, p.ok('init').stdout]) {
+      assert.match(output, /An application CLI lets agents and tests operate your app through commands/);
+      assert.match(output, /Before coverage work, inspect its features and build or extend that CLI to expose every authorized app feature/);
+      assert.match(output, /No application CLI is connected\. This does not prove the app has no CLI: inspect the repository first/);
+      assert.match(output, /If none exists, one must be built with your authorization; Tracer does not create it automatically/);
+      assert.match(output, /ask your agent to inspect the app and explain what needs connecting or building/);
+      assert.match(output, /review and add its app executable\/arguments to tracer.json explicitly; init preserves existing configuration/);
+      assert.match(output, /tracer init --app-json/);
+      assert.match(output, /Preserve consent, authentication and safety checks/);
+      assert.match(output, /manual links do not prove execution or complete coverage/);
+      assert.doesNotMatch(output, /An application CLI is configured/);
+    }
+    const attempted = p.run('init', '--app-json', p.app);
+    assert.notEqual(attempted.status, 0); assert.match(attempted.stderr, /Inspect and edit it explicitly; init never overwrites configuration/);
+    assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+    assert.equal(p.read('app.mjs'), app); assert.equal(p.read('src/example.js'), source);
+    assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+    assert.equal(existsSync(join(p.home, '.codex/skills/tracer')), false);
+    assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
+    assert.equal(p.read('AGENTS.md'), 'Preserve instructions exactly.\r\n');
+    assert.equal(existsSync(join(p.root, 'CLAUDE.md')), false);
+  }
+});
+
+test('configured setup journey: explain unverified CLI parity on new and repeated init without executing the app', t => {
+  const p = project(t); mkdirSync(join(p.home, '.codex'));
+  p.put('AGENTS.md', 'Preserve existing agent guidance.\n');
+  p.put('app.mjs', "import {writeFileSync} from 'node:fs'; writeFileSync('app-ran.json', 'executed');\n");
+  const app = p.read('app.mjs');
+  const first = p.ok('init', '--app-json', p.app, '--actions-json', '["actions","--json"]').stdout;
+  const config = p.read('tracer.json'), map = p.read(mapPath);
+  for (const output of [first, p.ok('init').stdout]) {
+    assert.match(output, /An application CLI is configured, but setup has not run it or verified its features/);
+    assert.match(output, /Review tracer.json before using tracer actions; check for missing routes before claiming full CLI coverage/);
+    assert.match(output, /Keep the CLI and its tests current whenever app features change/);
+    assert.match(output, /report missing or restricted features honestly/);
+    assert.doesNotMatch(output, /No application CLI is connected/);
+  }
+  assert.deepEqual(JSON.parse(config).app, JSON.parse(p.app));
+  assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+  assert.equal(p.read('app.mjs'), app); assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+  assert.equal(existsSync(join(p.home, '.codex/skills/tracer')), false);
+  assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
+  assert.equal(p.read('AGENTS.md'), 'Preserve existing agent guidance.\n');
+});

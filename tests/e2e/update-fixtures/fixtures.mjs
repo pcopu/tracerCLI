@@ -14,7 +14,7 @@ const API = 'https://api.github.com/repos/pcopu/tracerCLI';
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const gitHash = (kind, bytes) => createHash('sha1').update(`${kind} ${bytes.length}\0`).update(bytes).digest('hex');
 
-export function releaseFixture(version = '0.2.0', extra = {}) {
+export function releaseFixture(version = JSON.parse(readFileSync(join(REPOSITORY, 'package.json'), 'utf8')).version, extra = {}) {
   const pkg = { name: '@pcopu/tracercli', version, type: 'module', repository: { url: 'https://github.com/pcopu/tracerCLI.git' }, bin: { tracer: 'bin/tracer.mjs' }, scripts: { test: 'node --test' }, ...extra.package };
   const files = {
     'package.json': JSON.stringify(pkg),

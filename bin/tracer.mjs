@@ -34,6 +34,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
 init never overwrites existing config/map or executes an app. In a terminal it may
 offer agent setup. Skill installation and project guidance require separate consent. Only actions and app
 execute the reviewed tracer.json argv configuration, without shell interpolation.
+CLI-driven testing needs an application CLI covering the authorized app features.
+If the app has no CLI, one must be built; Tracer does not build it automatically.
 Global options go before the command. Repeat --include-ext to add source languages.
 Ranges are 1-based, inclusive. Mapped actions are literal descriptions, never executed.
 One distinct exact ordered action sequence is one manual trace per nonblank line, regardless
@@ -186,6 +188,13 @@ async function main(args) {
       actions: options['--actions-json'] === undefined ? undefined : JSON.parse(options['--actions-json']), minimumTraces,
     });
     console.log(`${result.projectCreated ? 'Created' : 'Preserved'} ${result.project}; ${result.mapCreated ? 'created' : 'preserved'} ${result.map}. No app commands executed.`);
+    console.log('An application CLI lets agents and tests operate your app through commands. Before coverage work, inspect its features and build or extend that CLI to expose every authorized app feature.');
+    if (result.appConfigured) console.log('An application CLI is configured, but setup has not run it or verified its features. Review tracer.json before using tracer actions; check for missing routes before claiming full CLI coverage.');
+    else {
+      console.log('No application CLI is connected. This does not prove the app has no CLI: inspect the repository first. If none exists, one must be built with your authorization; Tracer does not create it automatically.');
+      console.log('Next: ask your agent to inspect the app and explain what needs connecting or building. Once a CLI is ready, review and add its app executable/arguments to tracer.json explicitly; init preserves existing configuration. For a new setup, provide them with tracer init --app-json.');
+    }
+    console.log('Keep the CLI and its tests current whenever app features change. Preserve consent, authentication and safety checks; report missing or restricted features honestly. Mapping can be inspected independently, but manual links do not prove execution or complete coverage.');
     await setupAgent(tracer.root, { agent: options['--agent'], install: !!options['--install-skill'], add: !!options['--add-instruction'] });
   } else if (command === 'link') {
     const result = tracer.link({ source, actions, step: options['--step'], why: options['--why'] });

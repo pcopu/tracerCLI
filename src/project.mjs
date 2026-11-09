@@ -72,7 +72,8 @@ export function initialize(tracer, { app, actions, minimumTraces } = {}) {
       throw error;
     }
   }
-  return { project: PROJECT_FILE, map: tracer.map, projectCreated, mapCreated, minimumTraces: minimumTraces ?? map.minimumTraces ?? 1 };
+  return { project: PROJECT_FILE, map: tracer.map, projectCreated, mapCreated,
+    appConfigured: !!(existing ?? requested).app, minimumTraces: minimumTraces ?? map.minimumTraces ?? 1 };
 }
 export function runApp(tracer, args, { discovery = false } = {}) {
   const project = readProject(tracer);

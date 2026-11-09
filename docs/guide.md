@@ -61,7 +61,13 @@ No test runner or CI is installed. You may add `tracer check` to your own existi
 
 ## Project setup and app delegation
 
+An application CLI is the command interface that lets agents and tests operate the app. Before application coverage or new link-mapping work, inspect every supported feature and establish a CLI exposing every authorized feature, building or extending it when necessary. Tracer explains this during setup; it does not build an application CLI automatically.
+
 `tracer init` creates absent `tracer.json` and map files without running the app. Existing valid files remain byte-for-byte unchanged, including custom fields and links. Supplied app/discovery/minimum settings must match existing settings or init fails. It never has a force-overwrite mode. To change an existing app connection, inspect and edit `tracer.json` explicitly. To change a minimum, use `tracer config --minimum-traces N`.
+
+When no `app` arguments are configured, setup says no CLI is connected, not that the repository has no CLI. Inspect the repository first. If a CLI exists, review its executable and discovery arguments; if not, explain that one must be built and obtain any missing authorization. After a mapping-only init, explicitly review/edit the preserved `tracer.json` to connect it. For a new configuration, use `init --app-json`. Configured apps are described as unexecuted and unverified: setup does not run discovery or claim feature parity.
+
+Keep CLI commands, discovery/help, behavior, E2E journeys and related mappings current as app features are added, changed or removed. Preserve consent, authentication and safety checks. Restricted routes, missing permissions and platform limits are explicit gaps, never reasons to bypass safeguards or claim complete coverage. Independent read-only diagnostics may continue while changes are blocked. These are instructions to the user/agent, not an automatic app-code generator or a verified feature audit.
 
 Project configuration:
 
