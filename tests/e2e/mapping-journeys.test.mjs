@@ -696,3 +696,76 @@ test('mapping journey: blank-only links retain exact v1 hashes, navigation and w
   assert.equal(f.check().valid, 1);
   assert.deepEqual(f.bytes(), saved);
 });
+
+test('mapping journey: complete help is consistent across entry routes and does not require or mutate a project', t => {
+  const f = project(t), untouched = tree(f.root);
+  const outside = { cwd: f.home, explicitRoot: false };
+  const version = f.expect(['--version'], 0, outside).stdout.trim();
+  const expected = `Tracer ${version} — source ↔ ordered CLI actions ↔ test steps
+
+Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
+
+  init [--app-json '["node","cli/app.mjs"]'] [--actions-json '["actions","--json"]']
+       [--minimum-traces N] [--agent codex|claude] [--install-skill] [--add-instruction]
+  actions                 Run configured discovery, or the app’s --help
+  app -- ARGS...          Explicitly run the configured app with exact arguments
+  link SOURCE:START-END --action TEXT [--action TEXT ...]
+       [--step TEST:START-END] --why TEXT
+  report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE]
+          | --sequence '["first action","next action"]'] [--minimum-traces N] [--json]
+  check [--require-minimum] [--minimum-traces N] [--json]
+  config [--minimum-traces N] [--json]
+  unlink ID
+  comment SOURCE:START-END  Declare reviewed comment lines (not syntax-verified)
+  uncomment ID             Remove a comment declaration after review
+  ignore PATH --why TEXT    Exclude a file/directory from manual mapping totals only
+  unignore EXACT_PATH      Restore a saved ignored path (directories end in /)
+  update [--check | --status | --install-managed | --rollback | --auto off|check|apply]
+         [--version VERSION | --commit FULL_SHA] [--json]
+  measure import --before FILE --after FILE --manifest FILE --sources FILE
+                 [--strip-prefix PREFIX/] [--allow-stale] [--json]
+  measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
+  measure check [--json]
+  --help | --version
+
+init never overwrites existing config/map or executes an app. In a terminal it may
+offer agent setup. Skill installation and project guidance require separate consent. Only actions and app
+execute the reviewed tracer.json argv configuration, without shell interpolation.
+CLI-driven testing needs an application CLI covering the authorized app features.
+If the app has no CLI, one must be built; Tracer does not build it automatically.
+Global options go before the command. Repeat --include-ext to add source languages.
+Ranges are 1-based, inclusive. Mapped actions are literal descriptions, never executed.
+One distinct exact ordered action sequence is one manual trace per nonblank line, regardless
+of duplicate links or witnesses. Repeated actions inside it remain ordered steps.
+The project minimum defaults to 1. check gates integrity; --require-minimum also
+gates declared trace counts across included project mapping scope. Neither measures execution.
+MANUAL LINKS ONLY. A current link is not observed execution, test coverage or proof of correctness.
+`;
+  for (const args of [[], ['-h'], ['--help']]) {
+    const result = f.expect(args, 0, outside);
+    assert.equal(result.stdout, expected); assert.equal(result.stderr, '');
+  }
+  for (const command of ['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore', 'config', 'update', 'measure']) {
+    const result = f.expect([command, '--help'], 0, outside);
+    assert.equal(result.stdout, expected, `${command} --help must show the same complete contract`);
+    assert.equal(result.stderr, '');
+  }
+  const selected = f.expect(['--root', f.root, '--map', '.tracer/custom.json', 'report', '--help'], 0, outside);
+  assert.equal(selected.stdout, expected); assert.equal(selected.stderr, '');
+  assert.deepEqual(tree(f.root), untouched); assert.deepEqual(tree(f.home), {});
+});
+
+test('mapping journey: basename-only source inventory and project scope notices remain explicit in human output', t => {
+  const f = project(t, { Makefile: 'all:\n', Dockerfile: 'FROM scratch\n', 'CMakeLists.txt': 'project(synthetic)\n',
+    Gemfile: "source 'https://example.invalid'\n", Rakefile: 'task :build\n', 'docs/guide.txt': 'Not a source basename.\n' });
+  const report = f.json('report');
+  assert.deepEqual(report.files.map(file => file.path), ['CMakeLists.txt', 'Dockerfile', 'Gemfile', 'Makefile', 'Rakefile', 'src/cart.py']);
+  f.ok('ignore', 'src', '--why', 'Synthetic explicit scope.');
+  const notice = 'Project ignores exclude files only from manual mapping totals and minimum thresholds, not from tests, link integrity or measured evidence. An empty included scope is not full coverage.';
+  const ignored = f.json('report');
+  assert.equal(ignored.scopeNotice, notice); assert.equal(f.check().scopeNotice, notice);
+  const human = f.ok('report'); assert.ok(human.split('\n').includes(notice));
+  const checked = f.ok('check'); assert.ok(checked.split('\n').includes(notice));
+  assert.equal(ignored.totals.lines, 5); assert.equal(ignored.ignoredTotals.lines, 3);
+  assert.equal(ignored.ignoredSources[0].why, 'Synthetic explicit scope.');
+});

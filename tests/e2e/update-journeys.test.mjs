@@ -317,3 +317,93 @@ test('updates.published-skill: same-version main descendant delivers checked-in 
   assert.equal(f.status({ managed: true }).currentVersion, original.version);
   assertOfficialRequests(f);
 });
+
+test('updates.human-output: describe state, checks, activation and preserved skills without JSON or hidden writes', t => {
+  const f = journey(t, releaseFixture('9.8.0'));
+  const unmanaged = f.ok(['update']);
+  assert.match(unmanaged.stdout, /^Tracer update: unmanaged\n/); assert.match(unmanaged.stdout, /npm\/Git installation is left unchanged/);
+  const status = f.ok(['update', '--status']);
+  assert.equal(status.stdout, 'Tracer update: configured\nAutomatic updates: off\n');
+  assert.equal(existsSync(f.managedHome), false); assert.equal(f.requests().length, 0);
+  assert.equal(f.ok(['update', '--auto', 'check']).stdout, 'Tracer update: configured\nAutomatic updates: check\n');
+  f.ok(['update', '--auto', 'off']);
+  const checked = f.ok(['update', '--check']);
+  assert.match(checked.stdout, /^Tracer update: available \(9\.8\.0\)\n/);
+  assert.ok(checked.stdout.includes(`Verified commit: ${f.sourceRelease.commit}\n`));
+  assert.match(checked.stdout, /not an independent publisher signature/);
+  assert.equal(existsSync(join(f.managedHome, 'active.json')), false);
+  f.init(['--agent', 'codex', '--install-skill']); f.ok(['init', '--agent', 'claude', '--install-skill']);
+  writeFileSync(f.skill('claude'), '# Keep my custom skill\n');
+  const installed = f.ok(['update', '--install-managed']);
+  assert.match(installed.stdout, /^Tracer update: updated \(9\.8\.0\)\n/);
+  assert.match(installed.stdout, /no downloaded code was executed during installation/);
+  assert.ok(installed.stdout.includes(`Verified commit: ${f.sourceRelease.commit}\n`));
+  assert.ok(installed.stdout.includes(`Managed launcher: ${join(f.managedHome, 'bin/tracer')}\n`));
+  assert.ok(installed.stdout.includes(`Skill updated: ${f.skill('codex')}\n`));
+  assert.ok(installed.stdout.includes(`Skill modified: ${f.skill('claude')}\n`));
+  assert.match(installed.stdout, /not an independent publisher signature/); assert.equal(installed.stderr, '');
+  assert.equal(readFileSync(f.skill('claude'), 'utf8'), '# Keep my custom skill\n');
+  assert.equal(f.active().current, `${f.sourceRelease.version}-${f.sourceRelease.commit}`);
+  const current = f.ok(['update']); assert.match(current.stdout, /^Tracer update: current \(9\.8\.0\)\n/);
+  assert.ok(current.stdout.includes(`Managed launcher: ${join(f.managedHome, 'bin/tracer')}\n`));
+  assert.equal(current.stderr, ''); assertOfficialRequests(f);
+});
+
+test('updates.human-preservation: print a skill metadata failure without hiding successful runtime activation', t => {
+  const f = journey(t); mkdirSync(f.managedHome, { recursive: true });
+  const path = join(f.managedHome, 'settings.json'), corrupt = '{"schemaVersion":99,"keep":"user bytes"}\n';
+  writeFileSync(path, corrupt);
+  const result = f.ok(['update', '--install-managed']);
+  assert.match(result.stdout, /^Tracer update: updated/);
+  assert.match(result.stdout, /Skill preserved: Invalid update settings; no files changed\./);
+  assert.equal(f.active().current, `${f.sourceRelease.version}-${f.sourceRelease.commit}`);
+  assert.equal(readFileSync(path, 'utf8'), corrupt); assert.equal(result.stderr, '');
+});
+
+test('updates.auto-notices: successful application stdout stays separate from available, unavailable and sanitized error notices', t => {
+  const unavailable = mainChannel(releaseFixture()); delete unavailable.routes['/git/ref/heads/main'];
+  const cases = [
+    { source: releaseFixture('9.9.9'), status: 'available', notice: 'available (9.9.9)' },
+    { source: unavailable, status: 'unavailable', notice: 'No stable GitHub release or official main commit is available yet.' },
+    { source: releaseFixture(), status: 'error', networkError: 'synthetic offline\n\tfixture', notice: 'synthetic offline  fixture' },
+  ];
+  for (const row of cases) {
+    const f = journey(t, row.source); f.init(); f.ok(['update', '--auto', 'check']);
+    if (row.networkError) f.transport({ networkError: row.networkError });
+    const result = f.ok(['app', '--', 'inspect'], { env: { TRACER_NO_UPDATE: '0' } });
+    assert.deepEqual(JSON.parse(result.stdout), { args: ['inspect'], cwd: f.root });
+    assert.equal(result.stderr, `tracer update: ${row.notice}\n`); assert.equal(f.status().lastResult.status, row.status);
+    assert.equal(existsSync(join(f.managedHome, 'active.json')), false);
+    const count = f.requests().length; assert.ok(count > 0);
+    const again = f.ok(['app', '--', 'repeat'], { env: { TRACER_NO_UPDATE: '0' } });
+    assert.deepEqual(JSON.parse(again.stdout), { args: ['repeat'], cwd: f.root });
+    assert.equal(again.stderr, ''); assert.equal(f.requests().length, count, 'Throttled updates produce no repeated notice or request.');
+  }
+  const failed = journey(t); failed.init(); failed.ok(['update', '--auto', 'check']);
+  failed.put('app.mjs', "console.log('application output'); console.error('application failure'); process.exit(7);\n");
+  const result = failed.bad(['app', '--', 'fail'], /application failure/, { env: { TRACER_NO_UPDATE: '0' } });
+  assert.equal(result.status, 7); assert.equal(result.stdout, 'application output\n'); assert.equal(result.stderr, 'application failure\n');
+  assert.equal(failed.requests().length, 0, 'Failed application commands do not trigger update checks or replace their errors.');
+});
+
+test('updates.auto-skill-notice: report a preserved local edit after managed auto activation without contaminating app output', t => {
+  const original = mainChannel(releaseFixture()), f = journey(t, original);
+  f.init(['--agent', 'codex', '--install-skill']); f.ok(['init', '--agent', 'claude', '--install-skill']);
+  f.install(); writeFileSync(f.skill('claude'), '# Keep local skill changes\n');
+  const instruction = f.put('CLAUDE.md', 'Keep project instructions.\r\n');
+  const replacement = '# New reviewed fixture skill\n';
+  const next = mainChannel(releaseFixture(original.version, { files: { 'skills/tracer/SKILL.md': replacement } }));
+  next.routes[`/compare/${original.commit}...${next.commit}`] = { status: 'ahead', base_commit: { sha: original.commit }, merge_base_commit: { sha: original.commit } };
+  f.use(next); f.ok(['update', '--auto', 'apply']);
+  const result = f.ok(['app', '--', 'refresh'], { managed: true, env: { TRACER_NO_UPDATE: '0' } });
+  assert.deepEqual(JSON.parse(result.stdout), { args: ['refresh'], cwd: f.root });
+  assert.match(result.stderr, /^tracer update: Managed installation is ready\./);
+  assert.ok(result.stderr.includes(` (${original.version})\n`));
+  assert.equal(result.stderr.split('\n').filter(line => line.startsWith('tracer skill: ')).length, 1);
+  assert.match(result.stderr, /tracer skill: Local edits preserved; review and merge the bundled skill manually\./);
+  assert.doesNotMatch(result.stderr, /tracer skill: (updated|current)/);
+  assert.equal(f.active().current, `${next.version}-${next.commit}`); assert.equal(f.status().lastResult.status, 'updated');
+  assert.equal(readFileSync(f.skill('codex'), 'utf8'), replacement);
+  assert.equal(readFileSync(f.skill('claude'), 'utf8'), '# Keep local skill changes\n');
+  assert.equal(readFileSync(instruction, 'utf8'), 'Keep project instructions.\r\n'); assertOfficialRequests(f);
+});

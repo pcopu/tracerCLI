@@ -247,3 +247,154 @@ test('configured setup journey: explain unverified CLI parity on new and repeate
   assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
   assert.equal(p.read('AGENTS.md'), 'Preserve existing agent guidance.\n');
 });
+
+// Terminal-only journeys need the standard Linux util-linux script utility.
+// Other platforms keep the ordinary Node/Git suite and report these cases skipped.
+function terminalAvailable(t) {
+  if (process.platform !== 'linux') { t.skip('Real TTY journeys require util-linux script on Linux.'); return false; }
+  const probe = spawnSync('script', ['--version'], { encoding: 'utf8' });
+  if (probe.status !== 0 || !/util-linux/.test(probe.stdout ?? '')) {
+    t.skip('Real TTY journeys require the optional util-linux script test utility.'); return false;
+  }
+  return true;
+}
+async function terminalInit(t, p, args, dialogue) {
+  // script supplies real stdin/stdout TTYs. Only fixed CLI argv is shell-quoted;
+  // terminal answers are written to stdin after the actual prompt is observed.
+  const quote = text => `'${text.replaceAll("'", "'\\''")}'`;
+  const command = [process.execPath, cli, '--root', p.root, 'init', ...args].map(quote).join(' ');
+  const child = spawn('script', ['-q', '-e', '-f', '-c', command, '/dev/null'], {
+    cwd: p.root, env: { ...p.env, TERM: 'dumb' }, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  let output = '', error, ended, cursor = 0;
+  child.stdout.on('data', bytes => { output += bytes; });
+  child.stderr.on('data', bytes => { output += bytes; });
+  child.on('error', value => { error = value; });
+  child.on('close', (code, signal) => { ended = { code, signal }; });
+  const text = () => output.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replaceAll('\r', '');
+  const wait = async predicate => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) {
+      if (error) throw error;
+      if (Date.now() >= deadline) throw new Error(`Timed out waiting for terminal interaction:\n${text()}`);
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  };
+  const stop = async () => {
+    if (ended || !child.pid) return;
+    child.kill('SIGTERM');
+    const timer = setTimeout(() => { if (!ended) child.kill('SIGKILL'); }, 1000);
+    try { await wait(() => ended); } finally { clearTimeout(timer); }
+  };
+  t.after(stop);
+  try {
+    for (const { prompt, answer, beforeAnswer } of dialogue) {
+      await wait(() => text().indexOf(prompt, cursor) !== -1 || ended);
+      const transcript = text(), index = transcript.indexOf(prompt, cursor);
+      assert.notEqual(index, -1, `CLI ended before expected prompt ${JSON.stringify(prompt)}:\n${transcript}`);
+      cursor = index + prompt.length;
+      beforeAnswer?.();
+      child.stdin.write(`${answer}\n`);
+    }
+    await wait(() => ended);
+    assert.deepEqual(ended, { code: 0, signal: null }, text());
+    return text();
+  } finally { await stop(); }
+}
+
+test('terminal consent journey: blank, skip and unsupported agent choices never grant consent', { timeout: 20000 }, async t => {
+  if (!terminalAvailable(t)) return;
+  for (const answer of ['', 'skip', 'unsupported-agent']) {
+    const p = project(t); p.put('AGENTS.md', 'Keep Codex instructions.\r\n'); p.put('CLAUDE.md', 'Keep Claude instructions.\n');
+    const source = p.read('src/example.js'), app = p.read('app.mjs');
+    const output = await terminalInit(t, p, [], [{
+      prompt: 'Agent setup: codex, claude, or skip? [skip] ', answer,
+      beforeAnswer: () => {
+        assert.equal(existsSync(join(p.home, '.codex')), false); assert.equal(existsSync(join(p.home, '.claude')), false);
+      },
+    }]);
+    assert.match(output, /Agent setup is optional/);
+    if (answer === 'unsupported-agent') assert.match(output, /Unsupported agent; no agent files changed/);
+    else assert.doesNotMatch(output, /Unsupported agent/);
+    assert.doesNotMatch(output, /Install the Tracer skill|Append Tracer guidance/);
+    assert.equal(existsSync(join(p.home, '.codex')), false); assert.equal(existsSync(join(p.home, '.claude')), false);
+    assert.equal(existsSync(join(p.home, '.local/share/tracer')), false);
+    assert.equal(p.read('AGENTS.md'), 'Keep Codex instructions.\r\n'); assert.equal(p.read('CLAUDE.md'), 'Keep Claude instructions.\n');
+    assert.equal(p.read('src/example.js'), source); assert.equal(p.read('app.mjs'), app);
+    assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+  }
+});
+
+test('terminal consent journey: choose among detected agents and authorize skill and instructions separately', { timeout: 20000 }, async t => {
+  if (!terminalAvailable(t)) return;
+  const p = project(t); mkdirSync(join(p.home, '.codex')); mkdirSync(join(p.home, '.claude'));
+  p.put('AGENTS.md', 'Keep Codex instructions.\r\n'); p.put('CLAUDE.md', 'Keep Claude instructions.\r\n');
+  const skill = join(p.home, '.claude/skills/tracer/SKILL.md'), expected = readFileSync(new URL('../../skills/tracer/SKILL.md', import.meta.url), 'utf8');
+  const expectedHash = (await import('node:crypto')).createHash('sha256').update(expected).digest('hex');
+  const output = await terminalInit(t, p, [], [
+    { prompt: 'Agent setup (multiple configurations found): codex, claude, or skip? [skip] ', answer: '  ClAuDe  ' },
+    { prompt: `Install the Tracer skill for claude at ${join(p.home, '.claude/skills/tracer')}? [y/N] `, answer: ' YES ', beforeAnswer: () => {
+      assert.equal(existsSync(skill), false); assert.equal(p.read('CLAUDE.md'), 'Keep Claude instructions.\r\n');
+    } },
+    { prompt: `Append Tracer guidance to ${join(p.root, 'CLAUDE.md')}, preserving existing content? [y/N] `, answer: 'no', beforeAnswer: () => {
+      assert.equal(readFileSync(skill, 'utf8'), expected); assert.equal(p.read('CLAUDE.md'), 'Keep Claude instructions.\r\n');
+      const settings = JSON.parse(p.read('fake-home/.local/share/tracer/settings.json'));
+      assert.equal(settings.skills.length, 1); assert.equal(settings.skills[0].path, skill); assert.equal(settings.skills[0].sha256, expectedHash); assert.equal(settings.auto, 'off');
+    } },
+  ]);
+  assert.match(output, /No project instruction changed/); assert.equal(p.read('CLAUDE.md'), 'Keep Claude instructions.\r\n');
+  assert.equal(p.read('AGENTS.md'), 'Keep Codex instructions.\r\n'); assert.equal(existsSync(join(p.home, '.codex/skills')), false);
+  const config = p.read('tracer.json'), map = p.read(mapPath), settings = p.read('fake-home/.local/share/tracer/settings.json');
+  const approved = await terminalInit(t, p, ['--agent', 'claude'], [{
+    prompt: `Append Tracer guidance to ${join(p.root, 'CLAUDE.md')}, preserving existing content? [y/N] `, answer: 'y',
+    beforeAnswer: () => assert.equal(p.read('CLAUDE.md'), 'Keep Claude instructions.\r\n'),
+  }]);
+  assert.doesNotMatch(approved, /Agent setup.*skip|Install the Tracer skill/);
+  const instruction = p.read('CLAUDE.md'); assert.ok(instruction.startsWith('Keep Claude instructions.\r\n'));
+  assert.equal(instruction.split('<!-- tracer:agent-guidance -->').length - 1, 1);
+  assert.match(instruction, /installed tracer skill and tracer CLI/); assert.equal(instruction.replaceAll('\r\n', '').includes('\n'), false);
+  await terminalInit(t, p, ['--agent', 'claude'], [{
+    prompt: `Append Tracer guidance to ${join(p.root, 'CLAUDE.md')}, preserving existing content? [y/N] `, answer: 'yes',
+  }]);
+  assert.equal(p.read('CLAUDE.md'), instruction); assert.equal(p.read('AGENTS.md'), 'Keep Codex instructions.\r\n');
+  assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
+  assert.equal(p.read('fake-home/.local/share/tracer/settings.json'), settings); assert.equal(readFileSync(skill, 'utf8'), expected);
+  assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
+});
+
+test('terminal consent journey: one detected agent still needs affirmative skill consent', { timeout: 20000 }, async t => {
+  if (!terminalAvailable(t)) return;
+  for (const answer of ['', 'n', 'not-yes']) {
+    const p = project(t); mkdirSync(join(p.home, '.codex')); p.put('AGENTS.md', 'Preserve without consent.\n');
+    const output = await terminalInit(t, p, [], [{
+      prompt: `Install the Tracer skill for codex at ${join(p.home, '.codex/skills/tracer')}? [y/N] `, answer,
+      beforeAnswer: () => {
+        assert.equal(existsSync(join(p.home, '.codex/skills')), false); assert.equal(p.read('AGENTS.md'), 'Preserve without consent.\n');
+      },
+    }]);
+    assert.doesNotMatch(output, /Agent setup.*skip|Append Tracer guidance/);
+    assert.match(output, /Tracer skill is missing for codex/); assert.match(output, /No project instruction was added/);
+    assert.equal(existsSync(join(p.home, '.codex/skills')), false); assert.equal(existsSync(join(p.home, '.local/share/tracer')), false);
+    assert.equal(p.read('AGENTS.md'), 'Preserve without consent.\n');
+  }
+});
+
+test('terminal consent journey: preserve customized skills and default-deny instruction changes', { timeout: 20000 }, async t => {
+  if (!terminalAvailable(t)) return;
+  const p = project(t); p.put('fake-home/.codex/skills/tracer/SKILL.md', '# Customized skill\nKeep my workflow.\n');
+  p.put('AGENTS.md', 'Keep my exact instructions.\r\n');
+  const output = await terminalInit(t, p, [], [{
+    prompt: `Append Tracer guidance to ${join(p.root, 'AGENTS.md')}, preserving existing content? [y/N] `, answer: '',
+  }]);
+  assert.doesNotMatch(output, /Agent setup.*skip|Install the Tracer skill/); assert.match(output, /No project instruction changed/);
+  assert.equal(p.read('AGENTS.md'), 'Keep my exact instructions.\r\n');
+  assert.equal(p.read('fake-home/.codex/skills/tracer/SKILL.md'), '# Customized skill\nKeep my workflow.\n');
+  assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false, 'An unregistered customized skill is not adopted by a prompt.');
+  const approved = await terminalInit(t, p, ['--agent', 'codex', '--install-skill'], [{
+    prompt: `Append Tracer guidance to ${join(p.root, 'AGENTS.md')}, preserving existing content? [y/N] `, answer: 'YES',
+  }]);
+  assert.match(approved, /Preserved existing skill/); assert.match(approved, /Added Tracer guidance/);
+  assert.ok(p.read('AGENTS.md').startsWith('Keep my exact instructions.\r\n'));
+  assert.equal(p.read('fake-home/.codex/skills/tracer/SKILL.md'), '# Customized skill\nKeep my workflow.\n');
+  assert.equal(existsSync(join(p.home, '.local/share/tracer/settings.json')), false);
+});

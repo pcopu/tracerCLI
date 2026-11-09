@@ -352,3 +352,83 @@ test('measured journey: report attribution and instrumentation limits without cr
   assert.deepEqual(readFileSync(join(f.root, dataPath)), bytes);
   assert.equal(existsSync(join(f.root, 'docs/testing/code-e2e-links.json')), false);
 });
+
+test('measured journey: human output distinguishes import, replay, current, zero-delta and stale intervals', t => {
+  const f = project(t), notice = f.json('measure', 'report').notice;
+  assert.equal(f.run(['measure', 'check']).stdout, `${notice}\n0 interval(s); 0 stale source file(s).\n`); f.absent();
+  const imported = f.run(f.args).stdout, stored = JSON.parse(readFileSync(join(f.root, dataPath)));
+  const id = stored.intervals[0].id, actions = JSON.stringify(f.manifest.actions);
+  assert.equal(imported, `${notice}\nImported interval: ${id}\n`);
+  const bytes = readFileSync(join(f.root, dataPath));
+  assert.equal(f.run(f.args).stdout, `${notice}\nAlready imported interval: ${id}\n`);
+  const heading = `${notice}\nINTERVAL ${id} run synthetic-run-1: ${actions}\n`;
+  assert.equal(f.run(['measure', 'report']).stdout, `${heading}  src/app.py: 2/3 instrumented lines increased; current\n    Observed: 1, 3\n`);
+  assert.equal(f.run(['measure', 'report', '--source', 'src/app.py:2']).stdout,
+    `${heading}  src/app.py: 0/1 instrumented lines increased; current\n    Observed: none\n`);
+  assert.equal(f.run(['measure', 'check']).stdout, `${notice}\n1 interval(s); 0 stale source file(s).\n`);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), bytes);
+  f.put('after.lcov', f.record('DA:1,3\nDA:2,1\nDA:3,10')); f.refresh();
+  f.run(f.args);
+  const current = readFileSync(join(f.root, dataPath)), both = JSON.parse(current);
+  const second = both.intervals[1].id;
+  assert.match(f.run(['measure', 'report']).stdout,
+    new RegExp(`INTERVAL ${second} run synthetic-run-1: [^\\n]+\\n  src/app\\.py: 3/3 instrumented lines increased; current\\n    Observed: 1-3\\n$`));
+  f.put('src/app.py', `${source}changed after import\n`);
+  const stale = f.run(['measure', 'report']).stdout;
+  assert.equal((stale.match(/0\/3 instrumented lines increased; stale\n    Observed: none/g) ?? []).length, 2);
+  const diagnostic = 'Source bytes are stale against the pinned capture manifest.';
+  assert.equal(f.run(['measure', 'check'], 1).stdout,
+    `${notice}\n2 interval(s); 2 stale source file(s).\nSTALE src/app.py: ${diagnostic}\nSTALE src/app.py: ${diagnostic}\n`);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), current, 'human reads and failing checks retain both historical intervals');
+});
+
+test('measured journey: reject invalid command selectors without state and preserve evidence on empty lookups', t => {
+  const f = project(t), invalid = [
+    [['measure'], /Use measure import, report or check/],
+    [['measure', 'unknown'], /Use measure import, report or check/],
+    [['measure', 'report', '--unknown'], /Unknown or duplicate measure report option/],
+    [['measure', 'report', '--json', '--json'], /Unknown or duplicate measure report option/],
+    [['measure', 'import', '--before'], /--before requires a value/],
+    [['measure', 'import', '--before', 'before.lcov'], /requires --before, --after, --manifest and --sources/],
+    [[...f.args, '--before', 'before.lcov'], /Unknown or duplicate measure import option/],
+    [['measure', 'check', '--source', 'src/app.py'], /Unknown or duplicate measure check option/],
+    [['measure', 'report', '--source', 'src/app.py', '--action', 'app inspect'], /accepts one selector/],
+    [['measure', 'report', '--sequence', 'not-json'], /JSON/],
+    [['measure', 'report', '--sequence', '[]'], /at least one ordered CLI action/],
+    [['measure', 'report', '--action', ' '], /nonempty single-line description/],
+    [['measure', 'report', '--source', '../outside.py'], /Expected a repository-relative path/],
+  ];
+  for (const [args, message] of invalid) { assert.match(f.run(args, 1).stderr, message); f.absent(); }
+  f.json(...f.args);
+  const bytes = readFileSync(join(f.root, dataPath));
+  for (const selector of [['--source', 'src/missing.py'], ['--source', 'src/app.py:4'],
+    ['--action', 'unrecorded action'], ['--sequence', '["unrecorded action"]']]) {
+    assert.deepEqual(f.json('measure', 'report', ...selector).intervals, []);
+  }
+  for (const [args, message] of invalid) assert.match(f.run(args, 1).stderr, message);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), bytes, 'failed commands and empty lookups never alter existing captured evidence');
+  assert.deepEqual(f.json('measure', 'check').invalid, []);
+});
+
+test('measured journey: reject incomplete or unsupported LCOV framing and the record limit before persistence', t => {
+  const f = project(t), invalid = [
+    ['', /complete nonempty source records/],
+    ['DA:1,0\n', /DA appears outside a source record/],
+    ['VER:version\n', /misplaced LCOV VER/],
+    ['end_of_record\n', /Empty or unmatched LCOV source record/],
+    ['SF:/capture/src/app.py\nend_of_record\n', /Empty or unmatched LCOV source record/],
+    ['SF:/capture/src/app.py\nSF:/capture/other.py\n', /missing end_of_record/],
+    ['SF:/capture/src/app.py\nDA:1,0\nUNKNOWN:payload\nend_of_record\n', /Unsupported or malformed LCOV record/],
+    ['SF:/capture/.git/config\nDA:1,0\nend_of_record\n', /unsafe LCOV source path/],
+    [`SF:/capture/${dataPath}\nDA:1,0\nend_of_record\n`, /unsafe LCOV source path/],
+  ];
+  for (const [input, message] of invalid) {
+    f.put('after.lcov', input); f.refresh(); assert.match(f.run(f.args, 1).stderr, message); f.absent();
+  }
+  const rows = Array.from({ length: 500001 }, (_, index) => `DA:${index + 1},0`).join('\n');
+  f.put('after.lcov', `SF:/capture/src/app.py\n${rows}\nend_of_record\n`); f.refresh();
+  assert.match(f.run(f.args, 1).stderr, /500,000 line-record limit/); f.absent();
+  f.put('after.lcov', f.record('DA:1,3\nDA:2,0\nDA:3,10')); f.refresh();
+  assert.equal(f.json(...f.args).changed, true);
+  assert.equal(f.json('measure', 'report').intervals[0].totals.observedLines, 2);
+});
