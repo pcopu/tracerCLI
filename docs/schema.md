@@ -24,20 +24,27 @@ Default path: `docs/testing/code-e2e-links.json`. Old maps with `version: 1`, a 
 
 Ranges are 1-based inclusive safe integers within current files. SHA-256 hashes cover exact snippet bytes, including line endings and UTF-8 BOM. Unrecognized top-level/link fields are preserved when unrelated records change, but no unknown field is treated as execution evidence. `minimumTraces` is a positive safe integer.
 
+## Optional comment declarations
+
+The v1 map may include `commentExclusions: [{id, source: {path, start, end, sha256}, fileSha256}]`. Both snippet and full-file SHA-256 bind current declarations; there is no syntax parser or extra audit workflow. Missing `commentExclusions` means none. Existing link data and unrelated fields remain intact. See [declaration behavior and agent rules](comments.md).
+
 ## JSON report
 
 `tracer report --json` returns:
 
 - `kind: "manual-links"`, an explicit `notice`, `minimumTraces`, `traceIdentity: "exact-ordered-action-sequence"`, and the optional `query`.
-- `totals`: `files`, `lines`, `linked`, `withStep`, `unlinked`, `belowMinimum`. These are source-line counts, not the sum of all traces.
+- `totals`: `files`, `lines`, `linked`, `withStep`, `unlinked`, `belowMinimum`. These are nonblank source-line counts, not the sum of all traces. Reports identify `lineBasis: "nonblank-undeclared-comment-lines"`. Files and totals add `physicalLines`, `blankLines` and `commentLines`; each file adds `blankRanges`, effective `commentRanges` and original current `comments` records. `lines + blankLines + commentLines === physicalLines`. Unmarked comments remain counted.
 - `files`: per-file source scope, the same line counts, `linkedRanges`, `unlinkedRanges`, `belowMinimumRanges`, current matching `links`, and `traceCounts`.
-- `traceCounts`: adjacent lines with equal counts compressed into `{start, end, count, withStepCount}`. Expand each inclusive range for an individual line's count.
+- `traceCounts`: adjacent physical lines with equal counts compressed into `{start, end, count, withStepCount}`. Expand each inclusive range for an individual physical line's count, including blank lines. `links` and physical `traceCounts` remain navigable even when the counted denominator is zero.
 - `invalid`: `{link, errors}` records. Invalid records never contribute to trace counts.
+- `invalidComments`: `{comment, errors}` declarations with stale or malformed metadata; global diagnostics remain visible in filtered reports.
 - `excluded`: `{path, reason}` for source candidates excluded by explicit rules.
 
 Ranges such as `linkedRanges` are arrays of `[start, end]`, even for one line. Empty files have `start: 1`, `end: 0`, zero counts and empty range arrays.
 
-`tracer check --json` returns `kind: "manual-link-integrity"`, `notice`, `total`, `valid` and `invalid`. Threshold-enabled checks also include `minimumTraces` and `belowMinimum`. Exit status, not JSON presence, determines success.
+`tracer check --json` returns `kind: "manual-link-integrity"`, `notice`, `total`, `valid` and `invalid`. Threshold-enabled checks also include `minimumTraces`, `belowMinimum`, `lineBasis`, `physicalLines`, `blankLines` and `commentLines`. All checks also expose `commentTotal`, `commentValid` and `invalidComments`; stale/invalid declarations fail integrity checks and never exclude lines. Only nonblank lines outside current comment declarations participate in the minimum gate. Exit status, not JSON presence, determines success.
+
+The nonblank denominator is an intentional report-semantic change in 0.2.0; 0.1.x reports counted all physical lines. Sidecar v1, source coordinates and exact hashes are unchanged. See [blank-line details](blank-lines.md).
 
 ## JavaScript API
 
@@ -48,7 +55,7 @@ const report = tracer.report({ kind: 'source', value: 'src/cart.py:12' });
 const integrity = tracer.check();
 ```
 
-Constructor options: `root`, `map`, `extensions`. Methods: `report(query?, {minimumTraces}?)`, `check({requireMinimum, minimumTraces}?)`, `config(minimumTraces?)`, `link({source, actions, step?, why})`, `unlink(id)`, `inventory()`, `readMap()`. Source/step inputs to `link` use `path:range` strings. Methods throw on fatal errors; check returns invalid records without throwing for individual broken links. Imports do not inspect files or execute CLI entrypoints.
+Constructor options: `root`, `map`, `extensions`. Methods: `comment(source)`, `uncomment(id)`, `report(query?, {minimumTraces}?)`, `check({requireMinimum, minimumTraces}?)`, `config(minimumTraces?)`, `link({source, actions, step?, why})`, `unlink(id)`, `inventory()`, `readMap()`. Source/step inputs to `link` use `path:range` strings. Methods throw on fatal errors; check returns invalid records without throwing for individual broken links. Imports do not inspect files or execute CLI entrypoints.
 
 ## Project app configuration
 

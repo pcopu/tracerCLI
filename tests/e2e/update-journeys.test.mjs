@@ -9,17 +9,17 @@ import { assertOfficialRequests, journey, mainChannel, releaseFixture, sha256 } 
 // No production modules are imported or invoked by the journey harness.
 
 test('updates.inspect: inspect local state, check a pinned release, preserve all local files', t => {
-  const f = journey(t);
+  const f = journey(t, releaseFixture('9.9.9'));
   const state = f.status();
   assert.equal(state.auto, 'off'); assert.equal(state.managed, false);
   assert.equal(state.repository, 'pcopu/tracerCLI'); assert.equal(state.home, f.managedHome); assert.equal(f.requests().length, 0);
   assert.equal(existsSync(f.managedHome), false);
   const result = f.output(['update', '--check', '--json']);
-  assert.equal(result.status, 'available'); assert.equal(result.version, '0.2.0');
+  assert.equal(result.status, 'available'); assert.equal(result.version, '9.9.9');
   assert.equal(result.commit, f.sourceRelease.commit); assert.equal(result.channel, 'release');
   assert.match(result.verification, /not an independent publisher signature/);
   assert.equal(existsSync(f.managedHome), false);
-  assert.equal(f.output(['update', '--check', '--version', '0.2.0', '--json']).commit, result.commit);
+  assert.equal(f.output(['update', '--check', '--version', '9.9.9', '--json']).commit, result.commit);
   assertOfficialRequests(f);
 });
 
@@ -189,7 +189,7 @@ test('updates.throttle: check once daily, cache results, tolerate offline failur
 });
 
 test('updates.unmanaged-auto: requested auto apply checks only and never migrates the source install', t => {
-  const f = journey(t); f.init(); const source = readFileSync(join(f.root, 'src/example.mjs'));
+  const f = journey(t, releaseFixture('9.9.9')); f.init(); const source = readFileSync(join(f.root, 'src/example.mjs'));
   f.ok(['update', '--auto', 'apply']);
   f.ok(['app', '--', 'read'], { env: { TRACER_NO_UPDATE: '0' } });
   assert.equal(f.status().lastResult.status, 'available');

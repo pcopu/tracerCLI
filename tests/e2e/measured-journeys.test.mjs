@@ -271,3 +271,20 @@ for (const legacy of [false, true]) {
     assert.deepEqual(readFileSync(join(f.root, dataPath)), corrupt);
   });
 }
+
+test('measured journey: blank exclusion changes only manual totals, never captured LCOV counters', t => {
+  const f = project(t), current = '# counted comment\n \t\nx = 1\n\n';
+  f.put('src/app.py', current);
+  f.jsonFile('sources.json', { files: [{ path: 'src/app.py', sha256: sha(current) }] });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  f.put('after.lcov', f.record('DA:1,3\nDA:2,2\nDA:3,10')); f.refresh();
+  const manual = f.json('report').totals;
+  assert.equal(manual.physicalLines, 4); assert.equal(manual.blankLines, 2); assert.equal(manual.lines, 2);
+  f.json(...f.args);
+  const before = readFileSync(join(f.root, dataPath)), measured = f.json('measure', 'report').intervals[0];
+  assert.equal(measured.totals.instrumentedLines, 3); assert.equal(measured.totals.observedLines, 3);
+  assert.deepEqual(measured.files[0].counters[1], { line: 2, before: 0, after: 2, delta: 2 });
+  assert.deepEqual(measured.files[0].observedRanges, [[1, 3]], 'supplied instrumented blank/comment lines are not reclassified');
+  assert.equal(f.json(...f.args).changed, false); assert.deepEqual(readFileSync(join(f.root, dataPath)), before);
+  assert.deepEqual(f.json('report').totals, manual); assert.deepEqual(f.json('measure', 'check').invalid, []);
+});

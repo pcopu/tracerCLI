@@ -16,7 +16,7 @@ test('self-host journey: discover Tracer project actions, delegate help, reject 
   const actions = JSON.parse(discovery.stdout);
   assert.equal(actions.application, 'tracercli-self-host');
   assert.ok(actions.actions.some(action => JSON.stringify(action.command) === '["test"]'));
-  for (const group of ['mapping', 'measured', 'project', 'update', 'self-host']) {
+  for (const group of ['mapping', 'comments', 'measured', 'project', 'update', 'self-host']) {
     assert.ok(actions.actions.some(action => JSON.stringify(action.command) === JSON.stringify(['test', group])));
   }
   const help = run('app', '--', '--help'); assert.equal(help.status, 0); assert.match(help.stdout, /Run through Tracer/);

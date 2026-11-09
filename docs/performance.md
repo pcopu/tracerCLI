@@ -1,5 +1,7 @@
 # JavaScript report performance
 
+These measurements describe the 0.1.3 performance release at commit `9d38d2030d70501461c7e50f86196793290f58b1`. The later 0.2.0 [blank-line change](blank-lines.md) intentionally changes manual totals. The byte-identity statement below applies only to the 0.1.2-to-0.1.3 comparison.
+
 Tracer 0.1.3 keeps the shared JavaScript implementation and version-1 sidecars. Updating a shared installation changes the implementation used by every project that invokes it. There is no per-project version pin.
 
 ## What changed

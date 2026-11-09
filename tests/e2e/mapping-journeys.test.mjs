@@ -76,7 +76,7 @@ function project(t, files = {}) {
 test('mapping journey: review links from source to actions and witnesses, then explicitly repair stale evidence', t => {
   const f = project(t), untouched = tree(f.root);
   const empty = f.json('report');
-  assert.deepEqual(empty.totals, { files: 1, lines: 4, linked: 0, withStep: 0, unlinked: 4, belowMinimum: 4 });
+  assert.deepEqual(empty.totals, { files: 1, lines: 3, linked: 0, withStep: 0, unlinked: 3, belowMinimum: 3, physicalLines: 4, blankLines: 1, commentLines: 0 });
   assert.deepEqual(f.json('config'), { minimumTraces: 1 });
   assert.equal(f.check().total, 0);
   assert.deepEqual(tree(f.root), untouched, 'read-only first use must not create a sidecar or directories');
@@ -156,10 +156,10 @@ test('mapping journey: exact ordered sequences deduplicate per line and enforce 
   assert.deepEqual(f.json('report').files[0].traceCounts, [
     { start: 1, end: 3, count: 1, withStepCount: 1 }, { start: 4, end: 4, count: 0, withStepCount: 0 },
   ]);
-  assert.equal(f.json('report', '--sequence', JSON.stringify(actions)).totals.linked, 3);
+  assert.equal(f.json('report', '--sequence', JSON.stringify(actions)).totals.linked, 2);
   assert.equal(f.json('report', '--sequence', JSON.stringify(actions.slice(0, 2))).totals.linked, 0);
   assert.equal(f.json('report', '--sequence', JSON.stringify([...actions].reverse())).totals.linked, 0);
-  assert.equal(f.json('report', '--action', 'key').totals.linked, 3);
+  assert.equal(f.json('report', '--action', 'key').totals.linked, 2);
   assert.equal(f.json('report', '--action', 'ke').totals.linked, 0, 'action matching must be exact');
 
   const unwitnessed = ['cart add --price 0', 'cart total'];
@@ -187,7 +187,7 @@ test('mapping journey: exact ordered sequences deduplicate per line and enforce 
   f.ok(...f.link({ source: 'src/cart.py:1-4', actions: unwitnessed, step: null }));
   const enough = f.check(0, '--require-minimum', '--minimum-traces', '2');
   assert.equal(enough.belowMinimum, 0);
-  assert.equal(f.check(1, '--require-minimum', '--minimum-traces', '3').belowMinimum, 4);
+  assert.equal(f.check(1, '--require-minimum', '--minimum-traces', '3').belowMinimum, 3);
   assert.deepEqual(f.json('report').files[0].traceCounts, [{ start: 1, end: 4, count: 2, withStepCount: 1 }]);
   assert.equal(existsSync(join(f.root, 'NEVER')), false);
 });
@@ -204,7 +204,7 @@ test('mapping journey: inspect a mixed-language Git inventory and opt in new sou
   });
   const initial = f.json('report'), paths = initial.files.map(file => file.path);
   assert.deepEqual(paths, ['empty.rs', 'last.js', 'package.json', 'single.go', 'src/cart.py', 'src/config.yaml', 'src/my cart:one.py', 'tracked.py']);
-  assert.equal(initial.totals.lines, 11);
+  assert.equal(initial.totals.lines, 10); assert.equal(initial.totals.physicalLines, 11);
   assert.equal(initial.files.find(file => file.path === 'empty.rs').lines, 0);
   assert.equal(initial.files.find(file => file.path === 'single.go').lines, 1);
   assert.equal(initial.files.find(file => file.path === 'last.js').lines, 1);
@@ -429,7 +429,7 @@ test('mapping journey: guide first use outside Git and reject ambiguous CLI inpu
   const subdirectory = f.expect(['--root', join(f.root, 'src'), 'report'], 1, { explicitRoot: false });
   assert.match(subdirectory.stderr, /repository root/);
   const inferred = f.expect(['report', '--json'], 0, { cwd: join(f.root, 'src'), explicitRoot: false });
-  assert.equal(JSON.parse(inferred.stdout).totals.lines, 4);
+  assert.equal(JSON.parse(inferred.stdout).totals.lines, 3);
 
   const invalid = [
     ['report', 'cart'], ['report', '--source', 'src/cart.py', '--action', 'cart'], ['report', '--action', 'cart', '--action', 'cart'],
@@ -516,7 +516,7 @@ test('mapping journey: compare overlapping report traces with an independent per
     for (const [key, value] of Object.entries(expected)) assert.deepEqual(file[key], value, `${args.join(' ')}: ${key}`);
     assert.deepEqual(file.links, selected.filter(row => row.source.end >= start && row.source.start <= end));
     assert.deepEqual(report.totals, { files: args.length ? 1 : 2, lines: expected.lines,
-      linked: expected.linked, withStep: expected.withStep, unlinked: expected.unlinked, belowMinimum: expected.belowMinimum });
+      linked: expected.linked, withStep: expected.withStep, unlinked: expected.unlinked, belowMinimum: expected.belowMinimum, physicalLines: expected.lines, blankLines: 0, commentLines: 0 });
   }
   const empty = f.json('report', '--source', 'src/empty.py').files[0];
   assert.equal(empty.lines, 0);
@@ -569,4 +569,130 @@ test('mapping journey: repeated exact UTF-8 snapshots remain fresh only until th
   f.put('tests/cart.spec', witness);
   assert.equal(f.check().valid, 4);
   assert.deepEqual(f.bytes(), saved, 'freshness checks never rewrite historical snapshots');
+});
+
+test('mapping journey: ignore only whitespace-only physical lines, including all-blank and empty files', t => {
+  const f = project(t, {
+    'src/cart.py': '\uFEFF \t\r\n\n\t\r\n  ',
+    'src/empty.py': '',
+    'src/comments.js': '// standalone\n# standalone\n/* block\n * body\n */\nconst text = `\n   \n`;\n',
+  });
+  const untouched = tree(f.root), report = f.json('report');
+  assert.equal(report.lineBasis, 'nonblank-undeclared-comment-lines');
+  const humanReport = f.ok('report');
+  assert.match(humanReport, /7 nonblank lines/);
+  assert.match(humanReport, /5 blank lines excluded/);
+  assert.match(humanReport, /Unmarked comments, tests and tooling stay counted; whitespace-only lines and current comment declarations are excluded/);
+  assert.match(f.expect(['check', '--require-minimum'], 1).stdout, /7 nonblank source lines below project minimum 1; 5 blank lines excluded/);
+  assert.match(f.ok('config'), /per nonblank source line/);
+  assert.deepEqual(report.totals, { files: 3, physicalLines: 12, blankLines: 5, commentLines: 0,
+    lines: 7, linked: 0, withStep: 0, unlinked: 7, belowMinimum: 7 });
+  const blank = report.files.find(file => file.path === 'src/cart.py');
+  assert.equal(blank.physicalLines, 4);
+  assert.equal(blank.blankLines, 4);
+  assert.deepEqual(blank.blankRanges, [[1, 4]]);
+  assert.equal(blank.lines, 0);
+  for (const key of ['linked', 'withStep', 'unlinked', 'belowMinimum']) assert.equal(blank[key], 0);
+  for (const key of ['linkedRanges', 'unlinkedRanges', 'belowMinimumRanges', 'links']) assert.deepEqual(blank[key], []);
+  assert.deepEqual(blank.traceCounts, [{ start: 1, end: 4, count: 0, withStepCount: 0 }]);
+  const empty = report.files.find(file => file.path === 'src/empty.py');
+  assert.equal(empty.physicalLines, 0);
+  assert.equal(empty.blankLines, 0);
+  assert.equal(empty.lines, 0);
+  assert.deepEqual(empty.blankRanges, []);
+  assert.deepEqual(empty.traceCounts, []);
+  const comments = report.files.find(file => file.path === 'src/comments.js');
+  assert.equal(comments.lines, 7, 'standalone comments remain counted; only the blank physical string line is skipped');
+  assert.deepEqual(comments.blankRanges, [[7, 7]]);
+  assert.deepEqual(comments.unlinkedRanges, [[1, 6], [8, 8]]);
+  assert.deepEqual(comments.belowMinimumRanges, [[1, 6], [8, 8]]);
+  assert.deepEqual(tree(f.root), untouched, 'blank exclusion is automatic and does not create metadata');
+  assert.equal(f.check(1, '--require-minimum').belowMinimum, 7);
+  f.put('src/comments.js', '');
+  assert.equal(f.check(0, '--require-minimum', '--minimum-traces', '9').belowMinimum, 0,
+    'empty and all-blank files do not fail requested positive minimums');
+});
+
+test('mapping journey: deduplicate overlapping sequences across blank gaps and clip physical selectors', t => {
+  const source = 'alpha\n\n  \t\n# counted comment\nbeta\n\t\ngamma\n\nomega';
+  const f = project(t, { 'src/cart.py': source });
+  const actions = ['open', 'save', 'save'];
+  f.ok(...f.link({ source: 'src/cart.py:1-5', actions }));
+  f.ok(...f.link({ source: 'src/cart.py:4-7', actions, step: null }));
+  f.ok(...f.link({ source: 'src/cart.py:2-6', actions: ['save', 'open'], step: null }));
+  f.editMap(data => data.links.push({ ...data.links.find(row => row.source.start === 1), id: 'blank-gap-duplicate' }));
+  const saved = f.bytes(), report = f.json('report', '--minimum-traces', '2'), file = report.files[0];
+  assert.deepEqual(report.totals, { files: 1, physicalLines: 9, blankLines: 4, commentLines: 0,
+    lines: 5, linked: 4, withStep: 3, unlinked: 1, belowMinimum: 3 });
+  assert.deepEqual(file.blankRanges, [[2, 3], [6, 6], [8, 8]]);
+  assert.deepEqual(file.linkedRanges, [[1, 1], [4, 5], [7, 7]]);
+  assert.deepEqual(file.unlinkedRanges, [[9, 9]]);
+  assert.deepEqual(file.belowMinimumRanges, [[1, 1], [7, 7], [9, 9]]);
+  assert.deepEqual(file.traceCounts, [
+    { start: 1, end: 1, count: 1, withStepCount: 1 },
+    { start: 2, end: 5, count: 2, withStepCount: 1 },
+    { start: 6, end: 6, count: 2, withStepCount: 0 },
+    { start: 7, end: 7, count: 1, withStepCount: 0 },
+    { start: 8, end: 9, count: 0, withStepCount: 0 },
+  ], 'traceCounts retain full physical intervals, including blank gaps');
+  assert.deepEqual(file.links, f.map().links);
+  const selected = f.json('report', '--source', 'src/cart.py:3-8', '--minimum-traces', '2');
+  assert.deepEqual(selected.totals, { files: 1, physicalLines: 6, blankLines: 3, commentLines: 0,
+    lines: 3, linked: 3, withStep: 2, unlinked: 0, belowMinimum: 1 });
+  assert.deepEqual(selected.files[0].blankRanges, [[3, 3], [6, 6], [8, 8]]);
+  assert.deepEqual(selected.files[0].linkedRanges, [[4, 5], [7, 7]]);
+  assert.deepEqual(selected.files[0].belowMinimumRanges, [[7, 7]]);
+  assert.deepEqual(selected.files[0].traceCounts, [
+    { start: 3, end: 5, count: 2, withStepCount: 1 },
+    { start: 6, end: 6, count: 2, withStepCount: 0 },
+    { start: 7, end: 7, count: 1, withStepCount: 0 },
+    { start: 8, end: 8, count: 0, withStepCount: 0 },
+  ]);
+  const onlyBlank = f.json('report', '--source', 'src/cart.py:2-3');
+  assert.equal(onlyBlank.totals.lines, 0);
+  assert.equal(onlyBlank.totals.physicalLines, 2);
+  assert.equal(onlyBlank.totals.blankLines, 2);
+  assert.equal(onlyBlank.files[0].links.length, 3, 'physical navigation still finds links over excluded lines');
+  assert.deepEqual(onlyBlank.files[0].linkedRanges, []);
+  assert.equal(f.json('report', '--sequence', JSON.stringify(actions)).totals.linked, 4);
+  assert.equal(f.json('report', '--sequence', JSON.stringify(['open', 'save'])).totals.linked, 0);
+  assert.equal(f.json('report', '--step', 'tests/cart.spec:2').totals.withStep, 3);
+  assert.equal(f.check(1, '--require-minimum', '--minimum-traces', '2').belowMinimum, 3);
+  assert.deepEqual(f.bytes(), saved, 'selectors and minimum checks preserve v1 map bytes');
+});
+
+test('mapping journey: blank-only links retain exact v1 hashes, navigation and whitespace-staleness checks', t => {
+  const source = '\uFEFF \t\r\n\r\n// retained\r\n', witness = '\uFEFFopen\r\n\t\r\nassert\r\n';
+  const f = project(t, { 'src/cart.py': source, 'tests/cart.spec': witness });
+  f.ok(...f.link({ source: 'src/cart.py:1-2', actions: ['inspect blanks'], step: 'tests/cart.spec:1-3' }));
+  const row = f.map().links[0];
+  assert.equal(f.map().version, 1);
+  assert.equal(row.source.sha256, sha256('\uFEFF \t\r\n\r\n'));
+  assert.equal(row.step.sha256, sha256(witness));
+  f.editMap(data => { data.links[0] = { why: row.why, step: row.step, source: row.source,
+    actions: row.actions, id: 'legacy-blank-only' }; });
+  const saved = f.bytes();
+  for (const args of [['--source', 'src/cart.py:1-2'], ['--step', 'tests/cart.spec:2'],
+    ['--action', 'inspect blanks'], ['--sequence', JSON.stringify(['inspect blanks'])]]) {
+    const report = f.json('report', ...args);
+    assert.equal(report.files[0].links[0].id, 'legacy-blank-only');
+    assert.equal(report.totals.linked, 0);
+    assert.equal(report.totals.withStep, 0);
+  }
+  assert.equal(f.check().valid, 1);
+  assert.match(f.ok(...f.link({ source: 'src/cart.py:1-2', actions: ['inspect blanks'], step: 'tests/cart.spec:1-3' })), /Already linked: legacy-blank-only/);
+  assert.deepEqual(f.bytes(), saved);
+  f.put('src/cart.py', source.replace(' \t', '  \t'));
+  const stale = f.check(1);
+  assert.match(stale.invalid[0].errors.join('; '), /source snippet is stale/);
+  const report = f.json('report');
+  assert.equal(report.totals.blankLines, 2);
+  assert.equal(report.totals.lines, 1);
+  assert.equal(report.invalid.length, 1);
+  assert.deepEqual(report.files[0].links, []);
+  f.fail(f.link({ source: 'src/cart.py:1-2', actions: ['inspect blanks'], step: 'tests/cart.spec:1-3' }), /never silently refreshed/);
+  assert.deepEqual(f.bytes(), saved, 'whitespace exclusion never normalizes stored hashes or refreshes history');
+  f.put('src/cart.py', source);
+  assert.equal(f.check().valid, 1);
+  assert.deepEqual(f.bytes(), saved);
 });

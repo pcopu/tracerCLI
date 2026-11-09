@@ -8,7 +8,7 @@ Tracer is a local, dependency-free navigation tool for any Git repository. Conne
 
 **Manual links are not measured code coverage.** The manual map never runs its described actions or claims a test executed a line. Optional LCOV imports keep measured interval evidence separate. The animation above is an illustrated workflow, using generated artwork, not an execution recording.
 
-[Report performance and compatibility measurements](docs/performance.md) describe the shared JavaScript implementation.
+[Report performance measurements](docs/performance.md) describe the shared JavaScript implementation. From 0.2.0, [manual counts skip whitespace-only blank lines](docs/blank-lines.md); unmarked comments remain counted. [Agents can explicitly mark comment-only ranges](docs/comments.md), without a parser or extra audit workflow.
 
 ## Import measured interval evidence
 
@@ -148,7 +148,7 @@ Skills newly installed through Tracer are registered with their original checksu
 ## Boundaries and documentation
 
 - No runtime dependencies, telemetry, application hooks or language parsers. Explicit app forwarding is separate from mapping; optional GitHub updates are documented separately.
-- Reads working-tree files, including tracked and nonignored untracked files. Source totals include tests, tooling, comments and blank lines.
+- Reads working-tree files, including tracked and nonignored untracked files. Source totals include tests, tooling and unmarked comments; whitespace-only blanks and current declared comment ranges are excluded. Physical line numbers and exact byte hashes stay unchanged. See [blank-line counting](docs/blank-lines.md).
 - Explicit source inventory and build/dependency exclusions. Add an unlisted language with `--include-ext .zig` before the command.
 - Source lookup, reverse witness lookup, action and exact-sequence lookup; text and structured JSON reports.
 - Symlink/path validation, atomic writes and an exclusive writer lock. Not a sandbox against concurrent hostile filesystem changes.
@@ -171,7 +171,7 @@ node bin/tracer.mjs report --source src/tracer.mjs
 
 `npm test` is the self-hosted `tracer app -- test` entry point. `npm run check` adds syntax validation and map integrity. Journeys use disposable Git repositories, fake homes, real subprocesses and synthetic GitHub responses. They exercise mapping/recovery, deduplicated counts, inventory/bytes/path safety, app cancellation, separate setup consents, update integrity and rollback. They never call production implementation APIs to simulate success.
 
-The committed map links reviewed implementation ranges to actual CLI interaction sequences and exact journey assertions. [Descriptor conventions](docs/self-hosting.md) explain fixture placeholders and argv quoting. It is not a blanket link to the test runner or a measured execution report. Unlinked physical lines remain visible. Source changes require re-reviewing the affected links before relinking, not auto-refreshing hashes.
+The committed map links reviewed implementation ranges to actual CLI interaction sequences and exact journey assertions. [Descriptor conventions](docs/self-hosting.md) explain fixture placeholders and argv quoting. It is not a blanket link to the test runner or a measured execution report. Physical links and trace counts remain visible, including blanks; manual totals use nonblank lines. Source changes require re-reviewing the affected links before relinking, not auto-refreshing hashes.
 
 ```sh
 npm run check
