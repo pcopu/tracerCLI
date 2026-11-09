@@ -8,6 +8,8 @@ Tracer is a local, dependency-free navigation tool for any Git repository. Conne
 
 **Manual links are not measured code coverage.** The manual map never runs its described actions or claims a test executed a line. Optional LCOV imports keep measured interval evidence separate. The animation above is an illustrated workflow, using generated artwork, not an execution recording.
 
+[Report performance and compatibility measurements](docs/performance.md) describe the shared JavaScript implementation.
+
 ## Import measured interval evidence
 
 If your app can export cumulative LCOV snapshots, connect an actual action sequence to the line counters that increased during its interval:

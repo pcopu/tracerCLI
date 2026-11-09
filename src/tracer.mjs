@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve, sep } from 'node:path';
 
-export const VERSION = '0.1.2';
+export const VERSION = '0.1.3';
 export const NOTICE = 'MANUAL LINKS ONLY. A current link is not observed execution, test coverage or proof of correctness.';
 export const DEFAULT_MAP = 'docs/testing/code-e2e-links.json';
 export const SOURCE_EXTENSIONS = ('.swift .ts .tsx .mts .cts .js .jsx .mjs .cjs .m .mm .h .hpp .hxx .c .cc .cpp .cxx '
@@ -64,7 +64,56 @@ export function compactRanges(numbers) {
   return result;
 }
 
+// Count distinct exact sequences at interval boundaries, not once per source line.
+// Occurrence counts keep overlapping copies from removing a still-active sequence.
+function countIntervals(links, start, end, minimumTraces) {
+  const events = new Map(), active = new Map(), witnessed = new Map();
+  const result = { lines: Math.max(0, end - start + 1), linked: 0, withStep: 0, unlinked: 0,
+    linkedRanges: [], unlinkedRanges: [], traceCounts: [], belowMinimum: 0, belowMinimumRanges: [] };
+  if (start > end) return result;
+  const event = (line, key, step, delta) => {
+    let entries = events.get(line);
+    if (!entries) { entries = []; events.set(line, entries); }
+    entries.push({ key, step, delta });
+  };
+  for (const link of links) {
+    const key = JSON.stringify(link.actions), step = Boolean(link.step);
+    event(Math.max(start, link.source.start), key, step, 1);
+    event(Math.min(end, link.source.end) + 1, key, step, -1);
+  }
+  if (!events.has(start)) events.set(start, []);
+  if (!events.has(end + 1)) events.set(end + 1, []);
+  const boundaries = [...events.keys()].sort((a, b) => a - b);
+  const change = (counts, key, delta) => {
+    const count = (counts.get(key) ?? 0) + delta;
+    if (count) counts.set(key, count); else counts.delete(key);
+  };
+  const append = (ranges, first, last) => {
+    const previous = ranges.at(-1);
+    if (previous && previous[1] + 1 === first) previous[1] = last;
+    else ranges.push([first, last]);
+  };
+  for (let index = 0; index < boundaries.length - 1; index++) {
+    const first = boundaries[index], last = boundaries[index + 1] - 1;
+    for (const { key, step, delta } of events.get(first)) {
+      change(active, key, delta);
+      if (step) change(witnessed, key, delta);
+    }
+    const count = active.size, withStepCount = witnessed.size, length = last - first + 1;
+    if (count) { result.linked += length; append(result.linkedRanges, first, last); }
+    else { result.unlinked += length; append(result.unlinkedRanges, first, last); }
+    if (withStepCount) result.withStep += length;
+    if (count < minimumTraces) { result.belowMinimum += length; append(result.belowMinimumRanges, first, last); }
+    const previous = result.traceCounts.at(-1);
+    if (previous && previous.count === count && previous.withStepCount === withStepCount) previous.end = last;
+    else result.traceCounts.push({ start: first, end: last, count, withStepCount });
+  }
+  return result;
+}
+
 export class Tracer {
+  // Caches belong to one inventory snapshot, never to a later command or stat key.
+  #snapshots = new WeakMap();
   constructor({ root, map = DEFAULT_MAP, extensions = [] } = {}) {
     const directory = realpathSync(resolve(root ?? process.cwd()));
     this.root = realpathSync(execFileSync('git', ['rev-parse', '--show-toplevel'],
@@ -111,13 +160,24 @@ export class Tracer {
   snapshot(range, state, step = false) {
     if (!range || typeof range !== 'object') fail('Missing range object.');
     safePath(range.path);
-    const lines = state.files.get(range.path) ?? (step && state.candidates.has(range.path) ? this.readLines(range.path) : undefined);
+    let cache = this.#snapshots.get(state);
+    if (!cache) { cache = { witnesses: new Map(), hashes: new Map() }; this.#snapshots.set(state, cache); }
+    let lines = state.files.get(range.path);
+    if (!lines && step && state.candidates.has(range.path)) {
+      lines = cache.witnesses.get(range.path);
+      if (!lines) { lines = this.readLines(range.path); cache.witnesses.set(range.path, lines); }
+    }
     if (!lines) fail(`File is outside the current ${step ? 'eligible repository text files' : 'source inventory'}: ${range.path}`);
     if (!Number.isSafeInteger(range.start) || !Number.isSafeInteger(range.end)
         || range.start < 1 || range.end < range.start || range.end > lines.length) {
       fail(`Invalid range ${location(range)}; file has ${lines.length} lines.`);
     }
-    return { path: range.path, start: range.start, end: range.end, sha256: digest(lines.slice(range.start - 1, range.end).join('')) };
+    let hashes = cache.hashes.get(range.path);
+    if (!hashes) { hashes = new Map(); cache.hashes.set(range.path, hashes); }
+    const key = `${range.start}:${range.end}`;
+    let sha256 = hashes.get(key);
+    if (sha256 === undefined) { sha256 = digest(lines.slice(range.start - 1, range.end).join('')); hashes.set(key, sha256); }
+    return { path: range.path, start: range.start, end: range.end, sha256 };
   }
   validateMapPath() {
     const parts = this.map.split('/');
@@ -221,18 +281,21 @@ export class Tracer {
     return { minimumTraces };
   }
   check({ requireMinimum = false, minimumTraces } = {}) {
-    const inspected = this.inspect(this.readMap(), this.inventory());
+    const data = this.readMap(), state = this.inventory(), inspected = this.inspect(data, state);
     const invalid = inspected.filter(row => row.errors.length);
     const result = { kind: 'manual-link-integrity', notice: NOTICE, total: inspected.length,
       valid: inspected.length - invalid.length, invalid };
     if (requireMinimum) {
-      const report = this.report(undefined, { minimumTraces });
+      const report = this.#report(undefined, minimumTraces, state, data, inspected);
       result.minimumTraces = report.minimumTraces; result.belowMinimum = report.totals.belowMinimum;
     }
     return result;
   }
   report(query, { minimumTraces } = {}) {
     const state = this.inventory(), data = this.readMap(), inspected = this.inspect(data, state);
+    return this.#report(query, minimumTraces, state, data, inspected);
+  }
+  #report(query, minimumTraces, state, data, inspected) {
     minimumTraces = validateMinimum(minimumTraces ?? data.minimumTraces ?? 1);
     const sourceFilter = query?.kind === 'source' ? parseRange(query.value, false) : null;
     const stepFilter = query?.kind === 'step' ? parseRange(query.value, false) : null;
@@ -245,39 +308,31 @@ export class Tracer {
       if (!lines) fail(`File is outside the current ${step ? 'eligible repository text files' : 'source inventory'}: ${range.path}`);
       if (range.start) this.snapshot(range, state, step);
     }
+    const sequence = query?.kind === 'sequence' ? JSON.stringify(query.value) : null;
     const matches = link => {
       if (!query || sourceFilter) return true;
       if (query.kind === 'action') return link.actions.includes(query.value);
-      if (query.kind === 'sequence') return JSON.stringify(link.actions) === JSON.stringify(query.value);
+      if (query.kind === 'sequence') return JSON.stringify(link.actions) === sequence;
       return link.step?.path === stepFilter.path && (!stepFilter.start
         || link.step.end >= stepFilter.start && link.step.start <= stepFilter.end);
     };
     const valid = inspected.filter(row => !row.errors.length).map(row => row.link).filter(matches);
+    const byFile = new Map();
+    for (const link of valid) {
+      let links = byFile.get(link.source.path);
+      if (!links) { links = []; byFile.set(link.source.path, links); }
+      links.push(link);
+    }
     const files = [], totals = { files: 0, lines: 0, linked: 0, withStep: 0, unlinked: 0, belowMinimum: 0 };
-    const traceKey = link => JSON.stringify(link.actions);
     for (const [path, lines] of state.files) {
       if (sourceFilter && sourceFilter.path !== path) continue;
-      if (query && !sourceFilter && !valid.some(link => link.source.path === path)) continue;
+      if (query && !sourceFilter && !byFile.has(path)) continue;
       const start = sourceFilter?.start ?? 1, end = sourceFilter?.end ?? lines.length;
-      const links = valid.filter(link => link.source.path === path && link.source.end >= start && link.source.start <= end);
-      const linked = [], unlinked = [], withStep = [], traceCounts = [], belowMinimum = [];
-      for (let line = start; line <= end; line++) {
-        const atLine = links.filter(link => link.source.start <= line && line <= link.source.end);
-        const count = new Set(atLine.map(traceKey)).size;
-        const withStepCount = new Set(atLine.filter(link => link.step).map(traceKey)).size;
-        (count ? linked : unlinked).push(line);
-        if (withStepCount) withStep.push(line);
-        if (count < minimumTraces) belowMinimum.push(line);
-        const last = traceCounts.at(-1);
-        if (last && last.count === count && last.withStepCount === withStepCount) last.end = line;
-        else traceCounts.push({ start: line, end: line, count, withStepCount });
-      }
-      files.push({ path, start, end, lines: linked.length + unlinked.length, linked: linked.length,
-        withStep: withStep.length, unlinked: unlinked.length, linkedRanges: compactRanges(linked),
-        unlinkedRanges: compactRanges(unlinked), traceCounts, belowMinimum: belowMinimum.length,
-        belowMinimumRanges: compactRanges(belowMinimum), links });
-      totals.files++; totals.lines += linked.length + unlinked.length; totals.linked += linked.length;
-      totals.withStep += withStep.length; totals.unlinked += unlinked.length; totals.belowMinimum += belowMinimum.length;
+      const links = (byFile.get(path) ?? []).filter(link => link.source.end >= start && link.source.start <= end);
+      const counts = countIntervals(links, start, end, minimumTraces);
+      files.push({ path, start, end, ...counts, links });
+      totals.files++;
+      for (const key of ['lines', 'linked', 'withStep', 'unlinked', 'belowMinimum']) totals[key] += counts[key];
     }
     return { kind: 'manual-links', notice: NOTICE, minimumTraces, traceIdentity: 'exact-ordered-action-sequence', query: query ?? null, totals, files,
       excluded: state.excluded, invalid: inspected.filter(row => row.errors.length) };

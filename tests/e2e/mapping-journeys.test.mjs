@@ -453,3 +453,120 @@ test('mapping journey: guide first use outside Git and reject ambiguous CLI inpu
   assert.deepEqual(tree(f.home), {}, 'CLI diagnostics must not create global state');
   assert.equal(existsSync(join(f.root, 'docs')), false);
 });
+
+test('mapping journey: compare overlapping report traces with an independent per-line oracle', t => {
+  const f = project(t, { 'src/cart.py': Array.from({ length: 24 }, (_, i) => `line ${i + 1}\n`).join(''), 'src/empty.py': '' });
+  const sequences = [['open', 'save'], ['open', 'save', 'save'], ['save', 'open']];
+  const rows = [
+    [1, 7, 0, false], [3, 5, 0, true], [6, 10, 0, true], [8, 12, 0, false],
+    [13, 16, 0, true], [17, 20, 0, true], [4, 18, 1, false], [9, 14, 1, true],
+    [2, 22, 2, true], [11, 15, 2, false],
+  ];
+  // Deterministic additional overlaps exercise repeated starts/ends and trace refcounts.
+  for (let i = 0; i < 8; i++) rows.push([1 + (i * 7) % 18, 19 + i % 5, i % 3, i % 2 === 0]);
+  for (const [start, end, sequence, witnessed] of rows) f.ok(...f.link({
+    source: `src/cart.py:${start}-${end}`, actions: sequences[sequence],
+    step: witnessed ? `tests/cart.spec:${1 + sequence % 2}-${2 + sequence % 2}` : null,
+  }));
+  // Sidecars need not be sorted; report links must retain their persisted order.
+  f.editMap(data => data.links.reverse());
+  const persisted = f.bytes(), links = f.map().links;
+  const ranges = values => {
+    const result = [];
+    for (const line of values) {
+      const last = result.at(-1);
+      if (last && last[1] + 1 === line) last[1] = line;
+      else result.push([line, line]);
+    }
+    return result;
+  };
+  const oracle = (selected, start = 1, end = 24, minimum = 2) => {
+    const traceCounts = [], linked = [], unlinked = [], withStep = [], belowMinimum = [];
+    for (let line = start; line <= end; line++) {
+      const atLine = selected.filter(row => row.source.start <= line && row.source.end >= line);
+      const count = new Set(atLine.map(row => JSON.stringify(row.actions))).size;
+      const withStepCount = new Set(atLine.filter(row => row.step).map(row => JSON.stringify(row.actions))).size;
+      const previous = traceCounts.at(-1);
+      if (previous && previous.count === count && previous.withStepCount === withStepCount) previous.end = line;
+      else traceCounts.push({ start: line, end: line, count, withStepCount });
+      (count ? linked : unlinked).push(line);
+      if (withStepCount) withStep.push(line);
+      if (count < minimum) belowMinimum.push(line);
+    }
+    return { start, end, lines: end - start + 1, linked: linked.length, withStep: withStep.length,
+      unlinked: unlinked.length, belowMinimum: belowMinimum.length, traceCounts,
+      linkedRanges: ranges(linked), unlinkedRanges: ranges(unlinked), belowMinimumRanges: ranges(belowMinimum) };
+  };
+  const cases = [
+    { args: [], selected: links },
+    { args: ['--source', 'src/cart.py:5-17'], selected: links, start: 5, end: 17 },
+    { args: ['--source', 'src/cart.py:24'], selected: links, start: 24, end: 24 },
+    { args: ['--action', 'save'], selected: links },
+    { args: ['--sequence', JSON.stringify(sequences[0])], selected: links.filter(row => JSON.stringify(row.actions) === JSON.stringify(sequences[0])) },
+    { args: ['--sequence', JSON.stringify(sequences[1])], selected: links.filter(row => JSON.stringify(row.actions) === JSON.stringify(sequences[1])) },
+    { args: ['--sequence', JSON.stringify(sequences[2])], selected: links.filter(row => JSON.stringify(row.actions) === JSON.stringify(sequences[2])) },
+    { args: ['--step', 'tests/cart.spec:3'], selected: links.filter(row => row.step?.end >= 3) },
+  ];
+  for (const { args, selected, start = 1, end = 24 } of cases) {
+    const argv = ['report', ...args, '--minimum-traces', '2', '--json'];
+    const output = f.ok(...argv), report = JSON.parse(output);
+    assert.equal(f.ok(...argv), output, 'unchanged CLI output must be byte-for-byte deterministic');
+    const file = report.files.find(file => file.path === 'src/cart.py');
+    const expected = oracle(selected, start, end);
+    for (const [key, value] of Object.entries(expected)) assert.deepEqual(file[key], value, `${args.join(' ')}: ${key}`);
+    assert.deepEqual(file.links, selected.filter(row => row.source.end >= start && row.source.start <= end));
+    assert.deepEqual(report.totals, { files: args.length ? 1 : 2, lines: expected.lines,
+      linked: expected.linked, withStep: expected.withStep, unlinked: expected.unlinked, belowMinimum: expected.belowMinimum });
+  }
+  const empty = f.json('report', '--source', 'src/empty.py').files[0];
+  assert.equal(empty.lines, 0);
+  for (const key of ['traceCounts', 'linkedRanges', 'unlinkedRanges', 'belowMinimumRanges', 'links']) assert.deepEqual(empty[key], []);
+  assert.equal(f.json('report', '--action', 'missing action').totals.files, 0);
+  assert.deepEqual(f.bytes(), persisted, 'read-only selectors and threshold overrides preserve the sidecar');
+});
+
+test('mapping journey: retain global stale and malformed diagnostics in a narrow report', t => {
+  const f = project(t, { 'src/other.py': 'old\n', 'tests/other.spec': 'assert old\n' });
+  f.ok(...f.link());
+  f.ok(...f.link({ source: 'src/other.py:1', actions: ['other'], step: 'tests/other.spec:1' }));
+  f.put('src/other.py', 'new\n');
+  f.put('tests/other.spec', 'assert new\n');
+  f.editMap(data => data.links.push(null, [], { id: 'malformed', actions: ['other'], source: null }));
+  const saved = f.bytes(), full = f.json('report'), check = f.check(1);
+  assert.equal(full.invalid.length, 4);
+  assert.deepEqual(check.invalid, full.invalid);
+  assert.match(full.invalid.find(row => row.link?.actions?.[0] === 'other' && row.link?.step).errors.join('; '), /source snippet is stale.*step snippet is stale/);
+  for (const args of [['--source', 'src/cart.py:1'], ['--step', 'tests/cart.spec:2'], ['--action', 'cart total'], ['--sequence', JSON.stringify(cartActions)]]) {
+    const report = f.json('report', ...args);
+    assert.deepEqual(report.invalid, full.invalid, 'selection must not suppress unrelated integrity diagnostics');
+    assert.equal(report.files.length, 1);
+    assert.equal(report.files[0].path, 'src/cart.py');
+    assert.equal(report.files[0].links.length, 1);
+  }
+  assert.deepEqual(f.bytes(), saved, 'reporting must not repair malformed rows or refresh stale hashes');
+});
+
+test('mapping journey: repeated exact UTF-8 snapshots remain fresh only until the next disk mutation', t => {
+  const source = '\uFEFFconst café = "雪";\r\n// déjà vu\r\nlast';
+  const witness = '\uFEFFopen 雪\r\nassert café\r\n';
+  const f = project(t, { 'src/cart.py': source, 'tests/cart.spec': witness });
+  for (const actions of [['open'], ['open', 'open'], ['open', 'save']]) f.ok(...f.link({ actions, step: 'tests/cart.spec:1-2' }));
+  f.ok(...f.link({ source: 'src/cart.py:2-3', actions: ['tail'], step: 'src/cart.py:2-3' }));
+  for (const row of f.map().links) {
+    assert.equal(row.source.sha256, sha256(row.source.start === 1 ? source.slice(0, source.indexOf('last')) : '// déjà vu\r\nlast'));
+    assert.equal(row.step.sha256, sha256(row.step.path === 'tests/cart.spec' ? witness : '// déjà vu\r\nlast'));
+  }
+  assert.equal(f.check().valid, 4);
+  const saved = f.bytes();
+  f.put('src/cart.py', source.replace('café', 'cafe'));
+  assert.equal(f.json('report').totals.linked, 2, 'a new invocation must invalidate changed shared source ranges but preserve an unchanged tail');
+  assert.equal(f.check(1).invalid.length, 3);
+  f.fail(f.link({ actions: ['open'], step: 'tests/cart.spec:1-2' }), /never silently refreshed/);
+  f.put('src/cart.py', source);
+  f.put('tests/cart.spec', witness.replaceAll('\r\n', '\n'));
+  assert.equal(f.check(1).invalid.length, 3, 'a new invocation must reread changed shared witness bytes');
+  f.fail(f.link({ actions: ['open'], step: 'tests/cart.spec:1-2' }), /never silently refreshed/);
+  f.put('tests/cart.spec', witness);
+  assert.equal(f.check().valid, 4);
+  assert.deepEqual(f.bytes(), saved, 'freshness checks never rewrite historical snapshots');
+});

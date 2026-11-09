@@ -1,6 +1,6 @@
 {
   "name": "@pcopu/tracercli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Language-neutral source/action/test navigation with separate provenance-bound LCOV interval evidence.",
   "type": "module",
   "bin": {
