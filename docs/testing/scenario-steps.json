@@ -73,8 +73,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 107,
-            "end": 130,
+            "start": 136,
+            "end": 159,
             "sha256": "57912013cea9bccc99ceb51a616f291ed0d2004966cdc5ea4a17f6f6fddba130"
           },
           "expectation": "consistent",
@@ -723,8 +723,8 @@
           "witness": {
             "path": "tests/e2e/mapping-journeys.test.mjs",
             "start": 704,
-            "end": 763,
-            "sha256": "4515e60ad2c0ac0b26a4763ff737019fedac5d60590c1698a687c09d3e594600"
+            "end": 770,
+            "sha256": "dc0746cb910a3b703a9078d86337061ccf6169604fc4e06adfaa8ebd90006214"
           }
         }
       ],
@@ -732,12 +732,22 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 40,
-            "end": 43,
+            "start": 48,
+            "end": 51,
             "sha256": "0fa1380d3934383bfafacee895ba072c7f5d92616041264c7f550bf0f6f28bf2"
           },
           "expectation": "contract",
           "why": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 39,
+            "end": 45,
+            "sha256": "eeefa8255d8dd3c521f3fe17b0c380b23d1173a3d03a007e73c6aade09310fe0"
+          },
+          "expectation": "contract",
+          "why": "The complete help contract asserts the public audit queue modes and flags, including audit --help, outside a project without side effects."
         }
       ]
     },
@@ -907,8 +917,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 38,
-            "end": 39,
+            "start": 46,
+            "end": 47,
             "sha256": "f31f075bf4e65c3f1335a5d9771d0d611bfa3b080c299dc977f1a8ee84f9c59f"
           },
           "expectation": "no-promotion",
@@ -917,8 +927,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 55,
-            "end": 56,
+            "start": 63,
+            "end": 64,
             "sha256": "4cd18b48bc9abd54eec321a21b3e55418c93fad67d0dc91c17132f0b11e39bf3"
           },
           "expectation": "no-promotion",
@@ -927,8 +937,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 101,
-            "end": 103,
+            "start": 130,
+            "end": 132,
             "sha256": "9650d9a13106baf9db992cd855a346d919cea9c46796ccd92afa232eee24304d"
           },
           "expectation": "separate",
@@ -1031,8 +1041,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 311,
-            "end": 314,
+            "start": 340,
+            "end": 343,
             "sha256": "103b822ddf91be3072b69bb876b79aae87d56c4a3b322dc70d52b8509c057abe"
           },
           "expectation": "text",
@@ -1110,8 +1120,8 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 104,
-            "end": 106,
+            "start": 133,
+            "end": 135,
             "sha256": "58e11ca1f444cfad69a1bbb786d4364b659da931c9af8fbc57022082ca8461f2"
           },
           "expectation": "stale",
@@ -1194,7 +1204,7 @@
             "path": "src/proposals.mjs",
             "start": 53,
             "end": 63,
-            "sha256": "e3a3d8f03fa2a86fec7d3a65b2405cfc545b9a537ecf82edcbea31218c221f97"
+            "sha256": "8aa2270905417a5c4c7aacc9f88375336283c94be628f058456229d84f314b34"
           },
           "expectation": "schema",
           "why": "Scenario identities, states and planned action/outcome descriptions are validated without requiring assertion witnesses."
@@ -1222,9 +1232,19 @@
         {
           "source": {
             "path": "bin/tracer.mjs",
-            "start": 88,
-            "end": 100,
-            "sha256": "ef9cdf73732732e675d86c7c29fbeac943f415bba8b71ad588e85610afb09899"
+            "start": 96,
+            "end": 97,
+            "sha256": "da789106ceead3d688c176f35db74ae14e2ce5bcd3e4c0e740ce2ac4c27f45ac"
+          },
+          "expectation": "flags",
+          "why": "The public proposal parser rejects unsupported modes, flags, missing files and malformed offsets before dispatch."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 119,
+            "end": 129,
+            "sha256": "1a583f67756f6a5198279ccd2d5097d0463ac16ead5fbad86918c935dd744816"
           },
           "expectation": "flags",
           "why": "The public proposal parser rejects unsupported modes, flags, missing files and malformed offsets before dispatch."
@@ -1382,7 +1402,7 @@
             "path": "src/proposals.mjs",
             "start": 35,
             "end": 46,
-            "sha256": "abdc8862f447b1b563b0eadfe6cfc51fe6e61d5f2fd5a2aa4334fb946ab18252"
+            "sha256": "08d48579252250036ebfc4e2457b986d6f5cbdb5e6baa3cb84fa2bece8ef7a8a"
           },
           "expectation": "paths",
           "why": "Proposal reader rejects map/working paths and oversize files and validates the root schema; the second post-read size guard is defense against a stat/read race, not a separately observed race."
@@ -1512,6 +1532,796 @@
           },
           "expectation": "cache",
           "why": "The internal proposal report path skips duplicate default-proposal inspection while ordinary reports retain it."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-lifecycle",
+      "title": "Freeze complete contracts and supervise independent semantic receipts",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --context caller.txt",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --context caller.txt",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit claim --worker coder",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file unfilled.json",
+        "tracer audit claim --worker second-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "identity",
+          "description": "Queue deduplicates identical input, freezes source/context and all range/shared assertions, refuses same-author or excess claims and emits an unfilled unresolved template.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 44,
+            "end": 52,
+            "sha256": "dba9dbba1980f043d8ec30efb650d540fb30800a495de0222db0add306472702"
+          }
+        },
+        {
+          "id": "completion",
+          "description": "Recorded semantic acceptance drains only after all required jobs finish, without changing proposals/manual links or claiming executable readiness or execution. Local evidence stays Git-ignored.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 53,
+            "end": 63,
+            "sha256": "45fea7063c368a9ebcce7516eedb61485e0f57c62e5feaa18860713b3bbd2ece"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 1,
+            "end": 14,
+            "sha256": "41cc018dd9cbb043903a67e311d902653f3b315baafa29f916224ee859b9df58"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 94,
+            "end": 115,
+            "sha256": "1e123c9956fb4923b0cf9726c4c87136bbc580c617fb72b52647c2afed9a57b9"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 117,
+            "end": 118,
+            "sha256": "51c420dee5eb020fc459814740776f5a338c6a17c00ae598f41bd3d31ae6e6f6"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 121,
+            "end": 121,
+            "sha256": "412ca345ccf75bf9c0806bce695be8de808b79984251a7a54d202cf6101dd451"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 143,
+            "end": 151,
+            "sha256": "81a4eba8cae97f948dafc48ac3c16a4b7f1e355a26072ad61344f6b3f7b77ca4"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 223,
+            "end": 224,
+            "sha256": "464371d107bc009b85dd0e5aa945e9dc493e359ef7c12b8c8d098a7259b01297"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 226,
+            "end": 231,
+            "sha256": "d12d49cfc7a3672460340bb49139ea8704466b037e43c222d67b4da03e659549"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 234,
+            "end": 242,
+            "sha256": "e473d4710c18b8d669f5654fe66ad124b9ac6629f5678cf68db6b489e967ae43"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 243,
+            "end": 252,
+            "sha256": "957fc0363252fe63c7751970754416d4e6fdffa53f60dd3f9429cb5286619438"
+          },
+          "expectation": "identity",
+          "why": "Complete frozen contract/source identities, deduplicated queue admission and bounded independent claims support the public lifecycle. Helpers/imports are structural support, not extra execution evidence."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 36,
+            "end": 43,
+            "sha256": "7241e9e393f278f6dc02e19fddd419fde5bfb712fa0e642ac0f95dcb743c28ce"
+          },
+          "expectation": "completion",
+          "why": "Immutable receipt persistence and local queue storage preserve manual data and record semantic results separately; generic I/O error branches remain defensive, not a claim of fault injection for every syscall."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 75,
+            "end": 78,
+            "sha256": "dfabbb4dea286f70b60ad27d3731931b4ab40fba175bd50fdec531e313dd35b5"
+          },
+          "expectation": "completion",
+          "why": "Immutable receipt persistence and local queue storage preserve manual data and record semantic results separately; generic I/O error branches remain defensive, not a claim of fault injection for every syscall."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 216,
+            "end": 217,
+            "sha256": "e407185f49b41249561d9a0a6b583e30767e8080dad604d25336c40ab95e61ce"
+          },
+          "expectation": "completion",
+          "why": "Immutable receipt persistence and local queue storage preserve manual data and record semantic results separately; generic I/O error branches remain defensive, not a claim of fault injection for every syscall."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 253,
+            "end": 262,
+            "sha256": "9bdf1f5b638b146d5829c8be158deb551e2deaf62c5be1ea16e5c8f2874e06d6"
+          },
+          "expectation": "completion",
+          "why": "Immutable receipt persistence and local queue storage preserve manual data and record semantic results separately; generic I/O error branches remain defensive, not a claim of fault injection for every syscall."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 9,
+            "end": 9,
+            "sha256": "2e571d7eddd85faafee3ca47f9642de0e5687e4cff27d49843f9d425eda6c931"
+          },
+          "expectation": "identity",
+          "why": "The public CLI imports its audit queue implementation."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 114,
+            "end": 118,
+            "sha256": "d81946a646f7ccb3f707907dcb3edfd34f802f05d1ae769b47b1c3eeb8e24c8e"
+          },
+          "expectation": "completion",
+          "why": "CLI dispatch prints the audit result and returns failure for an unfinished semantic drain."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 35,
+            "end": 35,
+            "sha256": "d06a61e479216107f91f88e8cef2ab61edf818cbf1ac55b38b391b83494503b8"
+          },
+          "expectation": "identity",
+          "why": "Queue reuses the existing proposal reader rather than a weaker alternate schema."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 53,
+            "end": 53,
+            "sha256": "9097c3bb1657b5802866b7c53da943c66ea1d4cd6345e04cd46d2e61838ae463"
+          },
+          "expectation": "identity",
+          "why": "Queue reuses existing current source and association validation."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-freshness",
+      "title": "Keep late results historical and require current complete contracts",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --context caller.txt",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal prepare --file draft.json",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --context caller.txt",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer audit fail --job <stale-pending-job> --reason Supervisor explicitly closes the superseded pending snapshot.",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "stale",
+          "description": "Source edits invalidate old receipts, immutable inputs remain intact, unfinished historical jobs require explicit closure, unchanged contracts carry across unrelated metadata edits, and changed callers/shared outcomes invalidate credit.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 69,
+            "end": 86,
+            "sha256": "9aa8223b50508b7140d45d1c2e91290773dea3a21f4301941e0411da2703d827"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 130,
+            "end": 135,
+            "sha256": "bbb43ff1b4068c431bb8f6f126983855e0509ee49a1a41f2f032a22a30dc98b4"
+          },
+          "expectation": "stale",
+          "why": "Current status compares the complete contract and all pinned files, selects required current obligations and exposes outstanding historical work. Counts and the completion gate never treat late/stale receipts as approval of changed input."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 189,
+            "end": 215,
+            "sha256": "bb5327659674a16cf95bf0d19d680b89dcdd0f58ea5de54cad859b268ad89b16"
+          },
+          "expectation": "stale",
+          "why": "Current status compares the complete contract and all pinned files, selects required current obligations and exposes outstanding historical work. Counts and the completion gate never treat late/stale receipts as approval of changed input."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-supervision",
+      "title": "Preserve unfinished work across process exit and explicit retry",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json",
+        "tracer audit fail --job <job-id> --claim wrong --reason Worker exited.",
+        "tracer audit fail --job <job-id> --claim <active-claim> --reason Supervisor observed the worker exit without a result.",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit retry --job <job-id>",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "supervised",
+          "description": "Claim CLI exit never implies success; only the exact claim can be failed, retries get a new claim, obsolete receipts fail, default drain retains missing scope and history remains ordered.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 92,
+            "end": 101,
+            "sha256": "a85b638cb87982a292c08bc3809db12b205ed2973579051c7871f179623d3fa9"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 136,
+            "end": 138,
+            "sha256": "80dbb08150f89a8d6e8547338431cce65dab600d3c5af6fbaf4c4d565585b16f"
+          },
+          "expectation": "supervised",
+          "why": "Explicit failure and retry transitions preserve attempt history and active claim ownership instead of assuming a detached worker survived. Unknown-operation fallback and retry capacity defense are not a claim that every branch executed."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 263,
+            "end": 276,
+            "sha256": "902fd51d7a10b26850f33dc3da35bc4702940b7718a6582e3c73c4e76f9dd045"
+          },
+          "expectation": "supervised",
+          "why": "Explicit failure and retry transitions preserve attempt history and active claim ownership instead of assuming a detached worker survived. Unknown-operation fallback and retry capacity defense are not a claim that every branch executed."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-receipts",
+      "title": "Reject incomplete or contradictory semantic declarations",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file bad-receipt.json",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset 1 --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "receipt",
+          "description": "Each range and shared outcome needs a distinct assessment; identity, readiness, execution, evidence and open-correction contradictions are rejected without changing queue bytes. Correction and unresolved receipts never drain as accepted.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 106,
+            "end": 119,
+            "sha256": "6cf034ab1029b2536a6d60d16d5ce7b61807d7b7618455187dbb3608605f9f20"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 152,
+            "end": 180,
+            "sha256": "5372c62b5ded1951cd0054bac31aee535e1096f255063d5acec178b8e216960a"
+          },
+          "expectation": "receipt",
+          "why": "Receipt validation requires the claimed immutable snapshot, all per-assertion fixture/action/state/oracle/guard assessments, separate judgments and pinned overlapping source evidence. Validation is not a semantic truth oracle; unforced enum/bounds alternatives remain defensive."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-admission",
+      "title": "Bound pending work and make completion scope explicit",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --max-pending 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --max-pending 1 --limit 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --max-pending 2",
+        "tracer audit fail --job <job-id> --reason Explicitly superseded by changed feature work.",
+        "tracer audit retry --job <job-id>",
+        "tracer proposal prepare --file draft.json",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset 1 --limit 1",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --offset 99",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 0",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1001",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset -1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset 1.2",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --author duplicate"
+      ],
+      "expectations": [
+        {
+          "id": "bounds",
+          "description": "Capacity errors leave no partial queue, duplicate jobs consume no new capacity, existing capacity is preserved, stale retry fails and an empty/narrowed gate cannot imply full completion.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 124,
+            "end": 134,
+            "sha256": "e28e828cbbd66413f10705d5f336324e573ac065d54463d8432da91ffcf53b40"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 181,
+            "end": 188,
+            "sha256": "05b2addb8f910bce3913dbf25a3b2cdee5e32382ad65a030b85852d18a1f17f8"
+          },
+          "expectation": "bounds",
+          "why": "Explicit selection and capacity validation bound admission and fail empty scopes; the 10000-job archival ceiling is defensive and was not stress-filled in this journey."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 218,
+            "end": 222,
+            "sha256": "5b480a422a105f7dbfb526076a47c1e3d68b12b83bd1fb5cedf27696fbc67b99"
+          },
+          "expectation": "bounds",
+          "why": "Explicit selection and capacity validation bound admission and fail empty scopes; the 10000-job archival ceiling is defensive and was not stress-filled in this journey."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 232,
+            "end": 233,
+            "sha256": "c01d7ef2a5a639308f3800012287136502c9aa2c588dcf009d63ebc52e321e7d"
+          },
+          "expectation": "bounds",
+          "why": "Explicit selection and capacity validation bound admission and fail empty scopes; the 10000-job archival ceiling is defensive and was not stress-filled in this journey."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 98,
+            "end": 113,
+            "sha256": "bcdb45836716a1ba2a164bb6aeacbe84ebab206fd430f30ed6662ecb3584e4c1"
+          },
+          "expectation": "bounds",
+          "why": "Public audit options preserve repeated context paths while rejecting duplicates, unknown options and malformed numeric limits."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-storage",
+      "title": "Preserve queue and manual data on unsafe storage or mutated evidence",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker reviewer",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder"
+      ],
+      "expectations": [
+        {
+          "id": "storage",
+          "description": "Existing lock, symlink queue, modified snapshot or receipt bytes fail closed; manual data and symlink targets stay unchanged.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 138,
+            "end": 147,
+            "sha256": "a9862f45217096cf1512a9071e11e0fd816a5b39a56f69e70d04290ab55c2597"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 18,
+            "end": 29,
+            "sha256": "01e671c53883984849a5f70459ce1e87b9cfb1b0aa113fb747a81c8a1cfec4fb"
+          },
+          "expectation": "storage",
+          "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 72,
+            "end": 74,
+            "sha256": "b1d40467b8e7914a4ba4f18d961fddf65e73b2fb55c8ec575f84fabb621c7c49"
+          },
+          "expectation": "storage",
+          "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 79,
+            "end": 93,
+            "sha256": "253ceeba8c8babcb23f189ba54a5f1846b8d5280b2cb1a90338a2e7499a7085c"
+          },
+          "expectation": "storage",
+          "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 122,
+            "end": 129,
+            "sha256": "19cab186b4ec4038081d9b48d52b6fbee92f8ddd7b3e1dd172426bf66cc89986"
+          },
+          "expectation": "storage",
+          "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 139,
+            "end": 142,
+            "sha256": "73fb3983ec63a677ab47eb619499e8bfd94c0579b8d917d755428b9153c60274"
+          },
+          "expectation": "storage",
+          "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-witnesses",
+      "title": "Freeze existing test files and invalidate changed witness readiness",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1"
+      ],
+      "expectations": [
+        {
+          "id": "witness",
+          "description": "Verified existing test paths are included automatically; changing one invalidates a previously ready receipt.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 152,
+            "end": 158,
+            "sha256": "a1ecdca6c24f08a04fff98e67ac95f91994e3fa431adac3b7917cfbc36e78f3c"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 224,
+            "end": 224,
+            "sha256": "931f3562ef61b943caa4ace298c56f231e9e7a9f101afd59b488c068a3cb5f4b"
+          },
+          "expectation": "witness",
+          "why": "Referenced test context is frozen alongside source; executable readiness remains a separate current declaration, not an observed test outcome."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 211,
+            "end": 211,
+            "sha256": "b21494b099cf71573827d1a50bcb42f355feda4896b2937db90bd10679810174"
+          },
+          "expectation": "witness",
+          "why": "Referenced test context is frozen alongside source; executable readiness remains a separate current declaration, not an observed test outcome."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-orphan-recovery",
+      "title": "Recover interrupted persistence without overwriting immutable provenance",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json --limit 1",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1"
+      ],
+      "expectations": [
+        {
+          "id": "orphan",
+          "description": "Simulated interrupted queue persistence reuses an equivalent orphan across harmless proposal metadata changes, retains provenance/digest, and rejects a corrupt orphan without replacing it.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 166,
+            "end": 176,
+            "sha256": "ab618284afd70bb9f17c41fed9d719e01c22906179f6575e0d1c69e50d733317"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 44,
+            "end": 55,
+            "sha256": "b117516c631098c73a8e60d1a541f5c1ee6cd5687de3adb6a602a4963018be85"
+          },
+          "expectation": "orphan",
+          "why": "Orphan snapshots are reused only on exact full-contract/files/assertions identity while preserving their original whole-proposal provenance. The fixture models interrupted state rather than claiming every disk failure was injected."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 235,
+            "end": 235,
+            "sha256": "accc33ec25be94caad15d51dcd97143e77867241fb3d1820617b2dfc304de170"
+          },
+          "expectation": "orphan",
+          "why": "Orphan snapshots are reused only on exact full-contract/files/assertions identity while preserving their original whole-proposal provenance. The fixture models interrupted state rather than claiming every disk failure was injected."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-input-guards",
+      "title": "Reject corrupt metadata and unsafe public inputs",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and proposal. The fixture owns its code, context and receipt files; no real accounts, app data or network reviewers are involved."
+      ],
+      "actions": [
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --limit 1",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit",
+        "tracer audit unknown",
+        "tracer audit status",
+        "tracer audit record",
+        "tracer audit retry --job unknown",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --offset 999",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json --json --json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json --unknown",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author \" coder \"",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder --context .tracer/audits/queue.json",
+        "tracer audit record --file .git/config",
+        "tracer audit record --file docs/testing",
+        "tracer audit record --file receipt-alias.json",
+        "tracer audit record --file ../outside.json",
+        "tracer audit record --file bad-json.json",
+        "tracer audit record --file large-receipt.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit status --file docs/testing/proposed-scenario-map.json",
+        "tracer audit record --file receipt.json"
+      ],
+      "expectations": [
+        {
+          "id": "guards",
+          "description": "Unsupported modes/options, unsafe and oversized receipt files, invalid queue root/job metadata and bad claims fail without changing the saved queue/manual map; restored valid input records successfully.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 180,
+            "end": 196,
+            "sha256": "038e0959b6c0b745e2fd29e773acd59f02554a28e7147f4e1a60779efcb0da59"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 15,
+            "end": 17,
+            "sha256": "c708319ecc9b6db6c9b2abc8d898fea11f871ac8c1c95d28aef92166e46e2ede"
+          },
+          "expectation": "guards",
+          "why": "Scalar/array/path/JSON and queue schema checks fail closed. The oversized test exercises the pre-read 64 MiB guard; the second size check protects a stat/read race not separately forced."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 30,
+            "end": 35,
+            "sha256": "51f9263fc620b7e1c8d88798fc78499344327c71546607f437b62f532605197d"
+          },
+          "expectation": "guards",
+          "why": "Scalar/array/path/JSON and queue schema checks fail closed. The oversized test exercises the pre-read 64 MiB guard; the second size check protects a stat/read race not separately forced."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 56,
+            "end": 71,
+            "sha256": "7449b1dfa0a3269fb562b6b5dc99547c36dec836e9634bf0924787d63062547d"
+          },
+          "expectation": "guards",
+          "why": "Scalar/array/path/JSON and queue schema checks fail closed. The oversized test exercises the pre-read 64 MiB guard; the second size check protects a stat/read race not separately forced."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 96,
+            "end": 97,
+            "sha256": "da789106ceead3d688c176f35db74ae14e2ce5bcd3e4c0e740ce2ac4c27f45ac"
+          },
+          "expectation": "guards",
+          "why": "Public command allowlist recognizes audit while rejecting unknown commands."
+        }
+      ]
+    },
+    {
+      "id": "audit-queue-assertion-bound",
+      "title": "Reject unrecordable audit contracts and support the exact receipt limit",
+      "preconditions": [
+        "Synthetic one-association proposal with 5000 range assertions and a shared scenario initially containing 5001 outcomes. No production data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder",
+        "tracer proposal prepare --file draft.json",
+        "tracer audit enqueue --file docs/testing/proposed-scenario-map.json --author coder",
+        "tracer audit claim --worker independent-reviewer",
+        "tracer audit record --file receipt.json",
+        "tracer audit drain --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "bound",
+          "description": "10,001 combined assertions fail before queue/snapshot persistence; exactly 10,000 can be claimed, fully recorded and semantically drained.",
+          "witness": {
+            "path": "tests/e2e/audit-queue-journeys.test.mjs",
+            "start": 204,
+            "end": 210,
+            "sha256": "082709f5e8efea9c20f4b6075fc706442708d3f58b3605e845ff07609a2f7a61"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 115,
+            "end": 121,
+            "sha256": "1a84fa348ac5be5b558e732b10b47595a38057e2f60aff865e125a3e48b36859"
+          },
+          "expectation": "bound",
+          "why": "Combined range/shared assertion count is checked before expansion against the same 10,000 limit as recording, preventing impossible pending jobs."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 160,
+            "end": 163,
+            "sha256": "2e46e4b11953ced218c6dae3cb7b9de6e46b9c106fead2f0d9399762fb57b926"
+          },
+          "expectation": "bound",
+          "why": "Expected assertion IDs are indexed once so the supported 10,000-assessment receipt can be validated without repeated linear search."
+        },
+        {
+          "source": {
+            "path": "src/audit-queue.mjs",
+            "start": 225,
+            "end": 225,
+            "sha256": "65013c2c5a06806c3600a5631feea9190bf782f833dbda058453aa433961bc6d"
+          },
+          "expectation": "bound",
+          "why": "Frozen file count is checked before persistence against the read-time bound; the journey exercises valid admission, not a 10,001-file stress fixture."
         }
       ]
     }
@@ -1648,6 +2458,76 @@
       "title": "Keep concurrent-edit proposal reports coherent and hash shared sources once",
       "steps": [
         "proposal-consistent-snapshot"
+      ]
+    },
+    {
+      "id": "audit-queue-lifecycle",
+      "title": "Freeze complete contracts and supervise independent semantic receipts",
+      "steps": [
+        "audit-queue-lifecycle"
+      ]
+    },
+    {
+      "id": "audit-queue-freshness",
+      "title": "Keep late results historical and require current complete contracts",
+      "steps": [
+        "audit-queue-freshness"
+      ]
+    },
+    {
+      "id": "audit-queue-supervision",
+      "title": "Preserve unfinished work across process exit and explicit retry",
+      "steps": [
+        "audit-queue-supervision"
+      ]
+    },
+    {
+      "id": "audit-queue-receipts",
+      "title": "Reject incomplete or contradictory semantic declarations",
+      "steps": [
+        "audit-queue-receipts"
+      ]
+    },
+    {
+      "id": "audit-queue-admission",
+      "title": "Bound pending work and make completion scope explicit",
+      "steps": [
+        "audit-queue-admission"
+      ]
+    },
+    {
+      "id": "audit-queue-storage",
+      "title": "Preserve queue and manual data on unsafe storage or mutated evidence",
+      "steps": [
+        "audit-queue-storage"
+      ]
+    },
+    {
+      "id": "audit-queue-witnesses",
+      "title": "Freeze existing test files and invalidate changed witness readiness",
+      "steps": [
+        "audit-queue-witnesses"
+      ]
+    },
+    {
+      "id": "audit-queue-orphan-recovery",
+      "title": "Recover interrupted persistence without overwriting immutable provenance",
+      "steps": [
+        "audit-queue-orphan-recovery"
+      ]
+    },
+    {
+      "id": "audit-queue-input-guards",
+      "title": "Reject corrupt metadata and unsafe public inputs",
+      "steps": [
+        "audit-queue-input-guards"
+      ]
+    },
+    {
+      "id": "audit-queue-assertion-bound",
+      "title": "Reject unrecordable audit contracts and support the exact receipt limit",
+      "steps": [
+        "audit-queue-assertion-bound"
       ]
     }
   ]

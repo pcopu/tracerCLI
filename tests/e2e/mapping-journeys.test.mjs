@@ -726,6 +726,13 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure check [--json]
+  audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
+                [--context PATH ...] [--max-pending N] [--json]
+  audit claim --worker NAME [--job ID] [--json]
+  audit record --file RECEIPT [--json]
+  audit fail --job ID [--claim ID] --reason TEXT [--json]
+  audit retry --job ID [--json]
+  audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   scenario prepare|check --file CATALOG [--json]
@@ -753,7 +760,7 @@ MANUAL LINKS ONLY. A current link is not observed execution, test coverage or pr
     const result = f.expect(args, 0, outside);
     assert.equal(result.stdout, expected); assert.equal(result.stderr, '');
   }
-  for (const command of ['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal']) {
+  for (const command of ['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal', 'audit']) {
     const result = f.expect([command, '--help'], 0, outside);
     assert.equal(result.stdout, expected, `${command} --help must show the same complete contract`);
     assert.equal(result.stderr, '');

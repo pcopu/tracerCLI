@@ -165,7 +165,7 @@ test('packaged install journey: offline npm package, both installed bins, mappin
   assert.equal(packed.length, 1); assert.equal(packed[0].name, '@pcopu/tracercli');
   const listed = packed[0].files.map(file => file.path);
   for (const path of ['package.json', 'README.md', 'bin/tracer.mjs', 'src/tracer.mjs', 'src/measured.mjs',
-    'src/proposals.mjs', 'docs/proposals.md', 'src/scenarios.mjs', 'src/scenario-runtime.mjs', 'docs/scenarios.md', 'src/project.mjs', 'src/agent-setup.mjs', 'src/update.mjs', 'skills/tracer/SKILL.md', 'docs/measured.md']) assert.ok(listed.includes(path), path);
+    'src/audit-queue.mjs', 'docs/audit-queue.md', 'src/proposals.mjs', 'docs/proposals.md', 'src/scenarios.mjs', 'src/scenario-runtime.mjs', 'docs/scenarios.md', 'src/project.mjs', 'src/agent-setup.mjs', 'src/update.mjs', 'skills/tracer/SKILL.md', 'docs/measured.md']) assert.ok(listed.includes(path), path);
   assert.equal(listed.some(path => /^(?:tests|scripts|node_modules)\//.test(path)), false);
   const tarball = join(packs, packed[0].filename); assert.equal(existsSync(tarball), true);
   run('npm', ['install', '--prefix', prefix, '--no-save', '--no-package-lock', ...npmFlags, tarball]);
@@ -181,7 +181,7 @@ test('packaged install journey: offline npm package, both installed bins, mappin
   assert.equal(manifest.description, 'Language-neutral source/action/test navigation with separate provenance-bound LCOV interval evidence.');
   assert.deepEqual(manifest.repository, { type: 'git', url: 'https://github.com/pcopu/tracerCLI.git' });
   assert.equal(manifest.scripts.test, 'node bin/tracer.mjs app -- test');
-  assert.equal(manifest.scripts.check, 'node --check bin/tracer.mjs && node --check src/tracer.mjs && node --check src/catalog.mjs && node --check src/proposals.mjs && node --check src/scenarios.mjs && node --check src/scenario-runtime.mjs && node --check src/measured.mjs && node --check src/project.mjs && node --check src/agent-setup.mjs && node --check src/update.mjs && node --check scripts/project-cli.mjs && npm test && node bin/tracer.mjs check');
+  assert.equal(manifest.scripts.check, 'node --check bin/tracer.mjs && node --check src/tracer.mjs && node --check src/catalog.mjs && node --check src/proposals.mjs && node --check src/audit-queue.mjs && node --check src/scenarios.mjs && node --check src/scenario-runtime.mjs && node --check src/measured.mjs && node --check src/project.mjs && node --check src/agent-setup.mjs && node --check src/update.mjs && node --check scripts/project-cli.mjs && npm test && node bin/tracer.mjs check');
   for (const path of ['bin/tracer.mjs', ...Object.values(manifest.exports), 'skills/tracer/SKILL.md', 'docs/measured.md', 'docs/scenarios.md']) assert.equal(existsSync(join(installed, path)), true, path);
   assert.equal(existsSync(join(installed, 'tests')), false); assert.equal(existsSync(join(installed, 'scripts')), false);
   const tracer = join(prefix, 'node_modules/.bin/tracer'), tracercli = join(prefix, 'node_modules/.bin/tracercli');

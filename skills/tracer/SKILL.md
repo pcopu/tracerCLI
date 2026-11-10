@@ -1,6 +1,6 @@
 ---
 name: tracer
-description: Propose the full scenario map first, audit it in batches afterward, and keep proposed associations, reviewed links and execution evidence separate while advancing CLI-driven testing. Use for Tracer workflows, coverage gaps and keeping app or server CLI features testable; categorization and manual links never prove execution.
+description: Author scenarios alongside code, supervise immutable background audits, and gate completion on current receipts; propose whole-repository maps before auditing while keeping proposals, reviewed links and execution evidence separate. Use for Tracer workflows, coverage gaps and keeping app or server CLI features testable; categorization and manual links never prove execution.
 ---
 
 # Tracer
@@ -32,7 +32,25 @@ For a whole-codebase mapping request, produce a useful complete **proposed scena
 
 Keep **proposed / reviewed / executed** statuses and percentages visible with their actual denominators. `report --json` exposes independent `progress.proposed`, `progress.reviewed` and `progress.executed` fields. Reviewed progress is current operator-declared manual links, not independently verified semantic audit. Execution is `null`/unknown in mapping reports, never inferred as 0% or 100%; report actual execution evidence in its own supported scope. A 100% proposal with 10% reviewed links is useful progress, not 100% tested behavior.
 
-For active development, author the planned scenario, CLI route and meaningful assertions alongside the changed feature, execute early when possible, and review only affected definitions and compositions. Do not force a full categorization or proposal pass before every edit. Measure proposal completion time, audit throughput and real execution results separately rather than optimizing one by hiding the others.
+## Active coding: author scenarios together, audit asynchronously
+
+Author or update the scenario contract, supported CLI route and meaningful assertions **alongside each feature change**, not as a deferred cleanup. Keep coding and scenario authoring in one lane; give independent reviewers frozen snapshots rather than the mutable working tree. Execute affected real journeys early when possible. A whole-repository proposal remains an early deliverable for a mapping request, not a prerequisite before each edit.
+
+Read `docs/audit-queue.md` for the queue protocol and receipt contract. Use this loop:
+
+1. **Author a complete affected contract.** Include concrete fixtures, ordered actions, required state/reset, observable outcomes and relevant caller/guard assumptions. Review every range's `proposedAssertions` AND every linked shared scenario's `expectedOutcomes`, with its actions. Shared text is part of every referring association, not background that can be omitted from review.
+2. **Enqueue a stable milestone.** Prepare a current proposal, then use `tracer audit enqueue --file PROPOSAL --author NAME` with a useful bounded batch and explicit `--context` files for callers, wrappers or witnesses outside the referenced source. This freezes the selected full contracts and full source/context bytes in `.tracer/audits`. Enqueue on meaningful milestones, not every keystroke. Deduplicate unchanged inputs and bound pending work; a full queue is visible backpressure, not permission to discard review obligations.
+3. **Supervise one independent review lane initially.** The coordinating agent retains the reviewer, claims a job with `audit claim --worker NAME`, and supplies the returned immutable job and claim ID. The queue does not launch processes or contact reviewers. Do not use a detached process as a substitute for supervision. Continue unrelated coding while review proceeds; poll or collect results at natural milestones instead of waiting after every enqueue.
+4. **Review semantics, not just pins.** Assess source-association fit, assertion adequacy and executable readiness separately. Trace the whole call path and outer guards, replay interception, temporal ordering, stale responses, cancellation, boundary inputs and claimed privacy/atomicity/failure behavior. For each verbatim assertion, identify fixture, action, required state/reset, oracle and guard evidence. A helper can support a wider scenario without implementing every step; an unwritten fixture can block readiness without disproving source fit. Never relax production guards or call static/mock checks real native/provider execution.
+5. **Record findings against that claim.** Use `audit record --file RECEIPT` for reviewer declarations with evidence and concrete corrections. Missing context or an unresolvable claim stays unresolved. A failed/crashed review must not become an accepted receipt: explicitly `audit fail` the claim and `audit retry` when appropriate. Pending/running work stays visible until completed or explicitly recovered; the CLI does not infer worker liveness.
+6. **Correct separately and re-audit independently.** Preserve original snapshots and findings. Revise affected contracts deliberately, giving a contract its own scenario identity when changing a shared definition would affect unrelated associations. Queue revised contracts for a new independent audit; do not have the author turn a correction into acceptance. Carry a prior receipt only when exact full contract and all pinned source/context bytes still match. A changed proposal elsewhere alone need not invalidate an unchanged association, but even an out-of-range edit in its source file makes its receipt stale.
+7. **Drain at completion, not during raw coding.** Before declaring the work complete or ready for publication, run `tracer audit status --file PROPOSAL` and `tracer audit drain --file PROPOSAL` against the final current proposal and source. The default gate covers **all current proposal associations**, including ones never enqueued, not merely the last batch. Any explicit narrower selector must match the agreed completion scope. Missing, pending, running, failed, correction-needed, unresolved or stale required review blocks audit completion. Run affected journeys and repository aggregate checks separately against final bytes; drain neither executes them nor proves their results.
+
+Keep reviewers read-only against the author's tree. Findings should be concise, source-linked and surfaced at useful milestones; queue chatter must not interrupt every edit. Periodically use a small blind overlap and adjudicate disagreements against source. Preserve withdrawn findings and do not describe reviewer agreement as accuracy.
+
+A receipt is a **reviewer declaration**, not proof that source behavior is correct or a scenario ran. Queue acceptance never promotes proposal rows into reviewed witness links, passing tests or measured execution. Report proposed mapping, semantic-audit statuses, reviewed witness mapping and actual execution independently, with their own denominators.
+
+The supporting benchmark had four small matched pairs: concurrent review removed audit waiting during coding, but one pair finished slower overall and final gates still waited. This supports a supervised pilot, not a general speed guarantee. Token telemetry was unavailable; do not claim token savings or substitute characters, source size or elapsed time for token usage. Measure end-to-end time, explicit waits, review/rework, stale results and failures separately.
 
 ## Discover and maintain the real CLI surface
 
@@ -108,10 +126,11 @@ Keep these conclusions separate:
 
 1. **Feature categorization:** proposed/reviewed code-to-feature assignments and unknowns.
 2. **Proposed scenario mapping:** full unreviewed plans, uncertainty, unwritten tests and current included-line percentage.
-3. **Reviewed scenario mapping:** current operator-declared manual links, exact action sequences and witness gaps.
-4. **CLI surface:** implemented routes, missing features and restrictions by target/platform.
-5. **Observed test results:** actual scenarios, assertions, build, platform and input route; passed, failed, skipped, blocked and not run.
-6. **Measured execution:** real instrumentation observations for its exact scope and source/build, not correctness or per-action causality.
+3. **Semantic audit:** current reviewer declarations for source fit, assertion adequacy and readiness; missing, pending, running, failed, correction-needed, unresolved and stale work remain explicit.
+4. **Reviewed scenario mapping:** current operator-declared manual links, exact action sequences and witness gaps.
+5. **CLI surface:** implemented routes, missing features and restrictions by target/platform.
+6. **Observed test results:** actual scenarios, assertions, build, platform and input route; passed, failed, skipped, blocked and not run.
+7. **Measured execution:** real instrumentation observations for its exact scope and source/build, not correctness or per-action causality.
 
 For a request to reach 100%, identify the requested metric and denominator from context; clarify only if necessary to avoid doing the wrong work. Continue useful authorized work meanwhile. Report progress and blockers for the intended metric. Never substitute a 100% catalog or manual map for tested behavior, full native parity or completed migration.
 

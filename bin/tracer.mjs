@@ -6,6 +6,7 @@ import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpda
 import { importMeasured, reportMeasured, checkMeasured } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand } from '../src/proposals.mjs';
+import { auditQueue } from '../src/audit-queue.mjs';
 let selectedCommand;
 
 const help = `Tracer ${VERSION} — source ↔ ordered CLI actions ↔ test steps
@@ -35,6 +36,13 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure check [--json]
+  audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
+                [--context PATH ...] [--max-pending N] [--json]
+  audit claim --worker NAME [--job ID] [--json]
+  audit record --file RECEIPT [--json]
+  audit fail --job ID [--claim ID] --reason TEXT [--json]
+  audit retry --job ID [--json]
+  audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   scenario prepare|check --file CATALOG [--json]
@@ -85,8 +93,29 @@ async function main(args) {
   }
   const [command, ...rest] = args;
   if (rest.length === 1 && rest[0] === '--help') { console.log(help); return; }
-  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
+  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal', 'audit'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
   selectedCommand = command;
+  if (command === 'audit') {
+    const [mode, ...flags] = rest, options = {};
+    const allowed = { enqueue: ['--file', '--author', '--offset', '--limit', '--context', '--max-pending'],
+      claim: ['--worker', '--job'], record: ['--file'], fail: ['--job', '--claim', '--reason'], retry: ['--job'],
+      status: ['--file', '--offset', '--limit'], drain: ['--file', '--offset', '--limit'] }[mode];
+    if (!allowed) fail('Use audit enqueue, claim, record, fail, retry, status or drain.');
+    for (let i = 0; i < flags.length; i++) {
+      const flag = flags[i], key = flag.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      if (flag !== '--json' && !allowed.includes(flag) || Object.hasOwn(options, key) && flag !== '--context') fail(`Unknown or duplicate audit ${mode} option: ${flag}`);
+      const supplied = flag === '--json' ? true : value(flags, i++, flag);
+      if (['--offset', '--limit', '--max-pending'].includes(flag)) {
+        if (!/^(0|[1-9]\d*)$/.test(supplied)) fail(`${flag} requires a nonnegative integer.`);
+        options[key] = Number(supplied);
+      } else if (flag === '--context') (options.context ??= []).push(supplied);
+      else options[key] = supplied;
+    }
+    const result = auditQueue(new Tracer(settings), mode, options);
+    console.log(JSON.stringify(result, null, 2));
+    if (mode === 'drain' && !result.complete) process.exitCode = 1;
+    return;
+  }
   if (command === 'proposal') {
     const [mode, ...flags] = rest, options = {};
     if (!['prepare', 'check', 'report', 'audit'].includes(mode)) fail('Use proposal prepare, check, report or audit.');

@@ -32,7 +32,7 @@ function filePath(root, file) {
   }
   return path;
 }
-function readProposal(root, file, map) {
+export function readProposal(root, file, map) {
   if (file === map || file.startsWith(`${map}.`)) fail('Proposal must be separate from the reviewed map and its working files.');
   const path = filePath(root, file);
   if (lstatSync(path).size > MAX_BYTES) fail('Proposal exceeds 32 MiB.');
@@ -50,7 +50,7 @@ function readProposal(root, file, map) {
 function spanHash(lines, start, end) {
   return hash(lines.slice(start - 1, end).map(line => line.replace(/\r?\n$/, '').replace(/\r$/, '')).join('\n'));
 }
-function inspectProposal(root, value, state, { prepare = false } = {}) {
+export function inspectProposal(root, value, state, { prepare = false } = {}) {
   const scenarios = new Map(), rangeIds = new Set(), candidates = [], issues = [], occupied = new Map(), fileHashes = new Map();
   for (const scenario of value.scenarios) {
     id(scenario?.id, 'scenario id'); text(scenario.title, 'scenario title'); id(scenario.featureId, 'feature id');

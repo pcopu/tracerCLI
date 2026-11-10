@@ -203,3 +203,7 @@ Read [Reusable scenario steps](docs/scenarios.md) for the schema, workflow, runt
 ## Propose first, audit afterward
 
 For whole-codebase mapping, author the full [proposed scenario map](docs/proposals.md) first, including unwritten tests and explicit uncertainty. `tracer proposal prepare/check/report` pins and reports the separate plan without app execution or reviewed-link promotion. `tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 0 --limit 25` provides later bounded audit packets. `tracer report --json` keeps proposed, operator-declared reviewed links and execution status separate; unknown execution stays null rather than becoming a false percentage.
+
+## Audit alongside active coding
+
+Author scenario contracts with feature changes, then use the [supervised audit queue](docs/audit-queue.md) to freeze small source/contract snapshots for independent review while coding continues. The CLI persists bounded jobs, claims and per-assertion receipts; it does not launch reviewers or execute tests. `tracer audit drain --file docs/testing/proposed-scenario-map.json` fails for unfinished, stale or unresolved current obligations. Semantic acceptance, executable readiness and actual execution stay separate.
