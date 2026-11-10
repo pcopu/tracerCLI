@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const journeys = {
+  scenarios: { file: 'tests/e2e/scenario-journeys.test.mjs', description: 'Reusable named steps, source/assertion pins, atomic reviewed linking and explicit runtime outcomes.' },
   measured: { file: 'tests/e2e/measured-journeys.test.mjs', description: 'Pinned LCOV pair import, interval lookup, provenance, staleness and atomic rejection.' },
   mapping: { file: 'tests/e2e/mapping-journeys.test.mjs', description: 'Code/action/witness lifecycle, per-line traces, bytes, inventory and safe writes.' },
   comments: { file: 'tests/e2e/comment-journeys.test.mjs', description: 'Explicit comment declarations, excluded manual counts, exact hashes, staleness and recovery.' },
@@ -20,7 +21,7 @@ if (args[0] === 'actions' && args.length === 2 && args[1] === '--json') {
     ...Object.entries(journeys).map(([name, value]) => ({ command: ['test', name], description: value.description })),
   ] }, null, 2));
 } else if (!args.length || args.length === 1 && ['--help', 'help'].includes(args[0])) {
-  console.log('Tracer self-host project CLI\n  actions --json\n  test [mapping|comments|ignore|measured|project|update|self-host]\nRun through Tracer: tracer app -- test');
+  console.log('Tracer self-host project CLI\n  actions --json\n  test [scenarios|mapping|comments|ignore|measured|project|update|self-host]\nRun through Tracer: tracer app -- test');
 } else if (args[0] === 'test' && args.length <= 2 && (!args[1] || Object.hasOwn(journeys, args[1]))) {
   const files = args[1] ? [journeys[args[1]].file] : Object.values(journeys).map(value => value.file);
   const child = spawn(process.execPath, ['--test', '--test-concurrency=1', ...files], {

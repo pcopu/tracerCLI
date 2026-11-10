@@ -70,3 +70,7 @@ Constructor options: `root`, `map`, `extensions`. Methods: `ignore(path, why)`, 
 ## Separate measured evidence
 
 Optional `tracer measure` uses its own version-1 interval dataset, never manual sidecar fields. See [the LCOV manifest and dataset schema](measured.md).
+
+The optional v1 `deadCode` array contains `{id, source: {path, start, end, sha256}, fileSha256, why, evidence}` declarations. Missing means none. A current declaration requires both exact snippet and full-file hashes, a reason and evidence; stale or invalid declarations never count. These are review markers, not proof of unreachability. They do not change source, link status, test results or inventory denominators. The report's unique included dead-code line count uses the whole included scope, even for filtered lookups.
+
+The independent `progress` report object includes line-based categorization and manual/test-witness mapping percentages. It reads the optional `docs/testing/code-feature-catalog.json` version-1 Scriv feature-classification catalog without altering it. The current Tracer inventory and current comment/ignore declarations determine the denominator; validated, hash-pinned model-proposed ranges form the unique category numerator. Missing or invalid catalog data is explicitly unavailable. Integrity validation is not semantic review or execution evidence.

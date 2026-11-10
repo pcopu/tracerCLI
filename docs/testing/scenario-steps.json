@@ -1,0 +1,1654 @@
+{
+  "version": 1,
+  "kind": "scenario-step-catalog",
+  "steps": [
+    {
+      "id": "catalog-lifecycle",
+      "title": "Prepare and review reusable scenario mappings",
+      "preconditions": [
+        "Owned temporary Git repository with synthetic source and assertion fixtures; no app commands are run"
+      ],
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario check --file catalog.json",
+        "tracer scenario report --file catalog.json --scenario roundtrip",
+        "tracer scenario packet --file catalog.json",
+        "tracer scenario packet --file catalog.json --scenario simple",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer check",
+        "tracer scenario link --file catalog.json --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $ZERO_SHA --expect-map-sha256 $MAP_SHA",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $OLD_MAP_SHA",
+        "tracer scenario prepare --file catalog.json",
+        "tracer scenario check --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario packet --file catalog.json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json"
+      ],
+      "expectations": [
+        {
+          "id": "consistent",
+          "description": "The batch preserves full ordered sequences, repeated actions, exact pins and metadata, remains idempotent, rejects stale inputs and never runs descriptions",
+          "witness": {
+            "path": "tests/e2e/scenario-journeys.test.mjs",
+            "start": 35,
+            "end": 67,
+            "sha256": "1709ef7744fd42067dd053e9bcf0982d68272e58f452950786fb3990ad6c1ce8"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 108,
+            "end": 118,
+            "sha256": "76a8d5ae2bce90536bce85dd3299cf76e8c5e20cf1e1518f0a6e14bf258e3297"
+          },
+          "expectation": "consistent",
+          "why": "Pin every referenced source and assertion range while rejecting stale supplied hashes; the CLI journey verifies immutable map state on stale inputs."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 178,
+            "end": 188,
+            "sha256": "61f1e760c0776420f8e734a822fa530d1c06d8fe6f722ad95b11ba5323f1d489"
+          },
+          "expectation": "consistent",
+          "why": "Prepare and check return pinned catalog integrity without app execution or map writes, as asserted in the lifecycle journey."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 189,
+            "end": 216,
+            "sha256": "45c253ba1fb5a5f0f05b3984c4b5da0f874455aa15e1d9eb53a24147f88b8af9"
+          },
+          "expectation": "consistent",
+          "why": "The report exposes named steps and assertion/source snippets once, then compact ordered occurrences and the full scenario sequence. This association does not claim every size or concurrent-change guard ran."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 107,
+            "end": 130,
+            "sha256": "57912013cea9bccc99ceb51a616f291ed0d2004966cdc5ea4a17f6f6fddba130"
+          },
+          "expectation": "consistent",
+          "why": "Dispatch the public catalog modes with exact flags, hash-pinned explicit reviewed import and JSON results; lifecycle and validation journeys exercise the new CLI surface."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 169,
+            "end": 177,
+            "sha256": "032d8e8634c3b1aa8eb781a7901f161a32d5fca773f302320f682872f8edf4b5"
+          },
+          "expectation": "consistent",
+          "why": "The public lifecycle pins the catalog and current inventory before compiling; it preserves absent/existing sidecars and reports exact current hashes."
+        }
+      ]
+    },
+    {
+      "id": "runtime-contract",
+      "title": "Capture explicit action and assertion outcomes",
+      "preconditions": [
+        "Pinned synthetic catalog and public fixture application; helper executes callbacks supplied by the fixture, not catalog descriptions"
+      ],
+      "actions": [
+        "tracer app -- success",
+        "tracer app -- missing-assertion",
+        "tracer app -- false",
+        "tracer app -- swallowed",
+        "tracer app -- wrong-order",
+        "tracer app -- leaked",
+        "tracer app -- pending",
+        "tracer app -- early-assertion",
+        "tracer app -- nested",
+        "tracer app -- concurrent",
+        "tracer app -- unawaited",
+        "tracer app -- unknown-expectation",
+        "tracer app -- duplicate-expectation"
+      ],
+      "expectations": [
+        {
+          "id": "distinct-outcomes",
+          "description": "Successful actions do not imply assertions; incomplete, failed, concurrent, nested, leaked and pending cases never pass, results are immutable and no map is created",
+          "witness": {
+            "path": "tests/e2e/scenario-journeys.test.mjs",
+            "start": 152,
+            "end": 165,
+            "sha256": "852d6609e227d72f80e5eb1fdfbb8801143906a7b2fef52cd01307d4e4a6167d"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 153,
+            "end": 174,
+            "sha256": "015ab17f741984e2ea93088e469c264d6dd4697e8b45ccab604b2c4d2ba57c1d"
+          },
+          "expectation": "distinct-outcomes",
+          "why": "Explicit callback completion records action and assertion outcomes separately, persists false/throw failures, and does not save error details."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 184,
+            "end": 211,
+            "sha256": "17b0333d2737d9f1e32b33c06fbfd8edfe7982dc4d746b2619e96f9b154d7cc4"
+          },
+          "expectation": "distinct-outcomes",
+          "why": "Active steps drain pending callbacks and retain caught failures; omitted assertions remain incomplete and the fixture verifies no passing result for failure variants."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 214,
+            "end": 226,
+            "sha256": "68db898e87ed2251e34a7f2918601b69b0adb245736707872fb989ccf6299c4f"
+          },
+          "expectation": "distinct-outcomes",
+          "why": "Finishing rejects pending work and produces an immutable adapter-reported result with separate not-run and failure states, without changing the manual map."
+        }
+      ]
+    },
+    {
+      "id": "compiler-schema-guards",
+      "title": "Reject malformed declarations and recover",
+      "preconditions": [
+        "Owned temporary Git repository, pinned synthetic source/assertion catalog and isolated home; input variants are constructed in the linked CLI journey, never executed as catalog instructions."
+      ],
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario check --file case.json --json",
+        "tracer scenario report --file catalog.json --scenario bad/id",
+        "tracer scenario check --file catalog.json --json"
+      ],
+      "expectations": [
+        {
+          "id": "preserved",
+          "description": "Every malformed variant fails with its specific diagnostic, emits no JSON result, preserves exact sidecar bytes and releases no foreign lock; original inputs recover.",
+          "witness": {
+            "path": "tests/e2e/scenario-compiler-guards.test.mjs",
+            "start": 38,
+            "end": 73,
+            "sha256": "dc09ac93936f09f52890c6f9c3476e4b4cd45293682816e24efea4b204a894b6"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 14,
+            "end": 35,
+            "sha256": "c261c2e154d2744a96325361a847eb0316e94dd109db030fe3468ffec769368b"
+          },
+          "expectation": "preserved",
+          "why": "Malformed object fields, lists, identifiers, text, source/witness paths, line bounds and supplied hashes fail through actual CLI validation without changing the map."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 37,
+            "end": 69,
+            "sha256": "885ce2d0d55da3fd62983f88896f7339ba8d4cd4821ddb3e04b1570cda192337"
+          },
+          "expectation": "preserved",
+          "why": "Named-step validation rejects malformed catalog identity, repeated expectations and unknown mapping references; pristine catalog recovers without writes."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 73,
+            "end": 87,
+            "sha256": "3599c64b5f05dfce5dc9da5b9c76e262e469f6b433ae77a861fa80924c6d4911"
+          },
+          "expectation": "preserved",
+          "why": "Scenario identity, duplicate IDs and unknown references are rejected; the companion expansion journey exercises declaration/occurrence budgets. These validation links do not assert every resource-failure branch."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 119,
+            "end": 125,
+            "sha256": "1cf46f0dfeccb2f0db8a58e96879b3fdf8688ccbdb69eb0f3a5a9955076dc70e"
+          },
+          "expectation": "preserved",
+          "why": "A malformed selector fails before report output while the original known scenario remains checkable."
+        }
+      ]
+    },
+    {
+      "id": "compiler-file-guards",
+      "title": "Reject unsafe catalog files and bytes",
+      "preconditions": [
+        "Owned temporary Git repository, pinned synthetic source/assertion catalog and isolated home; input variants are constructed in the linked CLI journey, never executed as catalog instructions."
+      ],
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario check --file invalid.json --json",
+        "tracer scenario check --file nul.json --json",
+        "tracer scenario check --file broken.json --json",
+        "tracer scenario check --file oversized.json --json",
+        "tracer scenario check --file directory.json --json",
+        "tracer scenario check --file alias.json --json",
+        "tracer scenario check --file aliased/current.json --json",
+        "tracer scenario check --file .git/config --json",
+        "tracer scenario check --file docs/testing/code-e2e-links.json.lock --json",
+        "tracer scenario check --file catalog.json --json"
+      ],
+      "expectations": [
+        {
+          "id": "preserved",
+          "description": "Unsafe input and unsupported byte representations cannot alter state or escape catalog path constraints.",
+          "witness": {
+            "path": "tests/e2e/scenario-compiler-guards.test.mjs",
+            "start": 75,
+            "end": 88,
+            "sha256": "c949e306fc99844214914de962adca16441673ff24b591742be795dccbdf9c29"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 89,
+            "end": 107,
+            "sha256": "d3d47e10973d7b98495de32037954a5b19b08ffb169bad500a77eebb9c4fcdab"
+          },
+          "expectation": "preserved",
+          "why": "Actual malformed byte files, oversized catalogs, non-files and direct/ancestor symlinks are rejected without sidecar changes; original regular catalog still validates."
+        }
+      ]
+    },
+    {
+      "id": "compiler-expansion-guards",
+      "title": "Bound scenario expansion and recover",
+      "preconditions": [
+        "Owned temporary Git repository, pinned synthetic source/assertion catalog and isolated home; input variants are constructed in the linked CLI journey, never executed as catalog instructions."
+      ],
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario prepare --file case.json --json",
+        "tracer scenario check --file catalog.json --json"
+      ],
+      "expectations": [
+        {
+          "id": "preserved",
+          "description": "Real bounded synthetic declarations exceed each reachable compiler budget, return nonzero and preserve the map; a small unchanged catalog remains usable.",
+          "witness": {
+            "path": "tests/e2e/scenario-compiler-guards.test.mjs",
+            "start": 90,
+            "end": 108,
+            "sha256": "524e2c38fb9bf50f6efd476c0bb8c545856471a94801dd255dc0baad0a1dc25c"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 10,
+            "end": 10,
+            "sha256": "57c64b3385e35ff6b0332cd8bafe861be1185feee2633e77a4a5928d974ed60b"
+          },
+          "expectation": "preserved",
+          "why": "The catalog and expanded-output budget constants bound real oversized-input and expansion fixtures; boundary rejection is checked without app execution."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 70,
+            "end": 72,
+            "sha256": "4f2d3b0c757594c6f08666474c5f954445ebcbaafbe36266191ff2d966cae14b"
+          },
+          "expectation": "preserved",
+          "why": "Twenty-one large valid declaration sets exceed the aggregate schema budget and fail before map mutation."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 126,
+            "end": 146,
+            "sha256": "7724a5e5dc66708de7b999bb1d00836f11ecd5785f1110c973e8bb2aaf662e3d"
+          },
+          "expectation": "preserved",
+          "why": "Compiling selected scenarios preserves full ordered actions and limits action expansion, prefix growth and serialized occurrence output; oversized variants fail with specific diagnostics."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 147,
+            "end": 168,
+            "sha256": "eea909daf002bbd8f6411a648f6e8a0c503402178affada5d52f3b7c0b89beed"
+          },
+          "expectation": "preserved",
+          "why": "Mapping counts and repeated sequence payloads are bounded while full scenario identity, duplicate detection and unique totals remain shared with the lifecycle journey. Cryptographic ID collisions are defensive, not claimed observed."
+        }
+      ]
+    },
+    {
+      "id": "compiler-batch-guards",
+      "title": "Preserve metadata during reviewed integration",
+      "preconditions": [
+        "Owned temporary Git repository, pinned synthetic source/assertion catalog and isolated home; input variants are constructed in the linked CLI journey, never executed as catalog instructions."
+      ],
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer comment review.mjs:1",
+        "tracer dead-code review.mjs:2 --why 'Retained fixture candidate' --evidence 'Synthetic caller review only, not a proof of unreachability'",
+        "tracer link model.mjs:2 --action 'app inspect' --step assertions.mjs:2 --why 'Existing reopened assertion.'",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario packet --file catalog.json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer check",
+        "tracer scenario link --file catalog.json --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json"
+      ],
+      "expectations": [
+        {
+          "id": "preserved",
+          "description": "Existing links, comment/dead-code declarations and arbitrary metadata survive integration; stale, conflicting and colliding fixtures fail without partial changes, and reviewed repair restores idempotence.",
+          "witness": {
+            "path": "tests/e2e/scenario-compiler-guards.test.mjs",
+            "start": 110,
+            "end": 134,
+            "sha256": "2c67ecd5317e05d0c8908398367a069436d40cff895b7c630705feaafb8600e8"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 1,
+            "end": 9,
+            "sha256": "f14446c6b17ad2ef306ea2c8d7e7c8f005043fbaa456b2ce469a38e003312e03"
+          },
+          "expectation": "preserved",
+          "why": "Real prepare/check/link operations load module dependencies and use exact hashes plus declared-only notices; these import/constant associations are structural, not proof all branches executed."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 11,
+            "end": 13,
+            "sha256": "380c4ebd9a403e6b6afe7436d75cfe2742e0d90fdd7f28d09694d18b371f61d4"
+          },
+          "expectation": "preserved",
+          "why": "Exact source/action/witness identity and full content checks distinguish idempotent imports from conflicting existing rows."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 217,
+            "end": 218,
+            "sha256": "b716ef304c8499c956e9c400a572b0f18cc426ce299aef7a39eb38f5e7b925dc"
+          },
+          "expectation": "preserved",
+          "why": "The public packet command supplies the exact candidate identity used by collision tests without changing the sidecar."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 220,
+            "end": 240,
+            "sha256": "3a1cdfef7177981f23156298ef336a690a3f0a12c2f86338d2256c9cc21d84e0"
+          },
+          "expectation": "preserved",
+          "why": "Before commit, integration rereads current catalog references, existing witnesses, declared comments and declared dead-code files; assertions preserve all pinned declarations. Concurrent-edit rejection branches remain defensive guards, not claimed executed."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 241,
+            "end": 255,
+            "sha256": "b9ad9900f58b23de4c53a365bdb0857b8f0a2c15f27944012d1ab10210c68e40"
+          },
+          "expectation": "preserved",
+          "why": "Explicit reviewed integration reads current map/catalog identities and rejects globally stale witnesses; separate lifecycle tests reject missing approval and changed expected hashes."
+        },
+        {
+          "source": {
+            "path": "src/scenarios.mjs",
+            "start": 256,
+            "end": 282,
+            "sha256": "443437d2b8715daf1251e5f3a93856b9592643e6ab70e3e44cdc483aeb41e885"
+          },
+          "expectation": "preserved",
+          "why": "Atomic append preserves existing ordering/metadata/declarations, reuses current links idempotently, rejects conflicting identity and foreign-row ID collision, then recovers after explicit fixture repair."
+        }
+      ]
+    },
+    {
+      "id": "runtime-initialization-guards",
+      "title": "Reject unsafe runtime initialization",
+      "preconditions": [
+        "Fresh isolated repository for this journey, pinned synthetic catalog and explicitly configured adapter app. Only this test fixture imports the optional runtime helper; catalog action strings never execute."
+      ],
+      "actions": [
+        "tracer scenario prepare --file draft.json --json",
+        "tracer init --app-json \"$APP_ARGV\"",
+        "tracer app -- initialization"
+      ],
+      "expectations": [
+        {
+          "id": "verified",
+          "description": "Reject unsafe runtime initialization with exact outcome assertions and no implicit execution claims",
+          "witness": {
+            "path": "tests/e2e/scenario-runtime-guards.test.mjs",
+            "start": 128,
+            "end": 136,
+            "sha256": "ebac272ef31f02eb7b02234187b8bfd0580ff78bfb43a90b34590695fe268cc1"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 11,
+            "end": 16,
+            "sha256": "8383dc04c99b4958bf0635d65eb18073bef8fb01304b0e709fefe356594136db"
+          },
+          "expectation": "verified",
+          "why": "Invalid inputs produce the asserted sanitized ScenarioRuntimeError codes without invoking accessors or disclosing supplied details."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 24,
+            "end": 44,
+            "sha256": "368d549b91fa5f7c8311bd100ddf709da1ecc832075a9c8cf1aeb1fe47ba6cad"
+          },
+          "expectation": "verified",
+          "why": "Cycles, non-finite/executable values, sparse arrays, symbols, hidden properties, prototypes, depth and accessors are rejected. Valid JSON and null-prototype context remain accepted; not every exotic array property variant is claimed."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 45,
+            "end": 55,
+            "sha256": "b8a91ce0e5743481b0adbf4aa1706cacb06638b5583ed44b1f5da7aa753f14cc"
+          },
+          "expectation": "verified",
+          "why": "Unsafe context types, keys, controls, lengths and accessors fail; allowed null-prototype and 256-character boundary contexts are accepted."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 68,
+            "end": 113,
+            "sha256": "91e4699df6577e5899c7f85c23d5b3b0657196d38c9968b6b0c306f76c96fdda"
+          },
+          "expectation": "verified",
+          "why": "Catalog and identifier validation precede record construction. Distinct fixtures exceed100000 planned events and64MiB planned output (the latter has5100 events), and invalid creation never reports success. Contract comments and record declarations are structural support."
+        }
+      ]
+    },
+    {
+      "id": "runtime-capture-guards",
+      "title": "Pin and freeze explicit callback results",
+      "preconditions": [
+        "Fresh isolated repository for this journey, pinned synthetic catalog and explicitly configured adapter app. Only this test fixture imports the optional runtime helper; catalog action strings never execute."
+      ],
+      "actions": [
+        "tracer scenario prepare --file draft.json --json",
+        "tracer init --app-json \"$APP_ARGV\"",
+        "tracer app -- capture"
+      ],
+      "expectations": [
+        {
+          "id": "verified",
+          "description": "Pin and freeze explicit callback results with exact outcome assertions and no implicit execution claims",
+          "witness": {
+            "path": "tests/e2e/scenario-runtime-guards.test.mjs",
+            "start": 138,
+            "end": 146,
+            "sha256": "0422dd4eaf890b9360049ae39a822f7a98fa0f4f7697743839a468d93c8bfc05"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 1,
+            "end": 9,
+            "sha256": "1a8820a26b5eb62b58080378c4060f1f923e4a872bc82b3ddf58a0e38e855855"
+          },
+          "expectation": "verified",
+          "why": "The actual configured adapter app loads asynchronous-context/hash dependencies and records ordered callback events with a declared-only notice. These import/constants are structural associations, not every branch."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 17,
+            "end": 23,
+            "sha256": "eb52a9c0e0cfedee91527024139316423d69e69c8d748e5c5554eddd3947326f"
+          },
+          "expectation": "verified",
+          "why": "The returned API, nested step/event arrays and final context are frozen; repeated finish retains exact object identity."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 97,
+            "end": 113,
+            "sha256": "31bdc0a69524042b2c1f15ce1a1f6b47fde374e84abf2f34e316acc3085355d6"
+          },
+          "expectation": "verified",
+          "why": "Valid creation snapshots declared inputs before caller mutation; the CLI asserts original action labels, context and ordered observed events."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 214,
+            "end": 227,
+            "sha256": "24ddc4a7a9bf0c7ae5082e6397be33bcda34aab072bd031a248326508c8435cd"
+          },
+          "expectation": "verified",
+          "why": "Finished reports keep successful callback status separate from declarations, freeze nested state, repeat identically and reject later step/action work. The final brace is a structural boundary."
+        }
+      ]
+    },
+    {
+      "id": "runtime-protocol-guards",
+      "title": "Reject invalid callback protocols",
+      "preconditions": [
+        "Fresh isolated repository for this journey, pinned synthetic catalog and explicitly configured adapter app. Only this test fixture imports the optional runtime helper; catalog action strings never execute."
+      ],
+      "actions": [
+        "tracer scenario prepare --file draft.json --json",
+        "tracer init --app-json \"$APP_ARGV\"",
+        "tracer app -- guards"
+      ],
+      "expectations": [
+        {
+          "id": "verified",
+          "description": "Reject invalid callback protocols with exact outcome assertions and no implicit execution claims",
+          "witness": {
+            "path": "tests/e2e/scenario-runtime-guards.test.mjs",
+            "start": 148,
+            "end": 159,
+            "sha256": "68748461f158334ce5de8c6c6e1062694e42c2c0ca4eff2ea12eb6e73a1946c6"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 56,
+            "end": 66,
+            "sha256": "6eaa7f310088e334148d7a5bf556305cceb0e259f825a94ba0d5e3996d330201"
+          },
+          "expectation": "verified",
+          "why": "Repeated rejected step-order attempts aggregate to exactly two failures; observed promises retain asynchronous failure behavior without leaking exceptions. MAX_SAFE_INTEGER failure-count saturation is defensive and not exercised."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 115,
+            "end": 121,
+            "sha256": "692b0f4c14ffaa81d0e83cfb93e49ffe96f821385c887de297cdde314a66e552"
+          },
+          "expectation": "verified",
+          "why": "Invalid protocol attempts retain sanitized rejection codes and failed results even when callers catch errors."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 123,
+            "end": 152,
+            "sha256": "398a7e6347fff12db16da2d3de480d87777965e9bbdd703285eb858c45882192"
+          },
+          "expectation": "verified",
+          "why": "Invalid callback, order, expectation, nested/concurrent/escaped/cross-scope operations are rejected before the supplied callback executes, with exact expected codes and zero invocation counts."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 153,
+            "end": 175,
+            "sha256": "11a39b46233ce252fece221cb0c1edd0aea1e7042bd9d116e596b02155576328"
+          },
+          "expectation": "verified",
+          "why": "A callback exception persists as action-callback-failed without exposing error content; existing false/throw/runtime journeys separately establish expectation failure. Enclosing boundary included, not every possible callback claimed."
+        },
+        {
+          "source": {
+            "path": "src/scenario-runtime.mjs",
+            "start": 177,
+            "end": 212,
+            "sha256": "14521792c584ad272447f439e83f450da4ac46fc71e0e5fa73da4d1b8553da6b"
+          },
+          "expectation": "verified",
+          "why": "Invalid step IDs/order/callbacks, nested/concurrent calls and caught operation failures cannot become passing reports. The existing broader adapter journey separately checks pending and incomplete steps."
+        }
+      ]
+    },
+    {
+      "id": "scenario-entrypoint-import",
+      "title": "Load packaged scenario module",
+      "preconditions": [
+        "The linked fixture selects the actual executable and isolated project state; action descriptions are not replay scripts."
+      ],
+      "actions": [
+        "tracer --version",
+        "tracer --help",
+        "tracercli --version",
+        "tracercli --help"
+      ],
+      "expectations": [
+        {
+          "id": "contract",
+          "description": "Both installed executable aliases load the scenario module and assert version/help; import support is not an all-branch execution claim.",
+          "witness": {
+            "path": "tests/e2e/self-host-journey.test.mjs",
+            "start": 187,
+            "end": 193,
+            "sha256": "208fbdc8e91626e8df433908baa3a2bee32d16b2c3f14e6f017f1bbcb540d01c"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 7,
+            "end": 7,
+            "sha256": "0ab00712f1c00e7b2d820cd40f5a818b8deeae302224987a662fec31b494311b"
+          },
+          "expectation": "contract",
+          "why": "Both installed executable aliases load the scenario module and assert version/help; import support is not an all-branch execution claim."
+        }
+      ]
+    },
+    {
+      "id": "scenario-help-contract",
+      "title": "Describe exact scenario command contract",
+      "preconditions": [
+        "The linked fixture selects the actual executable and isolated project state; action descriptions are not replay scripts."
+      ],
+      "actions": [
+        "tracer",
+        "tracer -h",
+        "tracer --help"
+      ],
+      "expectations": [
+        {
+          "id": "contract",
+          "description": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state.",
+          "witness": {
+            "path": "tests/e2e/mapping-journeys.test.mjs",
+            "start": 704,
+            "end": 763,
+            "sha256": "4515e60ad2c0ac0b26a4763ff737019fedac5d60590c1698a687c09d3e594600"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 40,
+            "end": 43,
+            "sha256": "0fa1380d3934383bfafacee895ba072c7f5d92616041264c7f550bf0f6f28bf2"
+          },
+          "expectation": "contract",
+          "why": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state."
+        }
+      ]
+    },
+    {
+      "id": "scenario-runner-discovery",
+      "title": "Discover the named scenario journey group",
+      "preconditions": [
+        "The linked fixture selects the actual executable and isolated project state; action descriptions are not replay scripts."
+      ],
+      "actions": [
+        "tracer actions"
+      ],
+      "expectations": [
+        {
+          "id": "contract",
+          "description": "Public action discovery must expose the named scenarios group along with all other groups; this declaration is not a claim that discovery itself executes tests.",
+          "witness": {
+            "path": "tests/e2e/self-host-journey.test.mjs",
+            "start": 15,
+            "end": 21,
+            "sha256": "c1d419d65eb2fe8951c99a9f47ba9267aca2a1f226ec9401386dceb7bb29ae93"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "scripts/project-cli.mjs",
+            "start": 8,
+            "end": 8,
+            "sha256": "2cde484d5463eb869198d1a7a5557e9b4cc597fb0d8f0417c4cf79147f52e384"
+          },
+          "expectation": "contract",
+          "why": "Public action discovery must expose the named scenarios group along with all other groups; this declaration is not a claim that discovery itself executes tests."
+        }
+      ]
+    },
+    {
+      "id": "proposal-first-map",
+      "title": "Propose a complete unwritten map before app setup and audit later",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer proposal report --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 0 --limit 1",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 1 --limit 1",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 999",
+        "tracer scenario link --file docs/testing/proposed-scenario-map.json --reviewed",
+        "tracer proposal link --file docs/testing/proposed-scenario-map.json --reviewed",
+        "tracer --help"
+      ],
+      "expectations": [
+        {
+          "id": "pins",
+          "description": "Preparation pins exact source without creating a map or app config.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 33,
+            "end": 36,
+            "sha256": "3d84f78747dd16b456e8ab86530a351cffb62ea08c2dcb006d835409ab23fc08"
+          }
+        },
+        {
+          "id": "separate",
+          "description": "Full proposed progress, preserved repeats, zero reviewed links and unknown execution remain distinct.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 37,
+            "end": 41,
+            "sha256": "d88d34c119fee4dc653d42072fe0effc48b7f1bb4dea4dc964ef099ab31e39af"
+          }
+        },
+        {
+          "id": "audit",
+          "description": "Offset batches expose current source and plans without mutating proposals or creating links.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 43,
+            "end": 50,
+            "sha256": "e5c92752b57e364764051ea6a31e8f7820637887a1e69c23c829409ac0d4c7d5"
+          }
+        },
+        {
+          "id": "no-promotion",
+          "description": "Wrong import and promotion commands fail; help describes proposal-first without execution prerequisite.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 51,
+            "end": 54,
+            "sha256": "7137dcc25d1c8f31db3d24a32876d3aa8f8e46a1f697fff0297af9ec23cf53d8"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 1,
+            "end": 11,
+            "sha256": "dc8460828053e56e952cabf02e738ce9cea2ef4a3561e4480cdb133bc0265fdd"
+          },
+          "expectation": "pins",
+          "why": "Imports, constants and hash/percentage helpers support exact proposal pins and separate status; this association is not a claim that every failure path executed."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 136,
+            "end": 136,
+            "sha256": "ece9a7c3f308634999a49b1698a59dfff990db9ed2f52a0d07c4583a63bcecbe"
+          },
+          "expectation": "pins",
+          "why": "Prepare validates and pins the draft without writing an app or reviewed map."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 138,
+            "end": 143,
+            "sha256": "43638627e00279e3e41acac6b5c4d769d82576c51473cd072f7b34c7b80cc058"
+          },
+          "expectation": "pins",
+          "why": "Prepare validates and pins the draft without writing an app or reviewed map."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 144,
+            "end": 148,
+            "sha256": "e2455cb683dc44b578ad577034c54bc1b52bd2561a50c802d1bca059f186a4fa"
+          },
+          "expectation": "separate",
+          "why": "The proposal report exposes plans and independent progress rather than promoting links."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 151,
+            "end": 157,
+            "sha256": "2e89af508a534f7c6d0b626b203da8285053cfa34a5ce8b0c821a88207eba3b7"
+          },
+          "expectation": "audit",
+          "why": "Audit selects ordered offsets and includes source and scenario context while leaving persistent data unchanged."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 159,
+            "end": 162,
+            "sha256": "5d0d2c51190ced816d914db377d0c72a52bcbb6a7ff7a842c0105da2b2e75ab4"
+          },
+          "expectation": "audit",
+          "why": "Audit emits one bounded batch and its next offset, including an empty tail."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 8,
+            "end": 8,
+            "sha256": "d727a69e24bcca398e94d242f214a038ef1c7a2e2639f5e538545695211c8fad"
+          },
+          "expectation": "pins",
+          "why": "Public command imports the proposal workflow exercised by the fixture."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 38,
+            "end": 39,
+            "sha256": "f31f075bf4e65c3f1335a5d9771d0d611bfa3b080c299dc977f1a8ee84f9c59f"
+          },
+          "expectation": "no-promotion",
+          "why": "Help advertises the separate proposal lifecycle."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 55,
+            "end": 56,
+            "sha256": "4cd18b48bc9abd54eec321a21b3e55418c93fad67d0dc91c17132f0b11e39bf3"
+          },
+          "expectation": "no-promotion",
+          "why": "Help makes full proposal-first and no-execution-prerequisite explicit."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 101,
+            "end": 103,
+            "sha256": "9650d9a13106baf9db992cd855a346d919cea9c46796ccd92afa232eee24304d"
+          },
+          "expectation": "separate",
+          "why": "CLI routes proposal commands and emits their JSON without executing planned actions."
+        }
+      ]
+    },
+    {
+      "id": "proposal-scope-progress",
+      "title": "Keep scope-aware proposal and reviewed progress separate from execution",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer init",
+        "tracer report --json",
+        "tracer link model.mjs:1 --action Read title --why Explicit operator declaration after source review.",
+        "tracer comment model.mjs:3",
+        "tracer report --json",
+        "tracer report --source model.mjs:4 --json",
+        "tracer report --json",
+        "tracer report",
+        "tracer ignore model.mjs --why Synthetic scope test.",
+        "tracer report --json"
+      ],
+      "expectations": [
+        {
+          "id": "scope",
+          "description": "Current scope, declared comments and source filters govern counts; forged saved totals cannot change independently derived progress.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 58,
+            "end": 68,
+            "sha256": "9ba226a669c0fb4bf1b70aee4b67e62e15fabd329766ae83f073645e3c489559"
+          }
+        },
+        {
+          "id": "text",
+          "description": "Human-readable report labels proposed, reviewed and unknown execution separately.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 69,
+            "end": 69,
+            "sha256": "124d2fca0f7c1ff9a8ada1da41f431f727903f7ca3528914fa7013a632d694ac"
+          }
+        },
+        {
+          "id": "empty",
+          "description": "An empty included scope reports null percentages, not full coverage.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 70,
+            "end": 72,
+            "sha256": "d26986b5cf670e31e6e263e8b39b15b277feef83982e9d94f8b7af74afa004ae"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 108,
+            "end": 120,
+            "sha256": "32b26359baa9e0434bc94cf506a1614e81dd620a72bb7309bc612f1313a6be2e"
+          },
+          "expectation": "scope",
+          "why": "Unique included nonblank lines outside current declared comments are counted within the selected scope; ignored files and stale rows add no lines."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 121,
+            "end": 126,
+            "sha256": "48064c06d739481a32e37c19b2d78d7721d75a4a33c9313250042947c55aa23a"
+          },
+          "expectation": "scope",
+          "why": "Current proposal summaries use validated associations and explicit scenario states, not saved summary claims."
+        },
+        {
+          "source": {
+            "path": "src/tracer.mjs",
+            "start": 2,
+            "end": 2,
+            "sha256": "49bde31da8f58c90130d3803a72448402d181b6c3ac93827534bcf75cbd3f888"
+          },
+          "expectation": "scope",
+          "why": "Report imports proposal progress without changing existing manual mapping semantics."
+        },
+        {
+          "source": {
+            "path": "src/tracer.mjs",
+            "start": 442,
+            "end": 447,
+            "sha256": "058ffe72dc863a88a936fc3156b7cab0078055bc7498861bf1ef5844ac182edd"
+          },
+          "expectation": "scope",
+          "why": "Report keeps proposed counts, operator-declared manual links and unknown execution independent; empty denominators remain null."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 311,
+            "end": 314,
+            "sha256": "103b822ddf91be3072b69bb876b79aae87d56c4a3b322dc70d52b8509c057abe"
+          },
+          "expectation": "text",
+          "why": "Text output exposes each status track and proposal issues, never presenting an inferred execution percentage."
+        }
+      ]
+    },
+    {
+      "id": "proposal-byte-freshness",
+      "title": "Reject stale pins and preserve legacy span compatibility",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer proposal check --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal check --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal prepare --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal prepare --file draft.json"
+      ],
+      "expectations": [
+        {
+          "id": "stale",
+          "description": "Legacy pins are accepted before source bytes change; stale full-file pins contribute zero and cannot be refreshed silently.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 76,
+            "end": 84,
+            "sha256": "9592ca435dd61c0c4cecfd376b7e13dfab1f07603717b7e6d613bf21a4364427"
+          }
+        },
+        {
+          "id": "crlf",
+          "description": "Fresh preparation preserves exact CRLF bytes while retaining normalized legacy span identity.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 85,
+            "end": 88,
+            "sha256": "482b1f4f68969797d71988f75626545354dc5207a6c385c0064bf5ef8bc0a83a"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 47,
+            "end": 52,
+            "sha256": "38cc20c16e3c721cee273fc24a3e1977a55174ac6428b8491799cd5e73bc54f1"
+          },
+          "expectation": "crlf",
+          "why": "Legacy span hashing normalizes line endings separately from the exact full-file and snippet pins."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 84,
+            "end": 91,
+            "sha256": "982aaae874c5afcf0287d280edf9afbac11b2fc976ec8b4a0aadaece0d1356d5"
+          },
+          "expectation": "stale",
+          "why": "Prepare fills missing source pins only and check rejects stale supplied identities; optional exact pins preserve old artifacts."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 163,
+            "end": 165,
+            "sha256": "e7e7322ca0f67dfe8d07dfc9d91870d67d38fd17ddef3767b145288f49dd55d8"
+          },
+          "expectation": "stale",
+          "why": "The check result returns validity and current counts without mutation."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 104,
+            "end": 106,
+            "sha256": "58e11ca1f444cfad69a1bbb786d4364b659da931c9af8fbc57022082ca8461f2"
+          },
+          "expectation": "stale",
+          "why": "A stale proposal check exits nonzero after emitting the explicit invalid result."
+        }
+      ]
+    },
+    {
+      "id": "proposal-schema-safety",
+      "title": "Reject invalid proposal status, references, collisions and unsafe imports",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer init",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal check --file bad.json",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --limit 0",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --limit 1001",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset -1",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 1.2",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 9007199254740992",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --json --json",
+        "tracer proposal audit --file docs/testing/proposed-scenario-map.json --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal check",
+        "tracer proposal check --file docs/testing/code-e2e-links.json",
+        "tracer proposal check --file linked.json",
+        "tracer report --json",
+        "tracer report --json"
+      ],
+      "expectations": [
+        {
+          "id": "schema",
+          "description": "Malformed claims and references fail without changing the reviewed sidecar.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 93,
+            "end": 103,
+            "sha256": "7dc4f57d1f2e7f07e6261babfd4e81ef83bad9255ed7798f521b76ca65961d2e"
+          }
+        },
+        {
+          "id": "flags",
+          "description": "Bad pagination, duplicate/missing arguments, reviewed-map input and symlink input fail.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 104,
+            "end": 107,
+            "sha256": "1915389a8cd8efbc8ea03e8ea9d94277790b13d12be1520357ffa745a7efad1b"
+          }
+        },
+        {
+          "id": "overlap",
+          "description": "Overlapping proposal rows count zero and malformed JSON becomes invalid status.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 108,
+            "end": 110,
+            "sha256": "d725962c0ebdcd9aa6d65463fcbf25cfb4cd8899253eeb2fdaf0b6e72d8a7c72"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 53,
+            "end": 63,
+            "sha256": "e3a3d8f03fa2a86fec7d3a65b2405cfc545b9a537ecf82edcbea31218c221f97"
+          },
+          "expectation": "schema",
+          "why": "Scenario identities, states and planned action/outcome descriptions are validated without requiring assertion witnesses."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 64,
+            "end": 76,
+            "sha256": "ae36d167051e452ebf6fafc24acb3981b1f5f8d0bae13a806eb6b7f551d1eb71"
+          },
+          "expectation": "schema",
+          "why": "Association IDs, status, resolved scenario references and source ranges must be valid before any source totals are counted."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 92,
+            "end": 107,
+            "sha256": "260cbae3ebb2f47c583cd3f4c6dc4e36abab80cfc11e652f8b642186a44d3c9f"
+          },
+          "expectation": "overlap",
+          "why": "Overlapping source declarations are excluded and reported rather than double-counted."
+        },
+        {
+          "source": {
+            "path": "bin/tracer.mjs",
+            "start": 88,
+            "end": 100,
+            "sha256": "ef9cdf73732732e675d86c7c29fbeac943f415bba8b71ad588e85610afb09899"
+          },
+          "expectation": "flags",
+          "why": "The public proposal parser rejects unsupported modes, flags, missing files and malformed offsets before dispatch."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 149,
+            "end": 150,
+            "sha256": "99e96de1f49c02133b6a849a81930be5ebcc02197d162910d7dd5fa1476b8abd"
+          },
+          "expectation": "flags",
+          "why": "Audit enforces safe integer offset and bounded batch limits."
+        }
+      ]
+    },
+    {
+      "id": "proposal-missing-status",
+      "title": "Keep absent proposal and execution evidence unknown",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer report --json"
+      ],
+      "expectations": [
+        {
+          "id": "missing",
+          "description": "A missing proposal has null percentage and does not create a reviewed map; execution stays unknown.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 114,
+            "end": 118,
+            "sha256": "fdde7a193183d6e0465ce648306662e4eade462192c1902150757bde4103848e"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 127,
+            "end": 135,
+            "sha256": "f14f71fd82e9a8033f3d9c8adf6e357069eb688c85d1891c87d9a1ba298f925e"
+          },
+          "expectation": "missing",
+          "why": "Default report reads proposal state defensively, reports absent data without creating files, and labels malformed input invalid. Schema-safety also checks the invalid-data fallback; rare filesystem errors are defensive, not claimed observed."
+        }
+      ]
+    },
+    {
+      "id": "proposal-bounded-audit",
+      "title": "Validate partial rows, unsafe files and resource bounds",
+      "preconditions": [
+        "An isolated temporary Git repository with synthetic source and a proposal draft; no account, network service or user data."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer proposal check --file partial.json",
+        "tracer proposal check --file partial.json",
+        "tracer proposal check --file partial.json",
+        "tracer proposal check --file partial.json",
+        "tracer proposal check --file partial.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file invalid.json",
+        "tracer proposal check --file existing.json",
+        "tracer proposal check --file .git/config",
+        "tracer proposal check --file docs/testing/code-e2e-links.json.tmp",
+        "tracer proposal check --file docs/testing",
+        "tracer proposal check --file missing.json",
+        "tracer proposal check --file alias/testing/proposed-scenario-map.json",
+        "tracer proposal check --file oversized.json",
+        "tracer proposal prepare --file large-draft.json",
+        "tracer proposal audit --file large.json"
+      ],
+      "expectations": [
+        {
+          "id": "partial",
+          "description": "Missing, out-of-bounds and malformed-pin rows fail integrity while unrelated valid rows remain counted.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 123,
+            "end": 133,
+            "sha256": "a163c1d8ef77c9a6a158dcdb6955f6f8b675c48d784a11efd6043c39ee7e5890"
+          }
+        },
+        {
+          "id": "structure",
+          "description": "Invalid identifiers, states, long/multiline descriptions, missing sources and oversized arrays fail; a verified existing test path remains only a plan.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 135,
+            "end": 143,
+            "sha256": "bdd36a5fc05e2cac253ca71c3f639e7d5c254e6aaea5283d0c21bffe58920e0b"
+          }
+        },
+        {
+          "id": "paths",
+          "description": "Git internals, reviewed-map working files, directories, missing and symlinked inputs fail; artifacts above 32 MiB are rejected.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 144,
+            "end": 148,
+            "sha256": "60e082034084c39062c4ae01dedb12b1a655031c155646064c04e6c110dee085"
+          }
+        },
+        {
+          "id": "expansion",
+          "description": "Large valid proposals prepare, but expanded audit output above 64 MiB fails without creating a reviewed map.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 149,
+            "end": 157,
+            "sha256": "051548d9b377c62cc40a3c0e408c713c4915a7e3416f27701bf50300248844dc"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 12,
+            "end": 12,
+            "sha256": "d877f88f9fe829a9b9d9604c839f9682778b432c3d8f359976498a01d98a753e"
+          },
+          "expectation": "paths",
+          "why": "Artifact and audit size constants bound the public read-only workflow."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 13,
+            "end": 22,
+            "sha256": "fed1699b4d7887b650b0e8858533ef5dae0ee05e04be7072b2b766fcb21fabdd"
+          },
+          "expectation": "structure",
+          "why": "Text, identifier and list validators reject malformed or oversized structured claims."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 23,
+            "end": 34,
+            "sha256": "9023a5dcc7de285d822a1240a912f4e71d06680cf52f296970a6811510ab1a1c"
+          },
+          "expectation": "paths",
+          "why": "Repository-relative unsymlinked regular path validation keeps proposal reads within intended files."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 35,
+            "end": 46,
+            "sha256": "abdc8862f447b1b563b0eadfe6cfc51fe6e61d5f2fd5a2aa4334fb946ab18252"
+          },
+          "expectation": "paths",
+          "why": "Proposal reader rejects map/working paths and oversize files and validates the root schema; the second post-read size guard is defense against a stat/read race, not a separately observed race."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 77,
+            "end": 80,
+            "sha256": "01b9ae1b6e108bfdd31eabacb50832ea29603f907e862d814149792c3ea085e6"
+          },
+          "expectation": "partial",
+          "why": "Invalid individual sources remain visible and contribute zero without discarding unrelated current associations."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 158,
+            "end": 158,
+            "sha256": "a6f8bf480444941f28afc82e5b923b72d87ef929a9c6ef906087513922e110f5"
+          },
+          "expectation": "expansion",
+          "why": "Expanded audit packets cannot grow beyond 64 MiB even when a valid catalog repeats large shared plans."
+        }
+      ]
+    },
+    {
+      "id": "proposal-consistent-snapshot",
+      "title": "Keep concurrent-edit proposal reports coherent and hash shared sources once",
+      "preconditions": [
+        "An isolated synthetic Git fixture with two proposed ranges in one source file; inspector schedules a fixture edit between inspection and reporting without replacing I/O or invoking implementation APIs."
+      ],
+      "actions": [
+        "tracer proposal prepare --file draft.json",
+        "tracer proposal report --file docs/testing/proposed-scenario-map.json",
+        "tracer proposal check --file docs/testing/proposed-scenario-map.json"
+      ],
+      "expectations": [
+        {
+          "id": "cache",
+          "description": "The public command inspects the proposal once and computes the shared full-file hash once.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 208,
+            "end": 209,
+            "sha256": "85e9e6cf20efa4908688b71d07d70b5c148b0f1312152c42c279df73328171b6"
+          }
+        },
+        {
+          "id": "snapshot",
+          "description": "Both current report counts describe the pre-edit inventory; a later command sees changed source, counts one included line and rejects stale pins.",
+          "witness": {
+            "path": "tests/e2e/proposal-journeys.test.mjs",
+            "start": 210,
+            "end": 216,
+            "sha256": "eb68042a7b9cbcc9837d7542eb8c852b37415146b219c411cb43efbe58bee4a9"
+          }
+        }
+      ],
+      "mappings": [
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 54,
+            "end": 54,
+            "sha256": "52ebe36dd96625d60990772f74f8b716fb205222dee0d6ea3c764e7445866420"
+          },
+          "expectation": "cache",
+          "why": "The per-inspection hash cache is scoped to the current source snapshot."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 81,
+            "end": 84,
+            "sha256": "cc6b97a14b09abe240bf40d10b42b702bff017a4f2a4818cfd5aa34cb4f9445b"
+          },
+          "expectation": "cache",
+          "why": "Multiple source ranges share one exact full-file hash in this inspection."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 136,
+            "end": 139,
+            "sha256": "9417e795cf6039a7775b297b1af34d6ce20072eda9092a8f66a5a2f029a78e75"
+          },
+          "expectation": "snapshot",
+          "why": "The proposal command obtains its inventory and deferred report from one Tracer operation, without a second source read."
+        },
+        {
+          "source": {
+            "path": "src/proposals.mjs",
+            "start": 144,
+            "end": 147,
+            "sha256": "8ce8c2e737db5e27bb4ab765e5982a7ee79e87ddc3af619e4eff5444698b1b56"
+          },
+          "expectation": "snapshot",
+          "why": "Proposal numerator and report denominator use the same source snapshot even when the fixture changes between them."
+        },
+        {
+          "source": {
+            "path": "src/tracer.mjs",
+            "start": 2,
+            "end": 2,
+            "sha256": "49bde31da8f58c90130d3803a72448402d181b6c3ac93827534bcf75cbd3f888"
+          },
+          "expectation": "snapshot",
+          "why": "Shared proposal dispatch import supports the source-consistent public command."
+        },
+        {
+          "source": {
+            "path": "src/tracer.mjs",
+            "start": 385,
+            "end": 392,
+            "sha256": "de022d53a84f7a3906bbedb27bed176da03dc6888564cb163334e0fcdd367a6e"
+          },
+          "expectation": "snapshot",
+          "why": "The proposal method captures one inventory and invokes private report over it, suppressing duplicate default-proposal inspection."
+        },
+        {
+          "source": {
+            "path": "src/tracer.mjs",
+            "start": 443,
+            "end": 443,
+            "sha256": "a29d262bfeae39fcf58d6c1e2652787d667e30c9dbba1367f56da96bcd292399"
+          },
+          "expectation": "cache",
+          "why": "The internal proposal report path skips duplicate default-proposal inspection while ordinary reports retain it."
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "catalog-contract",
+      "title": "Catalog lifecycle and integrity",
+      "steps": [
+        "catalog-lifecycle"
+      ]
+    },
+    {
+      "id": "runtime-capture-contract",
+      "title": "Separate captured actions and assertions",
+      "steps": [
+        "runtime-contract"
+      ]
+    },
+    {
+      "id": "compiler-schema-guards-scenario",
+      "title": "Reject malformed declarations and recover",
+      "steps": [
+        "compiler-schema-guards"
+      ]
+    },
+    {
+      "id": "compiler-file-guards-scenario",
+      "title": "Reject unsafe catalog files and bytes",
+      "steps": [
+        "compiler-file-guards"
+      ]
+    },
+    {
+      "id": "compiler-expansion-guards-scenario",
+      "title": "Bound scenario expansion and recover",
+      "steps": [
+        "compiler-expansion-guards"
+      ]
+    },
+    {
+      "id": "compiler-batch-guards-scenario",
+      "title": "Preserve metadata during reviewed integration",
+      "steps": [
+        "compiler-batch-guards"
+      ]
+    },
+    {
+      "id": "runtime-initialization-guards-scenario",
+      "title": "Reject unsafe runtime initialization",
+      "steps": [
+        "runtime-initialization-guards"
+      ]
+    },
+    {
+      "id": "runtime-capture-guards-scenario",
+      "title": "Pin and freeze explicit callback results",
+      "steps": [
+        "runtime-capture-guards"
+      ]
+    },
+    {
+      "id": "runtime-protocol-guards-scenario",
+      "title": "Reject invalid callback protocols",
+      "steps": [
+        "runtime-protocol-guards"
+      ]
+    },
+    {
+      "id": "scenario-entrypoint-import-scenario",
+      "title": "Load packaged scenario module",
+      "steps": [
+        "scenario-entrypoint-import"
+      ]
+    },
+    {
+      "id": "scenario-help-contract-scenario",
+      "title": "Describe exact scenario command contract",
+      "steps": [
+        "scenario-help-contract"
+      ]
+    },
+    {
+      "id": "scenario-runner-discovery-scenario",
+      "title": "Discover the named scenario journey group",
+      "steps": [
+        "scenario-runner-discovery"
+      ]
+    },
+    {
+      "id": "proposal-first-map",
+      "title": "Propose a complete unwritten map before app setup and audit later",
+      "steps": [
+        "proposal-first-map"
+      ]
+    },
+    {
+      "id": "proposal-scope-progress",
+      "title": "Keep scope-aware proposal and reviewed progress separate from execution",
+      "steps": [
+        "proposal-scope-progress"
+      ]
+    },
+    {
+      "id": "proposal-byte-freshness",
+      "title": "Reject stale pins and preserve legacy span compatibility",
+      "steps": [
+        "proposal-byte-freshness"
+      ]
+    },
+    {
+      "id": "proposal-schema-safety",
+      "title": "Reject invalid proposal status, references, collisions and unsafe imports",
+      "steps": [
+        "proposal-schema-safety"
+      ]
+    },
+    {
+      "id": "proposal-missing-status",
+      "title": "Keep absent proposal and execution evidence unknown",
+      "steps": [
+        "proposal-missing-status"
+      ]
+    },
+    {
+      "id": "proposal-bounded-audit",
+      "title": "Validate partial rows, unsafe files and resource bounds",
+      "steps": [
+        "proposal-bounded-audit"
+      ]
+    },
+    {
+      "id": "proposal-consistent-snapshot",
+      "title": "Keep concurrent-edit proposal reports coherent and hash shared sources once",
+      "steps": [
+        "proposal-consistent-snapshot"
+      ]
+    }
+  ]
+}

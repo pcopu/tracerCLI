@@ -7,7 +7,10 @@
     "tracer": "bin/tracer.mjs",
     "tracercli": "bin/tracer.mjs"
   },
-  "exports": "./src/tracer.mjs",
+  "exports": {
+    ".": "./src/tracer.mjs",
+    "./scenario-runtime": "./src/scenario-runtime.mjs"
+  },
   "files": [
     "bin",
     "src",
@@ -17,7 +20,7 @@
   ],
   "scripts": {
     "test": "node bin/tracer.mjs app -- test",
-    "check": "node --check bin/tracer.mjs && node --check src/tracer.mjs && node --check src/measured.mjs && node --check src/project.mjs && node --check src/agent-setup.mjs && node --check src/update.mjs && node --check scripts/project-cli.mjs && npm test && node bin/tracer.mjs check"
+    "check": "node --check bin/tracer.mjs && node --check src/tracer.mjs && node --check src/catalog.mjs && node --check src/proposals.mjs && node --check src/scenarios.mjs && node --check src/scenario-runtime.mjs && node --check src/measured.mjs && node --check src/project.mjs && node --check src/agent-setup.mjs && node --check src/update.mjs && node --check scripts/project-cli.mjs && npm test && node bin/tracer.mjs check"
   },
   "engines": {
     "node": ">=20"

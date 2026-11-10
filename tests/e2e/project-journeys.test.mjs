@@ -175,9 +175,9 @@ test('skill parity journey: install the checked-in prerequisite and maintenance 
     p.ok('init', '--agent', agent, '--install-skill');
     const installed = readFileSync(join(p.home, `.${agent}/skills/tracer/SKILL.md`), 'utf8');
     assert.equal(installed, source);
-    assert.match(installed, /Before starting application coverage or new link-mapping work, first audit every supported application feature/);
-    assert.match(installed, /exposes every authorized application feature, building it if missing and extending it wherever routes are absent/);
-    assert.match(installed, /CLI feature parity is a prerequisite/);
+    assert.match(installed, /Do not wait for every feature to be categorized or every CLI route to exist before running independent supported scenarios/);
+    assert.match(installed, /A category or scenario suggestion must never be promoted automatically to a tested link or measured hit/);
+    assert.match(installed, /CLI feature parity is a completion requirement, not a global prerequisite that blocks all useful testing/);
     assert.match(installed, /A mapping-only request does not authorize application changes/);
     assert.match(installed, /Preserve authentication, consent, safety checks, input-route semantics and user data/);
     assert.match(installed, /List unimplemented routes, platform constraints and deliberately restricted actions honestly/);
@@ -495,4 +495,104 @@ test('agent path recovery journey: reject nonregular ancestors and skill or inst
     assert.equal(existsSync(join(p.root, 'app-ran.json')), false);
     assert.equal(p.read('tracer.json'), config); assert.equal(p.read(mapPath), map);
   }
+});
+
+import { chmodSync } from 'node:fs';
+
+test('project init recovery journey: preserve the existing map when the project directory denies config creation', { skip: process.platform === 'win32' || (process.getuid?.() === 0) }, t => {
+  const p = project(t);
+  p.ok('init', '--app-json', p.app);
+  p.ok('link', 'src/example.js:1', '--action', 'app read', '--why', 'Keep the existing map through recovery.');
+  const map = p.read(mapPath);
+  rmSync(join(p.root, 'tracer.json'));
+
+  // Deny creation in the project root while keeping the existing map directory writable.
+  // Restore permissions even if an assertion fails so the isolated fixture can be removed.
+  chmodSync(p.root, 0o555);
+  try {
+    const rejected = p.run('init', '--app-json', p.app);
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.stderr, /EACCES/);
+    assert.equal(existsSync(join(p.root, 'tracer.json')), false);
+    assert.equal(p.read(mapPath), map);
+    assert.equal(existsSync(join(p.root, `${mapPath}.lock`)), false);
+  } finally { chmodSync(p.root, 0o755); }
+
+  // The fixture owner restores access, then retries the same public command.
+  p.ok('init', '--app-json', p.app);
+  assert.deepEqual(JSON.parse(p.read('tracer.json')).app, JSON.parse(p.app));
+  assert.equal(p.read(mapPath), map);
+  p.ok('check');
+});
+
+test('project init race journey: preserve a concurrently created config and map, then recover after review', { timeout: 20000, skip: typeof WebSocket === 'undefined' }, async t => {
+  const p = project(t);
+  p.ok('init', '--app-json', p.app);
+  p.ok('link', 'src/example.js:1', '--action', 'app read', '--why', 'Retain the map during concurrent initialization.');
+  const map = p.read(mapPath);
+  rmSync(join(p.root, 'tracer.json'));
+
+  // The debugger only schedules the fixture's real concurrent write. It neither
+  // replaces filesystem functions nor invokes implementation APIs.
+  const sourceUrl = new URL('../../src/project.mjs', import.meta.url);
+  const sourceLines = readFileSync(sourceUrl, 'utf8').split('\n');
+  const matches = sourceLines.map((line, index) => line.includes("try { writeFileSync(path, `${JSON.stringify(requested, null, 2)}\\n`, { flag: 'wx'") ? index : -1).filter(index => index >= 0);
+  assert.equal(matches.length, 1, 'Find the exclusive project-config write unambiguously.');
+  const child = spawn(process.execPath, ['--inspect-brk=127.0.0.1:0', cli, '--root', p.root, 'init', '--app-json', p.app], { env: p.env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '', ended, socket;
+  child.stdout.on('data', bytes => { stdout += bytes; });
+  child.stderr.on('data', bytes => { stderr += bytes; });
+  child.on('close', (code, signal) => { ended = { code, signal }; });
+  t.after(() => { socket?.close(); if (!ended) child.kill('SIGKILL'); });
+  const wait = async (condition, description) => {
+    const deadline = Date.now() + 8000;
+    while (!condition()) {
+      if (ended) throw new Error(`CLI ended while waiting for ${description}: ${stderr}`);
+      if (Date.now() > deadline) throw new Error(`Timed out waiting for ${description}: ${stderr}`);
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  };
+  await wait(() => /Debugger listening on (ws:\/\/[^\s]+)/.test(stderr), 'inspector');
+  const url = stderr.match(/Debugger listening on (ws:\/\/[^\s]+)/)[1];
+  socket = new WebSocket(url);
+  let opened = false, nextId = 0;
+  const responses = new Map(), pauses = [];
+  socket.addEventListener('open', () => { opened = true; });
+  socket.addEventListener('message', event => {
+    const message = JSON.parse(event.data);
+    if (message.id) responses.set(message.id, message);
+    if (message.method === 'Debugger.paused') pauses.push(message.params);
+  });
+  await wait(() => opened, 'inspector connection');
+  const command = async (method, params = {}) => {
+    const id = ++nextId;
+    socket.send(JSON.stringify({ id, method, params }));
+    await wait(() => responses.has(id), method);
+    const response = responses.get(id); responses.delete(id);
+    assert.equal(response.error, undefined, JSON.stringify(response.error));
+    return response.result;
+  };
+  await command('Debugger.enable');
+  const breakpoint = await command('Debugger.setBreakpointByUrl', { url: sourceUrl.href, lineNumber: matches[0] });
+  await command('Runtime.runIfWaitingForDebugger');
+  await wait(() => pauses.length > 0, 'initial debugger pause');
+  pauses.shift();
+  await command('Debugger.resume');
+  await wait(() => pauses.some(pause => pause.hitBreakpoints.includes(breakpoint.breakpointId)), 'exclusive config write');
+  assert.equal(existsSync(join(p.root, 'tracer.json')), false);
+  assert.equal(p.read(mapPath), map);
+  assert.equal(existsSync(join(p.root, `${mapPath}.lock`)), false);
+  const concurrent = `${JSON.stringify({ version: 1, app: JSON.parse(p.app), owner: 'concurrent fixture' }, null, 2)}\n`;
+  p.put('tracer.json', concurrent);
+  await command('Debugger.resume');
+  socket.close(); socket = undefined;
+  await wait(() => ended, 'CLI exit').catch(error => { if (!ended) throw error; });
+  assert.equal(ended.code, 1, stdout + stderr);
+  assert.match(stderr, /tracer\.json appeared during init and was preserved/);
+  assert.equal(p.read('tracer.json'), concurrent);
+  assert.equal(p.read(mapPath), map);
+  p.ok('init', '--app-json', p.app);
+  assert.equal(p.read('tracer.json'), concurrent);
+  assert.equal(p.read(mapPath), map);
+  p.ok('check');
 });

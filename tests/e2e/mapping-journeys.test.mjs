@@ -96,7 +96,7 @@ test('mapping journey: review links from source to actions and witnesses, then e
   assert.equal(reverse.files[0].links[0].source.sha256, first.source.sha256);
   assert.equal(f.json('report', '--step', 'tests/cart.spec').totals.linked, 2);
   assert.equal(f.json('report', '--action', 'cart total').totals.linked, 2);
-  assert.match(f.ok('report', '--source', 'src/cart.py:1-2'), /Add an item, then assert the total\./);
+  const human = f.ok('report', '--source', 'src/cart.py:1-2'); assert.match(human, /src\/cart\.py:1-2/); assert.match(human, /tests\/cart\.spec:2-3/); assert.match(human, /Add an item, then assert the total\./);
   assert.equal(f.check().valid, 1);
 
   const original = f.bytes();
@@ -710,7 +710,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   actions                 Run configured discovery, or the app’s --help
   app -- ARGS...          Explicitly run the configured app with exact arguments
   link SOURCE:START-END --action TEXT [--action TEXT ...]
-       [--step TEST:START-END] --why TEXT
+       [--step TEST:START-END] --why TEXT\n  dead-code PATH:START-END --why TEXT --evidence TEXT\n  undead-code ID
   report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE]
           | --sequence '["first action","next action"]'] [--minimum-traces N] [--json]
   check [--require-minimum] [--minimum-traces N] [--json]
@@ -720,12 +720,18 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   uncomment ID             Remove a comment declaration after review
   ignore PATH --why TEXT    Exclude a file/directory from manual mapping totals only
   unignore EXACT_PATH      Restore a saved ignored path (directories end in /)
-  update [--check | --status | --install-managed | --rollback | --auto off|check|apply]
+  update [--check | --status | --install-managed | --rollback | --refresh-skills | --auto off|check|apply]
          [--version VERSION | --commit FULL_SHA] [--json]
   measure import --before FILE --after FILE --manifest FILE --sources FILE
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure check [--json]
+  proposal prepare|check|report --file PROPOSAL [--json]
+  proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
+  scenario prepare|check --file CATALOG [--json]
+  scenario report|packet --file CATALOG [--scenario ID] [--json]
+  scenario link --file CATALOG [--scenario ID] --reviewed
+                --expect-catalog-sha256 HASH --expect-map-sha256 HASH [--json]
   --help | --version
 
 init never overwrites existing config/map or executes an app. In a terminal it may
@@ -737,6 +743,8 @@ Global options go before the command. Repeat --include-ext to add source languag
 Ranges are 1-based, inclusive. Mapped actions are literal descriptions, never executed.
 One distinct exact ordered action sequence is one manual trace per nonblank line, regardless
 of duplicate links or witnesses. Repeated actions inside it remain ordered steps.
+For whole-codebase mapping, propose the full scenario map first, then audit in batches.
+Proposals may include unwritten tests and uncertainty; no execution is prerequisite.
 The project minimum defaults to 1. check gates integrity; --require-minimum also
 gates declared trace counts across included project mapping scope. Neither measures execution.
 MANUAL LINKS ONLY. A current link is not observed execution, test coverage or proof of correctness.
@@ -745,7 +753,7 @@ MANUAL LINKS ONLY. A current link is not observed execution, test coverage or pr
     const result = f.expect(args, 0, outside);
     assert.equal(result.stdout, expected); assert.equal(result.stderr, '');
   }
-  for (const command of ['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore', 'config', 'update', 'measure']) {
+  for (const command of ['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal']) {
     const result = f.expect([command, '--help'], 0, outside);
     assert.equal(result.stdout, expected, `${command} --help must show the same complete contract`);
     assert.equal(result.stderr, '');
@@ -768,4 +776,78 @@ test('mapping journey: basename-only source inventory and project scope notices 
   const checked = f.ok('check'); assert.ok(checked.split('\n').includes(notice));
   assert.equal(ignored.totals.lines, 5); assert.equal(ignored.ignoredTotals.lines, 3);
   assert.equal(ignored.ignoredSources[0].why, 'Synthetic explicit scope.');
+});
+
+test('progress journey: independent proposed categories, manual witnesses and reviewable dead-code marks', t => {
+  const f = project(t), catalogPath = 'docs/testing/code-feature-catalog.json';
+  const hash = value => sha256(value), data = cartSource.split('\n'); data.pop();
+  const catalog = { schemaVersion: 1, kind: 'feature-classification-catalog', inventory: {
+    schemaVersion: 1, kind: 'feature-source-inventory', scope: 'fixture', lineBasis: 'nonblank-undeclared-comment-lines',
+    manifestSha256: hash('manifest'), reportSha256: hash('report'), files: [{ path: 'src/cart.py', sha256: hash(cartSource), physicalLines: 4, includedLines: 3, blankRanges: [[3, 3]], commentRanges: [] }] },
+    taxonomy: { schemaVersion: 1, features: [{ id: 'cart', title: 'Cart' }] },
+    proposals: [{ assignmentId: 'p1', model: 'fixture', sha256: hash('proposal') }],
+    ranges: [{ path: 'src/cart.py', start: 1, end: 2, featureId: 'cart', confidence: 'high', rationale: 'Cart calculation', status: 'model-proposed', assignmentId: 'p1', fileSha256: hash(cartSource), spanSha256: hash(data.slice(0, 2).join('\n')) }] };
+  const missing = f.json('report').progress;
+  assert.equal(missing.categorization.status, 'missing'); assert.equal(missing.categorization.percent, null);
+  f.put(catalogPath, JSON.stringify(catalog));
+  let r = f.json('report').progress;
+  assert.equal(r.categorization.lines, 2); assert.equal(r.categorization.percent, 200 / 3);
+  assert.equal(r.mapping.manual.lines, 0); assert.equal(r.mapping.withTestWitness.lines, 0);
+  f.ok(...f.link({ source: 'src/cart.py:1', step: null }));
+  f.ok(...f.link({ source: 'src/cart.py:2', actions: ['cart total'], step: 'tests/cart.spec:3' }));
+  r = f.json('report').progress;
+  assert.equal(r.mapping.manual.lines, 2); assert.equal(r.mapping.withTestWitness.lines, 1);
+  assert.match(f.ok('report'), /SCENARIO MAPPING:.*with test witnesses/);
+  f.fail(['dead-code', 'src/cart.py:1', '--why', 'unused'], /evidence/);
+  f.ok('dead-code', 'src/cart.py:1-2', '--why', 'candidate for removal', '--evidence', 'no callers found in reviewed build');
+  const markedBytes = f.bytes();
+  assert.match(f.ok('dead-code', 'src/cart.py:1-2', '--why', 'candidate for removal', '--evidence', 'no callers found in reviewed build'), /Already marked/);
+  assert.deepEqual(f.bytes(), markedBytes);
+  f.fail(['dead-code', 'src/cart.py:1-2', '--why', 'different reason', '--evidence', 'no callers found in reviewed build'], /differs/);
+  f.ok('dead-code', 'src/cart.py:2-4', '--why', 'candidate for retention review', '--evidence', 'legacy path');
+  r = f.json('report').progress;
+  assert.equal(r.deadCode.lines, 3); assert.equal(r.deadCode.denominator, 3); assert.equal(r.deadCode.percent, 100);
+  assert.equal(f.json('report', '--source', 'src/cart.py:1').progress.deadCode.denominator, 3);
+  assert.equal(r.mapping.manual.lines, 2, 'dead-code marks do not change mapping');
+  const id = r.deadCode.marks[0].id;
+  f.ok('undead-code', id); assert.equal(f.json('report').progress.deadCode.marks.length, 1);
+  catalog.ranges.push({ ...catalog.ranges[0], start: 2, end: 2, spanSha256: hash(data[1]) });
+  f.put(catalogPath, JSON.stringify(catalog));
+  r = f.json('report').progress;
+  assert.equal(r.categorization.lines, 0); assert.match(r.categorization.issues.join(' '), /overlapping/);
+  f.put('src/cart.py', cartSource + '# changed\n');
+  r = f.json('report').progress;
+  assert.equal(r.categorization.lines, 0); assert.match(r.categorization.issues.join(' '), /Stale/);
+  assert.equal(r.deadCode.lines, 0); assert.equal(r.deadCode.invalid.length, 1);
+  assert.equal(f.check(1).invalidDeadCode.length, 1);
+  f.put(catalogPath, '{bad'); assert.equal(f.json('report').progress.categorization.status, 'invalid');
+  f.editMap(map => { map.deadCode.push({ id: 'broken', why: 'bad' }); });
+  assert.equal(f.check(1).invalidDeadCode.length, 2);
+  f.fail(['dead-code', 'src/cart.py:1', '--why', 'review', '--evidence', 'inspection'], /invalid dead-code/);
+});
+
+test('progress journey: empty included scope has no percentage', t => {
+  const f = project(t); f.ok('ignore', 'src/', '--why', 'fixture scope');
+  const p = f.json('report').progress;
+  assert.equal(p.mapping.manual.percent, null); assert.equal(p.mapping.withTestWitness.percent, null);
+  assert.equal(p.deadCode.percent, null); assert.equal(p.categorization.percent, null);
+  assert.match(f.ok('report'), /N\/A/);
+});
+
+test('progress journey: human output identifies catalog issues and dead-code review status', t => {
+  const f = project(t);
+  f.ok('dead-code', 'src/cart.py:1', '--why', 'candidate', '--evidence', 'reviewed references');
+  let human = f.ok('report');
+  assert.match(human, /CATEGORIZATION: missing; 0 \/ 3 included lines \(N\/A\)/);
+  assert.match(human, /DECLARED DEAD CODE: 1 \/ 3 whole included lines \(33\.33%\)/);
+  assert.match(human, /Why: candidate; evidence: reviewed references/);
+  assert.match(human, /not deleted or excluded from mapping/);
+  assert.match(human, /not measured execution or proof of test success/);
+  f.put('docs/testing/code-feature-catalog.json', '{bad');
+  f.put('src/cart.py', cartSource.replace('sum(items)', 'sum(items) + 1'));
+  human = f.ok('report');
+  assert.match(human, /CATEGORIZATION: invalid/);
+  assert.match(human, /CATALOG ISSUE:/);
+  assert.match(human, /INVALID DEAD CODE .*stale/);
+  assert.match(human, /DECLARED DEAD CODE: 0 \/ 3 whole included lines \(0\.00%\)/);
 });

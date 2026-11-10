@@ -185,3 +185,21 @@ npm pack --dry-run
 ```
 
 No GitHub Actions configuration is required or installed.
+
+### Progress and dead-code review
+
+`tracer report` and `tracer report --json` separately show feature categorization, manual scenario mapping, and mapping with a current test witness. Percentages divide unique included nonblank lines by the report's included scope, excluding blank lines and currently declared comments. Filtered reports describe the selected scope. An empty denominator is N/A. A witness is a source-to-test link, not evidence that the test ran or passed; use measured evidence separately.
+
+If `docs/testing/code-feature-catalog.json` exists, Tracer reads its version-1 feature-classification catalog, including the format used by Scriv. Current, well-formed model-proposed ranges count once; Tracer checks file and span hashes and reports stale, malformed or overlapping entries. A missing or unreadable catalog is shown as unavailable, not as complete. These classifications are proposals, not verified feature labels or scenario links. Tracer never imports them into the v1 link map or updates their hashes.
+
+Mark a suspected dead-code range with `tracer dead-code src/example.js:10-15 --why 'candidate for removal' --evidence 'reviewed callers and target membership'`. This is a review declaration, not proof the code is unreachable. `tracer report` shows its unique included lines as a percentage of the **whole** included inventory, even when a lookup filter is active. Overlaps count once; ignored files and declared comments do not contribute. Marks do not delete or change the mapping denominator. `tracer undead-code ID` removes only the declaration. The reason, evidence, snippet hash and whole-file hash are retained; after any file edit, review and remove/recreate the stale mark instead of refreshing it blindly. `tracer check` reports stale or invalid marks.
+
+## Reusable named scenario steps
+
+Expose each step's actions, preconditions, expected results and relevant code once, then compose broad scenarios from stable IDs. `tracer scenario prepare|check|report|packet` pins and reviews the catalog; `tracer scenario link --reviewed` applies a hash-pinned atomic batch without changing the version-1 map format. The optional `@pcopu/tracercli/scenario-runtime` helper records explicit action and assertion callbacks separately during the real application scenario. It never executes stored action descriptions or turns a successful command into an asserted result.
+
+Read [Reusable scenario steps](docs/scenarios.md) for the schema, workflow, runtime integration and evidence limits. Manual associations, adapter-reported assertions and measured execution remain separate.
+
+## Propose first, audit afterward
+
+For whole-codebase mapping, author the full [proposed scenario map](docs/proposals.md) first, including unwritten tests and explicit uncertainty. `tracer proposal prepare/check/report` pins and reports the separate plan without app execution or reviewed-link promotion. `tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 0 --limit 25` provides later bounded audit packets. `tracer report --json` keeps proposed, operator-declared reviewed links and execution status separate; unknown execution stays null rather than becoming a false percentage.

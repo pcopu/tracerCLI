@@ -126,6 +126,8 @@ On a managed update, Tracer refreshes **only registered skills whose current con
 - Unregistered/custom skills, other agent files, `AGENTS.md` and `CLAUDE.md` are never modified by the updater.
 - A skill failure does not undo an already activated CLI update. The result lists preserved/failed skill updates separately.
 
+Run `tracer update --refresh-skills` (optionally `--json`) to explicitly refresh registered skills from the bundled skill in the currently invoked installation, without checking or downloading a release. It uses the same lock, checksum checks and preservation rules above. Registered skills from a newer version are preserved, so invoking an older installation cannot downgrade them. It never registers existing unregistered skills or changes project instructions. Actual destination or metadata failures return `skills-partial` and a nonzero exit, with details for each preserved destination; customized, missing or newer skills are explicitly reported nonfatal preservation outcomes. This local operation cannot be combined with other update modes, version pins or commit pins.
+
 CLI activation and updates at separate skill destinations are not one filesystem transaction. Each replacement is atomic, with any failure reported. The generic project pointer remains the same as the skill evolves. **A changed skill takes effect when the agent next loads that file**, often in a new session or after a restart; this is not a live instruction hot-swap and discovery is agent-dependent.
 
 ## Maintainer and embedding notes
@@ -138,7 +140,7 @@ There is no mandatory release-asset format or generated manifest to publish. Com
 - `updateStatus(options)`, `configureUpdates('off'|'check'|'apply', options)` and `rollbackUpdate(options)`: local status, persisted opt-in behavior and rollback.
 - `maybeAutoUpdate({ command, ...options })`: optional post-command hook that returns notices without printing or changing the caller's exit status.
 - `registerInstalledSkill(absoluteSkillPath, { version, ...options })`: call only immediately after an authorized installation of the bundled skill. Re-registration cannot bless later edits.
-- `refreshRegisteredSkills({ source, version, ...options })`: conservative refresh from a caller-supplied bundled skill file; never register arbitrary existing files first.
+- `refreshRegisteredSkills({ source, version, ...options })`: conservative refresh from a caller-supplied bundled skill file (or the current installation when called without arguments); never register arbitrary existing files first.
 
 The `fetch`, `updateHome`, `installRoot`, `home`, time and environment seams support isolated tests and trusted embedders; none are arbitrary-server CLI flags. `fetch` is a trusted code-injection seam, not an alternative security boundary. Production CLI networking always uses the fixed official endpoint.
 

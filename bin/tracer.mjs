@@ -2,8 +2,10 @@
 import { Tracer, VERSION, NOTICE, location, validateMinimum } from '../src/tracer.mjs';
 import { initialize, runApp } from '../src/project.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
-import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate } from '../src/update.mjs';
+import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
 import { importMeasured, reportMeasured, checkMeasured } from '../src/measured.mjs';
+import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
+import { proposalCommand } from '../src/proposals.mjs';
 let selectedCommand;
 
 const help = `Tracer ${VERSION} — source ↔ ordered CLI actions ↔ test steps
@@ -16,6 +18,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   app -- ARGS...          Explicitly run the configured app with exact arguments
   link SOURCE:START-END --action TEXT [--action TEXT ...]
        [--step TEST:START-END] --why TEXT
+  dead-code PATH:START-END --why TEXT --evidence TEXT
+  undead-code ID
   report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE]
           | --sequence '["first action","next action"]'] [--minimum-traces N] [--json]
   check [--require-minimum] [--minimum-traces N] [--json]
@@ -25,12 +29,18 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   uncomment ID             Remove a comment declaration after review
   ignore PATH --why TEXT    Exclude a file/directory from manual mapping totals only
   unignore EXACT_PATH      Restore a saved ignored path (directories end in /)
-  update [--check | --status | --install-managed | --rollback | --auto off|check|apply]
+  update [--check | --status | --install-managed | --rollback | --refresh-skills | --auto off|check|apply]
          [--version VERSION | --commit FULL_SHA] [--json]
   measure import --before FILE --after FILE --manifest FILE --sources FILE
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure check [--json]
+  proposal prepare|check|report --file PROPOSAL [--json]
+  proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
+  scenario prepare|check --file CATALOG [--json]
+  scenario report|packet --file CATALOG [--scenario ID] [--json]
+  scenario link --file CATALOG [--scenario ID] --reviewed
+                --expect-catalog-sha256 HASH --expect-map-sha256 HASH [--json]
   --help | --version
 
 init never overwrites existing config/map or executes an app. In a terminal it may
@@ -42,6 +52,8 @@ Global options go before the command. Repeat --include-ext to add source languag
 Ranges are 1-based, inclusive. Mapped actions are literal descriptions, never executed.
 One distinct exact ordered action sequence is one manual trace per nonblank line, regardless
 of duplicate links or witnesses. Repeated actions inside it remain ordered steps.
+For whole-codebase mapping, propose the full scenario map first, then audit in batches.
+Proposals may include unwritten tests and uncertainty; no execution is prerequisite.
 The project minimum defaults to 1. check gates integrity; --require-minimum also
 gates declared trace counts across included project mapping scope. Neither measures execution.
 ${NOTICE}`;
@@ -73,8 +85,49 @@ async function main(args) {
   }
   const [command, ...rest] = args;
   if (rest.length === 1 && rest[0] === '--help') { console.log(help); return; }
-  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore', 'config', 'update', 'measure'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
+  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
   selectedCommand = command;
+  if (command === 'proposal') {
+    const [mode, ...flags] = rest, options = {};
+    if (!['prepare', 'check', 'report', 'audit'].includes(mode)) fail('Use proposal prepare, check, report or audit.');
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : [])];
+    for (let i = 0; i < flags.length; i++) {
+      const flag = flags[i];
+      if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
+      options[flag] = flag === '--json' ? true : value(flags, i++, flag);
+    }
+    if (!options['--file']) fail(`proposal ${mode} requires --file.`);
+    for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
+    const result = proposalCommand(new Tracer(settings), options['--file'], { mode,
+      offset: options['--offset'] === undefined ? 0 : Number(options['--offset']), limit: options['--limit'] === undefined ? 25 : Number(options['--limit']) });
+    console.log(JSON.stringify(result, null, 2));
+    if (mode === 'check' && !result.valid) process.exitCode = 1;
+    return;
+  }
+  if (command === 'scenario') {
+    const [mode, ...flags] = rest, options = {};
+    const common = ['--file', '--json'];
+    const allowed = { prepare: common, check: common,
+      report: [...common, '--scenario'], packet: [...common, '--scenario'],
+      link: [...common, '--scenario', '--reviewed', '--expect-catalog-sha256', '--expect-map-sha256'] }[mode];
+    if (!allowed) fail('Use scenario prepare, check, report, packet or link.');
+    for (let i = 0; i < flags.length; i++) {
+      const flag = flags[i];
+      if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate scenario ${mode} option: ${flag}`);
+      options[flag] = ['--json', '--reviewed'].includes(flag) ? true : value(flags, i++, flag);
+    }
+    if (!options['--file']) fail(`scenario ${mode} requires --file.`);
+    const tracer = new Tracer(settings), file = options['--file'], scenarioId = options['--scenario'];
+    const result = mode === 'prepare' ? prepareScenarios(tracer, file)
+      : mode === 'check' ? checkScenarios(tracer, file)
+      : mode === 'report' ? reportScenarios(tracer, file, scenarioId)
+      : mode === 'packet' ? scenarioPacket(tracer, file, scenarioId)
+      : linkScenarios(tracer, file, { scenarioId, reviewed: !!options['--reviewed'],
+        expectedCatalogSha256: options['--expect-catalog-sha256'], expectedMapSha256: options['--expect-map-sha256'] });
+    // Catalogs, proposals and reports remain machine-readable even without --json.
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
   if (command === 'measure') {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
@@ -112,18 +165,21 @@ async function main(args) {
     const options = {};
     for (let i = 0; i < rest.length; i++) {
       const flag = rest[i];
-      if (!['--check', '--status', '--install-managed', '--rollback', '--auto', '--version', '--commit', '--json'].includes(flag)) fail(`Unknown update option: ${flag}`);
+      if (!['--check', '--status', '--install-managed', '--rollback', '--refresh-skills', '--auto', '--version', '--commit', '--json'].includes(flag)) fail(`Unknown update option: ${flag}`);
       if (Object.hasOwn(options, flag)) fail(`Duplicate option: ${flag}`);
       options[flag] = ['--auto', '--version', '--commit'].includes(flag) ? value(rest, i++, flag) : true;
     }
-    const modes = ['--check', '--status', '--install-managed', '--rollback', '--auto'].filter(flag => Object.hasOwn(options, flag));
+    const modes = ['--check', '--status', '--install-managed', '--rollback', '--refresh-skills', '--auto'].filter(flag => Object.hasOwn(options, flag));
     if (modes.length > 1) fail('Choose one update mode at a time.');
     if (options['--version'] && options['--commit']) fail('Choose either an exact version or an exact commit.');
-    if ((options['--status'] || options['--rollback'] || options['--auto']) && (options['--version'] || options['--commit'])) fail('Version/commit pins apply only to update, check or install-managed.');
+    if ((options['--status'] || options['--rollback'] || options['--refresh-skills'] || options['--auto']) && (options['--version'] || options['--commit'])) fail('Version/commit pins apply only to update, check or install-managed.');
     const requested = { version: options['--version'], commit: options['--commit'] };
     const result = options['--status'] ? updateStatus() : options['--auto'] ? configureUpdates(options['--auto'])
-      : options['--rollback'] ? rollbackUpdate() : options['--check'] ? await checkForUpdate(requested)
+      : options['--rollback'] ? rollbackUpdate() : options['--refresh-skills'] ? { status: 'skills-refreshed', skills: refreshRegisteredSkills() } : options['--check'] ? await checkForUpdate(requested)
       : await updateCLI({ ...requested, installManaged: !!options['--install-managed'] });
+    if (options['--refresh-skills'] && result.skills.some(skill => ['preserved', 'metadata-error'].includes(skill.status))) {
+      result.status = 'skills-partial'; process.exitCode = 1;
+    }
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(`Tracer update: ${result.status ?? 'configured'}${result.version ? ` (${result.version})` : ''}`);
@@ -131,7 +187,7 @@ async function main(args) {
       if (result.auto !== undefined) console.log(`Automatic updates: ${result.auto}`);
       if (result.commit) console.log(`Verified commit: ${result.commit}`);
       if (result.launcher) console.log(`Managed launcher: ${result.launcher}`);
-      if (result.skills) for (const skill of result.skills) console.log(`Skill ${skill.status}: ${skill.path ?? skill.message ?? ''}`);
+      if (result.skills) for (const skill of result.skills) console.log(`Skill ${skill.status}: ${skill.path ?? ''}${skill.message ? `${skill.path ? ': ' : ''}${skill.message}` : ''}`);
       if (result.verification) console.log(result.verification);
     }
     return;
@@ -150,15 +206,15 @@ async function main(args) {
   const options = {}, actions = [];
   let source, id, path;
   const optionArgs = [...rest];
-  if (['link', 'unlink', 'comment', 'uncomment', 'ignore', 'unignore'].includes(command)) {
+  if (['link', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore'].includes(command)) {
     const positional = optionArgs.shift();
-    if (!positional || positional.startsWith('--')) fail(`${command} requires ${['link', 'comment'].includes(command) ? 'a source range' : ['ignore', 'unignore'].includes(command) ? 'a repository-relative path' : 'an exact id'} first.`);
-    if (['link', 'comment'].includes(command)) source = positional; else if (['ignore', 'unignore'].includes(command)) path = positional; else id = positional;
+    if (!positional || positional.startsWith('--')) fail(`${command} requires ${['link', 'comment', 'dead-code'].includes(command) ? 'a source range' : ['ignore', 'unignore'].includes(command) ? 'a repository-relative path' : 'an exact id'} first.`);
+    if (['link', 'comment', 'dead-code'].includes(command)) source = positional; else if (['ignore', 'unignore'].includes(command)) path = positional; else id = positional;
   }
   const allowed = {
     init: ['--app-json', '--actions-json', '--minimum-traces', '--agent', '--install-skill', '--add-instruction'],
     link: ['--action', '--step', '--why'], report: ['--source', '--action', '--step', '--sequence', '--json', '--minimum-traces'],
-    check: ['--json', '--require-minimum', '--minimum-traces'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [], ignore: ['--why'], unignore: [],
+    check: ['--json', '--require-minimum', '--minimum-traces'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [], 'dead-code': ['--why', '--evidence'], 'undead-code': [], ignore: ['--why'], unignore: [],
   }[command];
   for (let i = 0; i < optionArgs.length; i++) {
     const flag = optionArgs[i];
@@ -198,6 +254,11 @@ async function main(args) {
     }
     console.log('Keep the CLI and its tests current whenever app features change. Preserve consent, authentication and safety checks; report missing or restricted features honestly. Mapping can be inspected independently, but manual links do not prove execution or complete coverage.');
     await setupAgent(tracer.root, { agent: options['--agent'], install: !!options['--install-skill'], add: !!options['--add-instruction'] });
+  } else if (command === 'dead-code') {
+    const result = tracer.deadCode(source, options['--why'], options['--evidence']);
+    console.log(`${result.changed ? 'Marked' : 'Already marked'} dead code: ${result.mark.id} ${location(result.mark.source)}. Review before deletion or retention.`);
+  } else if (command === 'undead-code') {
+    const result = tracer.undeadCode(id); console.log(`Removed dead-code declaration: ${result.id}`);
   } else if (command === 'link') {
     const result = tracer.link({ source, actions, step: options['--step'], why: options['--why'] });
     console.log(`${result.changed ? 'Linked' : 'Already linked'}: ${result.link.id}\n${location(result.link.source)} → ${JSON.stringify(result.link.actions)} → ${result.link.step ? location(result.link.step) : '(no test witness)'}\n${NOTICE}`);
@@ -224,11 +285,12 @@ async function main(args) {
       for (const { link, errors } of result.invalid) console.log(`INVALID LINK ${link.id ?? '(no id)'}: ${errors.join('; ')}`);
       console.log(`${result.commentValid}/${result.commentTotal} comment declarations have current source hashes. Comment syntax is not verified.`);
       for (const { comment, errors } of result.invalidComments) console.log(`INVALID COMMENT ${comment.id ?? '(no id)'}: ${errors.join('; ')}`);
+      for (const { mark, errors } of result.invalidDeadCode) console.log(`INVALID DEAD CODE ${mark.id ?? '(no id)'}: ${errors.join('; ')}`);
       console.log(`${result.scopeNotice}\nIgnored scope: ${result.ignoredFiles.length} inventoried source files.`);
       for (const rule of result.ignoredSources) console.log(`IGNORE RULE ${rule.path}: ${rule.matchedFiles} source files; ${rule.why}`);
       if (result.minimumTraces !== undefined) console.log(`${result.belowMinimum} nonblank source lines below project minimum ${result.minimumTraces}; ${result.blankLines} blank lines excluded; ${result.commentLines} declared comment lines excluded.`);
     }
-    if (result.invalid.length || result.invalidComments.length || result.belowMinimum) process.exitCode = 1;
+    if (result.invalid.length || result.invalidComments.length || result.invalidDeadCode.length || result.belowMinimum) process.exitCode = 1;
   } else {
     const result = tracer.report(query, { minimumTraces });
     if (options['--json']) { console.log(JSON.stringify(result, null, 2)); return; }
@@ -243,7 +305,19 @@ async function main(args) {
       for (const range of file.traceCounts) console.log(`  ${range.start}${range.end !== range.start ? `-${range.end}` : ''}: ${range.count} manual trace(s), ${range.withStepCount} with test witnesses`);
       for (const link of file.links) console.log(`  ${location(link.source)} → ${JSON.stringify(link.actions)} → ${link.step ? location(link.step) : '(no test witness)'} [${link.id}]\n    ${link.why}`);
     }
-    const t = result.totals;
+    const t = result.totals, progress = result.progress;
+    const percent = value => value === null ? 'N/A' : `${value.toFixed(2)}%`;
+    console.log(`CATEGORIZATION: ${progress.categorization.status}; ${progress.categorization.lines} / ${progress.denominator} included lines (${percent(progress.categorization.percent)}).`);
+    console.log(`PROPOSED SCENARIO MAP: ${progress.proposed.status}; ${progress.proposed.lines} / ${progress.proposed.denominator} included lines (${percent(progress.proposed.percent)}).`);
+    console.log(`REVIEWED MANUAL LINKS (operator-declared): ${progress.reviewed.lines} / ${progress.reviewed.denominator} included lines (${percent(progress.reviewed.percent)}).`);
+    console.log(`EXECUTED: ${progress.executed.status}; ${percent(progress.executed.percent)}. ${progress.executed.notice}`);
+    for (const issue of progress.proposed.issues) console.log(`PROPOSAL ISSUE: ${issue}`);
+    console.log(`SCENARIO MAPPING: ${progress.mapping.manual.lines} / ${progress.denominator} manual-linked lines (${percent(progress.mapping.manual.percent)}); ${progress.mapping.withTestWitness.lines} / ${progress.denominator} with test witnesses (${percent(progress.mapping.withTestWitness.percent)}).`);
+    console.log(`DECLARED DEAD CODE: ${progress.deadCode.lines} / ${progress.deadCode.denominator} whole included lines (${percent(progress.deadCode.percent)}). ${progress.deadCode.notice}`);
+    for (const mark of progress.deadCode.marks) console.log(`  ${location(mark.source)} [${mark.id}] Why: ${mark.why}; evidence: ${mark.evidence}`);
+    for (const { mark, errors } of progress.deadCode.invalid) console.log(`INVALID DEAD CODE ${mark.id ?? '(no id)'}: ${errors.join('; ')}`);
+    console.log(progress.notice);
+    for (const issue of progress.categorization.issues) console.log(`CATALOG ISSUE: ${issue}`);
     console.log(`TOTAL: ${t.files} files; ${t.lines} nonblank lines; ${t.linked} linked (${t.withStep} with a test witness); ${t.unlinked} unlinked; ${t.belowMinimum} below minimum; ${t.blankLines} blank lines excluded; ${t.commentLines} declared comment lines excluded.`);
     console.log(`IGNORED TOTAL: ${result.ignoredTotals.files} files; ${result.ignoredTotals.lines} manual source lines; ${result.ignoredTotals.physicalLines} physical lines. These are outside the totals above, not proven covered.`);
     console.log(`Included inventory: ${t.physicalLines} physical lines in tracked + Git-unignored untracked source. Unmarked comments, tests and tooling stay counted unless explicitly ignored above; whitespace-only lines and current comment declarations are excluded. Built-in exclusions and non-source files are outside the count.`);

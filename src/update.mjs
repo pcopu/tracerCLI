@@ -425,6 +425,7 @@ function refreshSkillsUnlocked(options) {
       const path = guard(record.path, 'file');
       if (!existsSync(path)) { results.push({ path, status: 'missing' }); continue; }
       if (lstatSync(path).size > MAX_FILE || sha256(readFileSync(path)) !== record.sha256) { results.push({ path, status: 'modified', message: 'Local edits preserved; review and merge the bundled skill manually.' }); continue; }
+      if (isNewer(record.version, options.version)) { results.push({ path, status: 'newer', message: 'Newer registered skill preserved; invoke its matching or newer Tracer installation to refresh it.' }); continue; }
       if (hash === record.sha256) { results.push({ path, status: 'current' }); continue; }
       const mode = lstatSync(path).mode & 0o777;
       atomicWrite(path, bytes, mode);
@@ -437,7 +438,7 @@ function refreshSkillsUnlocked(options) {
   catch (error) { results.push({ status: 'metadata-error', message: cleanError(error) }); }
   return results;
 }
-export function refreshRegisteredSkills(options = {}) {
+export function refreshRegisteredSkills(options = { source: join(LOCAL_ROOT, 'skills/tracer/SKILL.md'), version: currentVersion({}) }) {
   const release = lock(options);
   try { return refreshSkillsUnlocked(options); } finally { release(); }
 }

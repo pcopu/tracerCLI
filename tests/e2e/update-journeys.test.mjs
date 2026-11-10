@@ -340,7 +340,7 @@ test('updates.human-output: describe state, checks, activation and preserved ski
   assert.ok(installed.stdout.includes(`Verified commit: ${f.sourceRelease.commit}\n`));
   assert.ok(installed.stdout.includes(`Managed launcher: ${join(f.managedHome, 'bin/tracer')}\n`));
   assert.ok(installed.stdout.includes(`Skill updated: ${f.skill('codex')}\n`));
-  assert.ok(installed.stdout.includes(`Skill modified: ${f.skill('claude')}\n`));
+  assert.ok(installed.stdout.includes(`Skill modified: ${f.skill('claude')}: Local edits preserved; review and merge the bundled skill manually.\n`));
   assert.match(installed.stdout, /not an independent publisher signature/); assert.equal(installed.stderr, '');
   assert.equal(readFileSync(f.skill('claude'), 'utf8'), '# Keep my custom skill\n');
   assert.equal(f.active().current, `${f.sourceRelease.version}-${f.sourceRelease.commit}`);
@@ -406,4 +406,89 @@ test('updates.auto-skill-notice: report a preserved local edit after managed aut
   assert.equal(readFileSync(f.skill('codex'), 'utf8'), replacement);
   assert.equal(readFileSync(f.skill('claude'), 'utf8'), '# Keep local skill changes\n');
   assert.equal(readFileSync(instruction, 'utf8'), 'Keep project instructions.\r\n'); assertOfficialRequests(f);
+});
+
+test('updates.refresh-skills: explicitly refresh from the invoked bundle without network, preserve edits and recover from locks', t => {
+  const f = journey(t);
+  f.init(['--agent', 'codex', '--install-skill', '--add-instruction']);
+  f.init(['--agent', 'claude', '--install-skill', '--add-instruction']);
+  const original = readFileSync(f.skill('codex'), 'utf8');
+  const instructions = ['AGENTS.md', 'CLAUDE.md'].map(path => readFileSync(join(f.root, path), 'utf8'));
+  const current = f.output(['update', '--refresh-skills', '--json']);
+  assert.equal(current.status, 'skills-refreshed');
+  assert.deepEqual(current.skills.map(skill => skill.status), ['current', 'current']);
+  assert.equal(f.requests().length, 0);
+  f.install();
+  assert.notEqual(readFileSync(f.skill('codex'), 'utf8'), original);
+  writeFileSync(f.skill('claude'), 'Keep this customized Claude skill.\n');
+  const requests = f.requests().length;
+  // Invoke the original checkout, so its bundled skill differs from the synthetic managed release.
+  const refreshed = f.output(['update', '--refresh-skills', '--json']);
+  assert.equal(refreshed.status, 'skills-refreshed');
+  assert.deepEqual(refreshed.skills.map(skill => skill.status), ['updated', 'modified']);
+  assert.equal(readFileSync(f.skill('codex'), 'utf8'), original);
+  assert.equal(readFileSync(f.skill('claude'), 'utf8'), 'Keep this customized Claude skill.\n');
+  const record = f.settings().skills.find(skill => skill.path === f.skill('codex'));
+  assert.equal(record.sha256, sha256(Buffer.from(original)));
+  assert.equal(record.version, JSON.parse(f.ok(['update', '--status', '--json']).stdout).currentVersion);
+  assert.deepEqual(['AGENTS.md', 'CLAUDE.md'].map(path => readFileSync(join(f.root, path), 'utf8')), instructions);
+  const printed = f.ok(['update', '--refresh-skills']);
+  assert.match(printed.stdout, /Tracer update: skills-refreshed/);
+  assert.match(printed.stdout, /Skill current:/); assert.match(printed.stdout, /Skill modified:/);
+  const saved = readFileSync(join(f.managedHome, 'settings.json'));
+  mkdirSync(join(f.managedHome, '.update-lock'));
+  f.bad(['update', '--refresh-skills'], /Another update is running/);
+  assert.deepEqual(readFileSync(join(f.managedHome, 'settings.json')), saved);
+  rmSync(join(f.managedHome, '.update-lock'), { recursive: true });
+  assert.equal(f.output(['update', '--refresh-skills', '--json']).skills[0].status, 'current');
+  for (const flags of [['--status'], ['--auto', 'check'], ['--check'], ['--rollback'], ['--install-managed'], ['--version', '9.9.9'], ['--commit', 'a'.repeat(40)], ['--refresh-skills']]) {
+    f.bad(['update', '--refresh-skills', ...flags], /Choose one update mode|pins apply only|Duplicate option/);
+    assert.deepEqual(readFileSync(join(f.managedHome, 'settings.json')), saved);
+  }
+  assert.equal(f.requests().length, requests, 'local refresh and malformed refresh requests must never contact GitHub');
+  assert.equal(existsSync(join(f.managedHome, '.update-lock')), false);
+});
+
+test('updates.metadata-size: reject oversized settings and active pointers, preserve bytes, then recover locally', t => {
+  for (const name of ['settings.json', 'active.json']) {
+    const f = journey(t);
+    f.ok(['update', '--auto', 'off']);
+    const path = join(f.managedHome, name), before = existsSync(path) ? readFileSync(path) : null;
+    const oversized = Buffer.alloc(1024 * 1024 + 1, 0x20); writeFileSync(path, oversized);
+    f.bad(['update', '--status', '--json'], /Update metadata is too large/);
+    f.bad(['update', name === 'settings.json' ? '--refresh-skills' : '--rollback', '--json'], /Update metadata is too large/);
+    assert.deepEqual(readFileSync(path), oversized);
+    assert.equal(existsSync(join(f.managedHome, '.update-lock')), false);
+    if (before) writeFileSync(path, before); else rmSync(path);
+    assert.equal(f.status().auto, 'off'); assert.equal(f.status().managed, false);
+    assert.equal(f.requests().length, 0);
+  }
+});
+
+
+test('updates.refresh-outcomes: preserve newer skills and return nonzero for rejected destinations', t => {
+  const newer = journey(t, releaseFixture('9.9.9'));
+  newer.init(['--agent', 'codex', '--install-skill']); newer.install();
+  const before = readFileSync(newer.skill('codex')), settings = readFileSync(join(newer.managedHome, 'settings.json'));
+  const requests = newer.requests().length;
+  const kept = newer.output(['update', '--refresh-skills', '--json']);
+  assert.deepEqual(kept.skills.map(skill => skill.status), ['newer']);
+  assert.deepEqual(readFileSync(newer.skill('codex')), before);
+  assert.deepEqual(readFileSync(join(newer.managedHome, 'settings.json')), settings);
+  assert.match(newer.ok(['update', '--refresh-skills']).stdout, /Skill newer: .*Newer registered skill preserved/);
+  assert.equal(newer.requests().length, requests);
+
+  const rejected = journey(t); rejected.init(['--agent', 'codex', '--install-skill']);
+  const target = rejected.put('outside-skill.md', 'Keep this unrelated file.\n');
+  rmSync(rejected.skill('codex')); symlinkSync(target, rejected.skill('codex'));
+  const result = rejected.bad(['update', '--refresh-skills', '--json']);
+  const partial = JSON.parse(result.stdout);
+  assert.equal(partial.status, 'skills-partial'); assert.equal(partial.skills[0].status, 'preserved');
+  assert.match(partial.skills[0].message, /regular and unsymlinked/);
+  assert.equal(readFileSync(target, 'utf8'), 'Keep this unrelated file.\n');
+  const text = rejected.bad(['update', '--refresh-skills']).stdout;
+  assert.match(text, /Tracer update: skills-partial/);
+  assert.match(text, /Skill preserved: .*Update paths must be regular and unsymlinked/);
+  assert.equal(rejected.requests().length, 0);
+  assert.equal(existsSync(join(rejected.managedHome, '.update-lock')), false);
 });

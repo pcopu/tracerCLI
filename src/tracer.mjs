@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process';
+import { progress } from './catalog.mjs';
+import { proposalProgress, proposalCommand } from './proposals.mjs'; import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve, sep } from 'node:path';
@@ -225,7 +226,7 @@ export class Tracer {
     if (!existsSync(this.mapPath)) return { version: 1, links: [] };
     const data = JSON.parse(readFileSync(this.mapPath, 'utf8'));
     if (!data || data.version !== 1 || !Array.isArray(data.links)) fail('Expected sidecar version 1 and links array.');
-    if (Object.hasOwn(data, 'commentExclusions') && !Array.isArray(data.commentExclusions)) fail('Expected commentExclusions to be an array.');
+    if (Object.hasOwn(data, 'deadCode') && !Array.isArray(data.deadCode)) fail('Expected deadCode to be an array.'); if (Object.hasOwn(data, 'commentExclusions') && !Array.isArray(data.commentExclusions)) fail('Expected commentExclusions to be an array.');
     validateMinimum(Object.hasOwn(data, 'minimumTraces') ? data.minimumTraces : 1); validateIgnoredSources(data);
     return data;
   }
@@ -363,12 +364,12 @@ export class Tracer {
   }
   check({ requireMinimum = false, minimumTraces } = {}) {
     const data = this.readMap(), state = this.inventory(), inspected = this.inspect(data, state), comments = this.inspectComments(data, state);
-    const ignoredSources = ignoredScope(data, state);
+    const ignoredSources = ignoredScope(data, state), dead = this.inspectDeadCode(data, state);
     const invalid = inspected.filter(row => row.errors.length);
     const result = { kind: 'manual-link-integrity', notice: NOTICE, total: inspected.length,
       valid: inspected.length - invalid.length, invalid, commentTotal: comments.length,
       commentValid: comments.filter(row => !row.errors.length).length, invalidComments: comments.filter(row => row.errors.length),
-      ignoredSources, ignoredFiles: [...state.files.keys()].filter(path => ignoredSources.some(rule => matchesIgnored(path, rule.path))), scopeNotice: IGNORE_NOTICE };
+      deadCodeTotal: dead.length, invalidDeadCode: dead.filter(row => row.errors.length), ignoredSources, ignoredFiles: [...state.files.keys()].filter(path => ignoredSources.some(rule => matchesIgnored(path, rule.path))), scopeNotice: IGNORE_NOTICE };
     if (requireMinimum) {
       const report = this.#report(undefined, minimumTraces, state, data, inspected, comments);
       result.minimumTraces = report.minimumTraces; result.belowMinimum = report.totals.belowMinimum;
@@ -381,7 +382,14 @@ export class Tracer {
     const state = this.inventory(), data = this.readMap(), inspected = this.inspect(data, state);
     return this.#report(query, minimumTraces, state, data, inspected, this.inspectComments(data, state));
   }
-  #report(query, minimumTraces, state, data, inspected, inspectedComments) {
+  proposal(file, options) {
+    const state = this.inventory();
+    return proposalCommand(this, file, options, { state, report: () => {
+      const data = this.readMap(), inspected = this.inspect(data, state);
+      return this.#report(undefined, undefined, state, data, inspected, this.inspectComments(data, state), false);
+    } });
+  }
+  #report(query, minimumTraces, state, data, inspected, inspectedComments, includeProposal = true) {
     minimumTraces = validateMinimum(minimumTraces ?? data.minimumTraces ?? 1);
     const sourceFilter = query?.kind === 'source' ? parseRange(query.value, false) : null;
     const stepFilter = query?.kind === 'step' ? parseRange(query.value, false) : null;
@@ -431,7 +439,11 @@ export class Tracer {
       aggregate.files++;
       for (const key of ['lines', 'linked', 'withStep', 'unlinked', 'belowMinimum', 'physicalLines', 'blankLines', 'commentLines']) aggregate[key] += counts[key];
     }
-    return { kind: 'manual-links', notice: NOTICE, minimumTraces, traceIdentity: 'exact-ordered-action-sequence', query: query ?? null, totals, files,
+    return { kind: 'manual-links', notice: NOTICE, progress: { ...progress(this.root, state, files, totals),
+      proposed: includeProposal ? proposalProgress(this.root, state, files, totals, this.map) : undefined,
+      reviewed: { status: 'operator-declared-manual-links', lines: totals.linked, denominator: totals.lines, percent: totals.lines ? totals.linked * 100 / totals.lines : null, withWitnessLines: totals.withStep, notice: 'Current manual links reflect operator declarations; Tracer checks integrity, not semantic review or execution.' },
+      executed: { status: 'not-derived-from-mapping', lines: null, denominator: null, percent: null, notice: 'Execution is unknown here, not zero. Consult real scenario outcomes and measure report for separately scoped evidence; never infer execution from proposals or links.' },
+      deadCode: this.deadCodeProgress(data, state, commentsByFile, ignoredSources, minimumTraces) }, minimumTraces, traceIdentity: 'exact-ordered-action-sequence', query: query ?? null, totals, files,
       lineBasis: 'nonblank-undeclared-comment-lines', commentNotice: 'Comment exclusions are declarations, not verified syntax or execution evidence.',
       ignoredFiles, ignoredTotals, ignoredSources, scopeNotice: IGNORE_NOTICE,
       excluded: state.excluded, invalid: inspected.filter(row => row.errors.length), invalidComments: inspectedComments.filter(row => row.errors.length) };
@@ -463,6 +475,67 @@ export class Tracer {
       data.ignoredSources = rules.filter(rule => rule.path !== exact);
       return { changed: true, path: exact };
     });
+  }
+  inspectDeadCode(data, state) {
+    const rows = data.deadCode ?? [], counts = new Map();
+    for (const mark of rows) if (typeof mark?.id === 'string') counts.set(mark.id, (counts.get(mark.id) ?? 0) + 1);
+    return rows.map(mark => {
+      const errors = [];
+      if (!mark || typeof mark !== 'object' || Array.isArray(mark)) return { mark: {}, errors: ['Invalid dead-code declaration'] };
+      if (typeof mark.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(mark.id) || counts.get(mark.id) > 1) errors.push('Missing, invalid or duplicate dead-code id');
+      for (const key of ['why', 'evidence']) if (typeof mark[key] !== 'string' || !mark[key].trim() || /[\x00-\x1f\x7f]/.test(mark[key])) errors.push(`Missing or invalid ${key}`);
+      if (!/^[a-f0-9]{64}$/.test(mark.source?.sha256 ?? '') || !/^[a-f0-9]{64}$/.test(mark.fileSha256 ?? '')) errors.push('Missing or invalid source hashes');
+      try {
+        const current = this.snapshot(mark.source, state);
+        if (current.sha256 !== mark.source.sha256) errors.push(`dead-code snippet is stale: ${location(current)}`);
+        const file = this.snapshot({ path: current.path, start: 1, end: state.files.get(current.path).length }, state);
+        if (file.sha256 !== mark.fileSha256) errors.push(`dead-code source file is stale: ${current.path}`);
+      } catch (error) { errors.push(`source: ${error.message}`); }
+      return { mark, errors };
+    });
+  }
+  deadCode(source, why, evidence) {
+    for (const [key, value] of [['why', why], ['evidence', evidence]]) if (typeof value !== 'string' || !value.trim() || /[\x00-\x1f\x7f]/.test(value)) fail(`dead-code requires --${key} with nonempty single-line text.`);
+    const state = this.inventory(), range = this.snapshot(parseRange(source), state);
+    const file = this.snapshot({ path: range.path, start: 1, end: state.files.get(range.path).length }, state);
+    return this.mutate(data => {
+      if (this.inspectDeadCode(data, state).some(row => row.errors.some(error => !error.includes(' is stale')))) fail('Sidecar contains invalid dead-code declarations. Repair them before marking.');
+      const marks = data.deadCode ?? [], id = digest(JSON.stringify(['dead-code', location(range)])).slice(0, 16), existing = marks.find(value => value.id === id);
+      if (existing) {
+        if (location(existing.source) !== location(range) || existing.source.sha256 !== range.sha256 || existing.fileSha256 !== file.sha256 || existing.why !== why.trim() || existing.evidence !== evidence.trim()) fail('Existing declaration differs. Review, remove and add it again; hashes are never silently refreshed.');
+        return { changed: false, mark: existing };
+      }
+      const mark = { id, source: range, fileSha256: file.sha256, why: why.trim(), evidence: evidence.trim() };
+      data.deadCode = [...marks, mark].sort((a, b) => compare(a.id, b.id));
+      return { changed: true, mark };
+    });
+  }
+  undeadCode(id) {
+    if (typeof id !== 'string' || !id) fail('undead-code requires an exact id.');
+    return this.mutate(data => {
+      const marks = data.deadCode ?? [], matches = marks.filter(mark => mark?.id === id);
+      if (matches.length !== 1) fail(`Unknown or duplicate dead-code id: ${id}`);
+      data.deadCode = marks.filter(mark => mark?.id !== id); return { changed: true, id };
+    });
+  }
+  deadCodeProgress(data, state, commentsByFile, ignoredSources, minimumTraces) {
+    const dead = this.inspectDeadCode(data, state), marked = new Map();
+    for (const { mark, errors } of dead) {
+      if (errors.length || ignoredSources.some(rule => matchesIgnored(mark.source.path, rule.path))) continue;
+      let set = marked.get(mark.source.path); if (!set) { set = new Set(); marked.set(mark.source.path, set); }
+      const lines = state.files.get(mark.source.path), comments = commentsByFile.get(mark.source.path) ?? [];
+      for (let n = mark.source.start; n <= mark.source.end; n++) if (lines[n - 1].trim() && !comments.some(c => n >= c.source.start && n <= c.source.end)) set.add(n);
+    }
+    let whole = 0;
+    for (const [path, lines] of state.files) {
+      if (ignoredSources.some(rule => matchesIgnored(path, rule.path))) continue;
+      whole += countIntervals([], 1, lines.length, minimumTraces, lines, commentsByFile.get(path) ?? []).lines;
+    }
+    const deadLines = [...marked.values()].reduce((sum, set) => sum + set.size, 0);
+    return { lines: deadLines, denominator: whole, percent: whole ? deadLines * 100 / whole : null,
+      marks: dead.filter(row => !row.errors.length).map(row => row.mark), invalid: dead.filter(row => row.errors.length),
+      notice: 'Declared dead code requires review; it is not deleted or excluded from mapping and is not proof of unreachability.' };
+
   }
 }
 
