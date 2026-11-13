@@ -432,3 +432,67 @@ test('measured journey: reject incomplete or unsupported LCOV framing and the re
   assert.equal(f.json(...f.args).changed, true);
   assert.equal(f.json('measure', 'report').intervals[0].totals.observedLines, 2);
 });
+
+test('measured journey: compact new writes preserve payloads and leave legacy pretty bytes intact until another interval is imported', t => {
+  const f = project(t);
+  f.json(...f.args);
+  const initialBytes = readFileSync(join(f.root, dataPath), 'utf8'), initial = JSON.parse(initialBytes);
+  assert.equal(initialBytes, `${JSON.stringify(initial)}\n`, 'measurement storage omits indentation but keeps a final newline');
+  assert.ok(Buffer.byteLength(initialBytes) < Buffer.byteLength(`${JSON.stringify(initial, null, 2)}\n`));
+  const initialReport = f.json('measure', 'report');
+  f.jsonFile(dataPath, initial);
+  const prettyBytes = readFileSync(join(f.root, dataPath));
+  assert.deepEqual(f.json('measure', 'report'), initialReport);
+  assert.deepEqual(f.json('measure', 'check').invalid, []);
+  assert.equal(f.json(...f.args).changed, false);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), prettyBytes, 'read commands and exact reimport never reformat legacy evidence');
+
+  f.put('after.lcov', f.record('DA:1,5\nDA:2,1\nDA:3,10')); f.refresh();
+  const inputs = ['before.lcov', 'after.lcov', 'manifest.json', 'sources.json'].map(path => [path, f.hash(path)]);
+  assert.equal(f.json(...f.args).changed, true);
+  const compactBytes = readFileSync(join(f.root, dataPath), 'utf8'), stored = JSON.parse(compactBytes);
+  assert.equal(compactBytes, `${JSON.stringify(stored)}\n`);
+  assert.equal(stored.intervals.length, 2);
+  assert.deepEqual(stored.intervals[0], initial.intervals[0], 'compaction preserves every original identity, provenance field and counter triple');
+  assert.deepEqual(stored.intervals[1].files[0].rows, [[1, 1, 5], [2, 0, 1], [3, 9, 10]]);
+  for (const interval of stored.intervals) {
+    const { payloadSha256, ...payload } = interval;
+    assert.equal(payloadSha256, sha(JSON.stringify(payload)), 'stored payload hashes still bind the exact original payload encoding');
+  }
+  assert.equal(f.json(...f.args).changed, false);
+  assert.equal(readFileSync(join(f.root, dataPath), 'utf8'), compactBytes);
+  assert.deepEqual(f.json('measure', 'check').invalid, []);
+  assert.deepEqual(inputs.map(([path]) => [path, f.hash(path)]), inputs, 'imports never rewrite raw capture inputs');
+
+  f.json('config', '--minimum-traces', '2');
+  const manualBytes = readFileSync(join(f.root, 'docs/testing/code-e2e-links.json'), 'utf8');
+  assert.equal(manualBytes, `${JSON.stringify(JSON.parse(manualBytes), null, 2)}\n`, 'manual sidecars retain their existing readable format');
+});
+
+test('measured journey: the exact UTF-8 output cap includes the final newline and rejects growth without changing evidence', t => {
+  const f = project(t), limit = 64 * 1024 * 1024;
+  f.json(...f.args);
+  const original = readFileSync(join(f.root, dataPath));
+  f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = 'synthetic-run-2';
+  f.manifest.limitations = ['é']; f.save(); f.json(...f.args);
+  const baselineSize = readFileSync(join(f.root, dataPath)).length;
+  // Derive the output envelope from real CLI imports, then restore the smaller fixture.
+  // Hash fields have fixed widths; only this synthetic limitation's UTF-8 bytes grow.
+  f.put(dataPath, original);
+  f.manifest.limitations[0] += 'x'.repeat(limit + 1 - baselineSize); f.save();
+  assert.ok(readFileSync(join(f.root, 'manifest.json')).length < limit, 'input remains below the independent input cap');
+  const inputs = ['before.lcov', 'after.lcov', 'manifest.json', 'sources.json'].map(path => [path, f.hash(path)]);
+  assert.match(f.run(f.args, 1).stderr, /Measurement dataset exceeds 64 MiB/);
+  assert.deepEqual(readFileSync(join(f.root, dataPath)), original, 'failed output growth preserves the complete existing dataset');
+  assert.deepEqual(inputs.map(([path]) => [path, f.hash(path)]), inputs, 'failed import preserves every raw capture input');
+  assert.equal(existsSync(join(f.root, `${dataPath}.lock`)), false, 'failed output guard releases its exclusive lock');
+
+  f.manifest.limitations[0] = f.manifest.limitations[0].slice(0, -1); f.save();
+  assert.equal(f.json(...f.args).changed, true, 'one byte less fits the exact output limit');
+  const accepted = readFileSync(join(f.root, dataPath));
+  assert.equal(accepted.length, limit);
+  assert.equal(accepted.at(-1), 10, 'the accepted limit includes the final newline');
+  assert.deepEqual(JSON.parse(accepted).intervals[0], JSON.parse(original).intervals[0]);
+  const checked = f.json('measure', 'check');
+  assert.equal(checked.intervals, 2); assert.deepEqual(checked.invalid, [], 'a maximum-size dataset remains readable and valid');
+});

@@ -221,14 +221,14 @@ export class Tracer {
           || realpathSync(absolute) !== absolute) fail(`Sidecar path must stay unsymlinked inside the repository: ${path}`);
     }
   }
-  readMap() {
+  readMap({ withHash = false } = {}) {
     this.validateMapPath();
-    if (!existsSync(this.mapPath)) return { version: 1, links: [] };
-    const data = JSON.parse(readFileSync(this.mapPath, 'utf8'));
+    const present = existsSync(this.mapPath), bytes = present ? readFileSync(this.mapPath) : Buffer.alloc(0);
+    const data = present ? JSON.parse(bytes.toString('utf8')) : { version: 1, links: [] };
     if (!data || data.version !== 1 || !Array.isArray(data.links)) fail('Expected sidecar version 1 and links array.');
     if (Object.hasOwn(data, 'deadCode') && !Array.isArray(data.deadCode)) fail('Expected deadCode to be an array.'); if (Object.hasOwn(data, 'commentExclusions') && !Array.isArray(data.commentExclusions)) fail('Expected commentExclusions to be an array.');
     validateMinimum(Object.hasOwn(data, 'minimumTraces') ? data.minimumTraces : 1); validateIgnoredSources(data);
-    return data;
+    return withHash ? { data, mapSha256: digest(bytes) } : data;
   }
   inspect(data, state) {
     const counts = new Map();
@@ -267,6 +267,7 @@ export class Tracer {
       return { comment, errors };
     });
   }
+  serializeMap(data) { return `${JSON.stringify(data, null, 2)}\n`; }
   mutate(callback) {
     this.validateMapPath();
     mkdirSync(dirname(this.mapPath), { recursive: true });
@@ -280,7 +281,7 @@ export class Tracer {
       const data = this.readMap(), result = callback(data);
       if (result.changed) {
         this.validateMapPath();
-        writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { flag: 'wx', mode: 0o644 });
+        writeFileSync(temporary, this.serializeMap(data), { flag: 'wx', mode: 0o644 });
         renameSync(temporary, this.mapPath);
       }
       return result;
@@ -385,9 +386,9 @@ export class Tracer {
   proposal(file, options) {
     const state = this.inventory();
     return proposalCommand(this, file, options, { state, report: () => {
-      const data = this.readMap(), inspected = this.inspect(data, state);
-      return this.#report(undefined, undefined, state, data, inspected, this.inspectComments(data, state), false);
-    } });
+      const { data, mapSha256 } = this.readMap({ withHash: true }), inspected = this.inspect(data, state);
+      return { ...this.#report(undefined, undefined, state, data, inspected, this.inspectComments(data, state), false), mapSha256 };
+    }, witness: range => state.files.get(range.path) ?? this.#snapshots.get(state)?.witnesses.get(range.path) });
   }
   #report(query, minimumTraces, state, data, inspected, inspectedComments, includeProposal = true) {
     minimumTraces = validateMinimum(minimumTraces ?? data.minimumTraces ?? 1);

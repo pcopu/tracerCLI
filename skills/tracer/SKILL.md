@@ -19,6 +19,12 @@ For a whole-codebase mapping request, follow the proposal-first workflow below b
 
 For an execution or implementation task, do not spend the entire task preparing an increasingly elaborate scenario that has never run. When a native build, disk budget, account or permission blocks execution, report the exact blocker and continue portable work. More mapping workers cannot remove that critical path. Estimate completion from measured end-to-end throughput, including review and integration, rather than raw model output speed.
 
+### The default grind loop
+
+With an existing proposal, start with `tracer next` and keep repeating one loop: inspect its source and current witness candidates; reuse or extend one coherent assertion-bearing journey; run the app's real advertised test argv through `tracer app --`; review and integrate the meaningful link batch using `scenario link --reviewed` and fresh catalog/map hashes; run `tracer check`, then `tracer next` again. Use a small `--limit` batch when work is independent, or `--scenario ID` for a targeted follow-up. Discover app commands once when needed; never infer a test selector from a proposal title or test filename. Full contracts are available through the packet's audit commands when previews are truncated or insufficient. Do not turn every small edit into a new proposal, queue or review ceremony; use the project's agreed meaningful batch and completion gates.
+
+The packet ranks potential witnessed mapping gains, not verified new traces, compatible assertions, executed behavior or an optimal test set. Inspect all global integrity issues; never repair pins blindly, weaken guards, add blanket links or silently narrow scope to reach 100%. Reuse candidates remain candidates until reviewed. Continue toward the user's requested metric, while keeping mapping, actual scenario outcomes, platform/input-route restrictions and measured runtime evidence separate. `no-witness-gaps` is a mapping checkpoint, not proof of application coverage or correctness.
+
 ## Existing code: propose the full map first, audit afterward
 
 For a whole-codebase mapping request, produce a useful complete **proposed scenario map first**. Do not serialize proposal writing behind semantic audits, exact assertion witnesses, native builds or test execution. Audited linking and actual testing are later, separate progress tracks. Running independent existing tests may continue in parallel when authorized; their availability must not hold up proposals. A small change only needs an incremental proposal for its affected scope.

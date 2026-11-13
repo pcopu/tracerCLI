@@ -63,6 +63,12 @@ Source files must be in the current Tracer inventory. Paths must remain reposito
 
 ## Audit afterward, without automatic promotion
 
+For the next concrete task, run `tracer next`. It defaults to this proposal and one scenario. The packet combines the proposed actions/outcomes, actual marginal witnessed-gap ranges and source snippets, and current same-file witness candidates. Witness snippets appear once even when several links reuse them. Exact proposal/map/source/witness hashes identify the snapshot; these pins are not execution evidence. The packet includes global integrity problems once and preserves ignored scope without dumping the source inventory.
+
+Use `--file PROPOSAL` for another plan, `--limit 1..10` for a small disjoint batch, or `--scenario ID` to inspect one specific plan. A targeted selection requires limit one and recomputes its potential gaps independently of earlier output. Source previews show at most eight ranges per task, snippets show at most 20 lines/2 KiB, and reuse shows at most five candidate links. Plans/action sequences show a bounded prefix (12 items/4 KiB), with totals, truncation flags and a full-value hash when clipped. Full-contract audit commands and continuation coordinates remain explicit. A clipped sequence is not a complete trace. Same-file witnesses are candidates for inspection, never certified compatible assertions.
+
+Follow the packet's workflow: inspect and extend a meaningful existing journey, run its actual advertised test argv through `tracer app --`, review the assertion-bearing catalog, integrate with `scenario link --reviewed` using fresh exact hashes, check, then run `tracer next` again. The packet gives real CLI commands and clearly marked required inputs for unknown test argv/catalog paths; it does not invent a test selector from a plan title or filename. Use `tracer actions` only when discovery is needed, after reviewing the configured app argv. Full contract audits remain available when a preview is insufficient. No separate proposal or audit record is required for every small edit; batch coherent work while honoring the project's review requirements. `no-witness-gaps` describes the current mapping minimum only; empty scope and unknown execution remain separate.
+
 Choose a bounded next batch from the current witnessed mapping gaps:
 
 ```sh

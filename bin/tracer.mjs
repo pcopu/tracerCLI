@@ -5,7 +5,7 @@ import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
 import { importMeasured, reportMeasured, checkMeasured } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
-import { proposalCommand } from '../src/proposals.mjs';
+import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
 let selectedCommand;
 
@@ -46,6 +46,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prioritize --file PROPOSAL [--limit N] [--json]
+  next [--file PROPOSAL] [--limit N] [--scenario ID] [--json]
   scenario prepare|check --file CATALOG [--json]
   scenario report|packet --file CATALOG [--scenario ID] [--json]
   scenario link --file CATALOG [--scenario ID] --reviewed
@@ -94,7 +95,7 @@ async function main(args) {
   }
   const [command, ...rest] = args;
   if (rest.length === 1 && rest[0] === '--help') { console.log(help); return; }
-  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal', 'audit'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
+  if (!['init', 'actions', 'app', 'link', 'report', 'check', 'unlink', 'comment', 'uncomment', 'dead-code', 'undead-code', 'ignore', 'unignore', 'config', 'update', 'measure', 'scenario', 'proposal', 'next', 'audit'].includes(command)) fail(`Unknown command: ${command ?? '(missing)'}`);
   selectedCommand = command;
   if (command === 'audit') {
     const [mode, ...flags] = rest, options = {};
@@ -117,19 +118,19 @@ async function main(args) {
     if (mode === 'drain' && !result.complete) process.exitCode = 1;
     return;
   }
-  if (command === 'proposal') {
-    const [mode, ...flags] = rest, options = {};
-    if (!['prepare', 'check', 'report', 'audit', 'prioritize'].includes(mode)) fail('Use proposal prepare, check, report, audit or prioritize.');
-    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'prioritize' ? ['--limit'] : [])];
+  if (command === 'proposal' || command === 'next') {
+    const [mode, ...flags] = command === 'next' ? ['next', ...rest] : rest, options = {};
+    if (!['prepare', 'check', 'report', 'audit', 'prioritize', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit or prioritize.');
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : [])];
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
       options[flag] = flag === '--json' ? true : value(flags, i++, flag);
     }
-    if (!options['--file']) fail(`proposal ${mode} requires --file.`);
+    if (!options['--file'] && mode !== 'next') fail(`proposal ${mode} requires --file.`);
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
-    const result = proposalCommand(new Tracer(settings), options['--file'], { mode,
-      offset: options['--offset'] === undefined ? 0 : Number(options['--offset']), limit: options['--limit'] === undefined ? 25 : Number(options['--limit']) });
+    const result = proposalCommand(new Tracer(settings), options['--file'] ?? DEFAULT_PROPOSAL, { mode, scenarioId: options['--scenario'],
+      offset: options['--offset'] === undefined ? 0 : Number(options['--offset']), limit: options['--limit'] === undefined ? (mode === 'next' ? 1 : 25) : Number(options['--limit']) });
     console.log(JSON.stringify(result, null, 2));
     if (mode === 'check' && !result.valid) process.exitCode = 1;
     return;

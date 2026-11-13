@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { safePath } from './tracer.mjs';
+import { safePath, SOURCE_EXTENSIONS } from './tracer.mjs';
 
 export const DEFAULT_PROPOSAL = 'docs/testing/proposed-scenario-map.json';
 export const PROPOSAL_NOTICE = 'PROPOSED SCENARIO ASSOCIATIONS ONLY. Unreviewed plans are not reviewed links, exact runtime command logs, observed execution, passing assertions or measured coverage. Audit later in bounded batches; nothing is promoted automatically.';
@@ -133,8 +133,8 @@ export function proposalProgress(root, state, files, totals, map) {
     return summarize(input, inspected, state, files, totals, DEFAULT_PROPOSAL);
   } catch (error) { return { ...empty, status: 'invalid', issues: [error.message] }; }
 }
-export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25 } = {}, snapshot) {
-  if (!snapshot) return tracer.proposal(file, { mode, offset, limit });
+export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25, scenarioId } = {}, snapshot) {
+  if (!snapshot) return tracer.proposal(file, { mode, offset, limit, scenarioId });
   const input = readProposal(tracer.root, file, tracer.map), { state } = snapshot;
   const inspected = inspectProposal(tracer.root, input.value, state, { prepare: mode === 'prepare' });
   if (mode === 'prepare') {
@@ -147,6 +147,13 @@ export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25 } =
     lineBasis: report.lineBasis, progress };
   if (mode === 'report') return { ...result, scenarios: input.value.scenarios, associations: input.value.associations };
   if (mode === 'prioritize') return prioritize(inspected, state, report, result, limit);
+  if (mode === 'next') {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10 || scenarioId !== undefined && limit !== 1) fail('next requires --limit 1-10; --scenario selects one task and requires limit 1.');
+    if (scenarioId !== undefined && !inspected.scenarios.has(scenarioId)) fail(`Unknown proposal scenario: ${scenarioId}`);
+    const selected = [], ranked = prioritize(inspected, state, report, result, limit, { scenarioId,
+      onSelect: (candidate, entries, deficits) => selected.push({ scenario: candidate.scenario, potentialGapLines: candidate.remaining, entries, deficits }) });
+    return nextPacket(tracer, file, report, ranked, selected, snapshot, scenarioId);
+  }
   if (mode === 'audit') {
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) fail('Proposal audit requires --offset >= 0 and --limit 1-1000.');
     const batch = inspected.candidates.slice(offset, offset + limit);
@@ -165,7 +172,7 @@ export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25 } =
   return result;
 }
 
-function prioritize(inspected, state, report, result, limit) {
+function prioritize(inspected, state, report, result, limit, { scenarioId, onSelect } = {}) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) fail('Proposal prioritize requires --limit 1-1000.');
   const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   const deficits = new Map(); let gapLines = 0;
@@ -186,14 +193,14 @@ function prioritize(inspected, state, report, result, limit) {
   const scenarios = new Map([...inspected.scenarios].sort(([a], [b]) => compare(a, b)).map(([id, scenario]) =>
     [id, { scenario, rows: [], initial: 0, remaining: 0 }]));
   let proposedGapLines = 0;
-  for (const { row, current } of inspected.candidates) {
+  for (const { row, current, index } of inspected.candidates) {
     const prefix = deficits.get(row.source.path);
     if (!current || !prefix) continue;
     const weight = prefix[row.source.end] - prefix[row.source.start - 1];
     if (!weight) continue;
     // Valid associations partition source, so row weights are disjoint. Multiple
     // referring scenarios compete for the same weight instead of multiplying it.
-    const entry = { row, weight, targeted: false }; proposedGapLines += weight;
+    const entry = { row, index, weight, targeted: false }; proposedGapLines += weight;
     for (const id of row.scenarioIds) {
       const scenario = scenarios.get(id); scenario.rows.push(entry); scenario.initial += weight; scenario.remaining += weight;
     }
@@ -202,9 +209,10 @@ function prioritize(inspected, state, report, result, limit) {
   let targetedGapLines = 0;
   while (ranking.length < limit) {
     let best;
-    for (const candidate of eligible) if (candidate.remaining > (best?.remaining ?? 0)) best = candidate;
+    for (const candidate of eligible) if ((!scenarioId || candidate.scenario.id === scenarioId) && candidate.remaining > (best?.remaining ?? 0)) best = candidate;
     if (!best) break;
     const marginalGapLines = best.remaining, { scenario } = best;
+    onSelect?.(best, best.rows.filter(entry => !entry.targeted), deficits);
     for (const entry of best.rows) {
       if (entry.targeted) continue;
       entry.targeted = true; targetedGapLines += entry.weight;
@@ -236,5 +244,86 @@ function prioritize(inspected, state, report, result, limit) {
       notice: 'Unreviewed potential targets only, not closed deficits or distinct new witnessed traces. Greedy ranking makes no optimality or execution claim. Shared existing paths are reuse opportunities, not proof that scenarios can be merged. Audit full contracts before linking.' },
     ranking, reuseOpportunities: opportunities.slice(0, limit), reuseOpportunitiesTruncated: opportunities.length > limit, diagnostics };
   if (Buffer.byteLength(JSON.stringify(output, null, 2)) + 1 > MAX_EXPANDED_BYTES) fail('Expanded proposal prioritization exceeds 64 MiB; select a smaller limit or inspect global diagnostics separately.');
+  return output;
+}
+
+function preview(values, maximum = 12, budget = 4096) {
+  const items = []; let bytes = 0;
+  for (const value of values) {
+    const size = Buffer.byteLength(JSON.stringify(value));
+    if (items.length === maximum || bytes + size > budget) break;
+    items.push(value); bytes += size;
+  }
+  return { items, total: values.length, truncated: items.length < values.length, ...(items.length < values.length ? { sha256: hash(JSON.stringify(values)) } : {}) };
+}
+function excerpt(lines, start, end) {
+  let text = '', last = start - 1;
+  for (let line = start; line <= Math.min(end, start + 19); line++) {
+    if (Buffer.byteLength(text) + Buffer.byteLength(lines[line - 1]) > 2048) break;
+    text += lines[line - 1]; last = line;
+  }
+  return { text, start, end: last, sha256: hash(text), truncated: last < end, nextLine: last < end ? last + 1 : null };
+}
+function nextPacket(tracer, file, report, ranked, selected, snapshot, scenarioId) {
+  const prefix = ['tracer', '--root', tracer.root, '--map', tracer.map,
+    ...[...tracer.extensions].filter(extension => !SOURCE_EXTENSIONS.includes(extension)).sort().flatMap(extension => ['--include-ext', extension])];
+  const command = (...args) => [...prefix, ...args], audit = offset => ({ offset, argv: command('proposal', 'audit', '--file', file, '--offset', String(offset), '--limit', '1', '--json') });
+  const witnesses = [], witnessIds = new Map();
+  const tasks = selected.map(({ scenario, potentialGapLines, entries, deficits }) => {
+    const ranges = [];
+    for (const { row, index } of entries) {
+      const counts = deficits.get(row.source.path); let first;
+      for (let line = row.source.start; line <= row.source.end + 1; line++) {
+        const gap = line <= row.source.end && counts[line] > counts[line - 1];
+        if (gap && first === undefined) first = line;
+        if (!gap && first !== undefined) { ranges.push({ row, index, start: first, end: line - 1 }); first = undefined; }
+      }
+    }
+    ranges.sort((a, b) => a.row.source.path < b.row.source.path ? -1 : a.row.source.path > b.row.source.path ? 1 : a.start - b.start);
+    const sources = ranges.slice(0, 8).map(({ row, index, start, end }) => {
+      const lines = snapshot.state.files.get(row.source.path);
+      return { path: row.source.path, start, end, sha256: hash(lines.slice(start - 1, end).join('')), fileSha256: row.source.fileSha256,
+        associationId: row.rangeId, audit: audit(index), snippet: excerpt(lines, start, end) };
+    });
+    const paths = new Set(entries.map(entry => entry.row.source.path)), candidates = new Map();
+    for (const source of report.files) if (paths.has(source.path)) for (const link of source.links) if (link.step) {
+      const key = JSON.stringify([link.source, link.actions, link.step]);
+      if (!candidates.has(key)) candidates.set(key, link);
+    }
+    const reusable = [...candidates].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, link]) => link);
+    const reuse = reusable.slice(0, 5).map(link => {
+      const key = JSON.stringify(link.step); let witnessId = witnessIds.get(key);
+      if (!witnessId) {
+        witnessId = `witness-${witnesses.length + 1}`; witnessIds.set(key, witnessId);
+        const lines = snapshot.witness(link.step);
+        witnesses.push({ id: witnessId, ...link.step, fileSha256: hash(lines.join('')), snippet: excerpt(lines, link.step.start, link.step.end) });
+      }
+      return { id: link.id, source: link.source, actions: preview(link.actions), witnessId, why: link.why.slice(0, 512), whyTruncated: link.why.length > 512,
+        inspect: { argv: command('report', '--step', `${link.step.path}:${link.step.start}-${link.step.end}`, '--json') } };
+    });
+    return { scenarioId: scenario.id, title: scenario.title.slice(0, 256), titleTruncated: scenario.title.length > 256, state: scenario.state, featureId: scenario.featureId,
+      potentialGapLines, plan: { actions: preview(scenario.plannedActions), outcomes: preview(scenario.expectedOutcomes), existingPaths: preview(scenario.existingPaths), fullContract: audit(entries[0].index) },
+      sources: { items: sources, total: ranges.length, truncated: ranges.length > sources.length,
+        continuation: ranges.length > sources.length ? { auditOffset: ranges[sources.length].index, argv: audit(ranges[sources.length].index).argv } : null },
+      reuse: { items: reuse, total: reusable.length, truncated: reusable.length > reuse.length,
+        continuation: reusable.length > reuse.length ? { argv: command('report', '--source', reusable[reuse.length].source.path, '--json') } : null } };
+  });
+  const { invalidLinks, invalidComments, invalidDeadCode, ignoredSources, ignoredTotals, excluded } = ranked.diagnostics;
+  const status = !ranked.valid ? 'integrity-issues' : !report.totals.lines ? 'empty-scope' : !ranked.selection.gapLines ? 'no-witness-gaps'
+    : tasks.length ? 'ready' : scenarioId ? 'no-target-for-selection' : 'no-current-proposal-targets';
+  const output = { kind: 'agent-work-packet', status, valid: ranked.valid,
+    notice: 'These are unreviewed potential gap targets, not closed deficits, distinct new traces or observed execution. Review source and assertions, run real supported journeys, then integrate reviewed links explicitly.',
+    reuseNotice: 'Existing witness candidates only; the same source file does not establish compatible assertions or execution.',
+    snapshot: { proposal: { path: file, sha256: ranked.progress.proposed.proposalSha256 }, map: { path: tracer.map, sha256: report.mapSha256 },
+      lineBasis: report.lineBasis, minimumTraces: report.minimumTraces, denominator: report.totals.lines, gapLines: ranked.selection.gapLines, unproposedGapLines: ranked.selection.unproposedGapLines },
+    progress: { reviewed: ranked.progress.reviewed, executed: ranked.progress.executed },
+    scope: { ignoredSources, ignoredTotals, excludedFileCount: excluded.length },
+    diagnostics: { proposalIssues: ranked.progress.proposed.issues, invalidLinks, invalidComments, invalidDeadCode }, tasks, witnesses,
+    commands: { discover: { argv: command('actions'), required: 'Review tracer.json before executing its configured discovery argv.' },
+      run: { argvPrefix: command('app', '--'), required: 'Append exact advertised test argv from application discovery. A proposal action or test file path does not establish a test selector.' },
+      integrate: { argvTemplate: command('scenario', 'link', '--file', '<reviewed-catalog>', '--reviewed', '--expect-catalog-sha256', '<catalog-sha256>', '--expect-map-sha256', report.mapSha256),
+        required: 'Author or extend a meaningful assertion-bearing catalog; review it, then use scenario report --file CATALOG --json for current catalog/map hashes. Never infer review or passes from this packet.' },
+      check: { argv: command('check', '--json') }, next: { argv: command('next', '--file', file) } } };
+  if (Buffer.byteLength(JSON.stringify(output, null, 2)) + 1 > MAX_EXPANDED_BYTES) fail('Expanded next packet exceeds 64 MiB; repair global diagnostics or select a smaller limit.');
   return output;
 }

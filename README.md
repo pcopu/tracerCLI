@@ -206,6 +206,8 @@ For whole-codebase mapping, author the full [proposed scenario map](docs/proposa
 
 Use `tracer proposal prioritize --file docs/testing/proposed-scenario-map.json --limit 25` to choose a bounded next batch by marginal unique witnessed gap lines. Shared test paths expose reuse opportunities. Ranking is an unreviewed greedy planning aid; it neither closes trace deficits nor proves the smallest scenario set, assertion adequacy or execution.
 
+Run `tracer next` for one practical agent work packet: the proposed plan, uncovered source snippets, current witness reuse candidates, exact hashes, and explicit run/check/reviewed-integration guidance. Extend and run a meaningful journey, review and integrate its assertions, then repeat. Unknown test selectors remain required inputs; the command never executes or promotes anything. See [packet bounds and workflow](docs/proposals.md#audit-afterward-without-automatic-promotion).
+
 ## Audit alongside active coding
 
 Author scenario contracts with feature changes, then use the [supervised audit queue](docs/audit-queue.md) to freeze small source/contract snapshots for independent review while coding continues. The CLI persists bounded jobs, claims and per-assertion receipts; it does not launch reviewers or execute tests. `tracer audit drain --file docs/testing/proposed-scenario-map.json` fails for unfinished, stale or unresolved current obligations. Semantic acceptance, executable readiness and actual execution stay separate.

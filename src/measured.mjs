@@ -98,6 +98,11 @@ function lcov(content, prefix) {
 }
 class MeasuredStore extends Tracer {
   constructor(root) { super({ root, map: MEASURED_PATH }); }
+  serializeMap(data) {
+    const serialized = `${JSON.stringify(data)}\n`;
+    if (Buffer.byteLength(serialized) > 64 * 1024 * 1024) fail('Measurement dataset exceeds 64 MiB.');
+    return serialized;
+  }
   readMap() {
     this.validateMapPath();
     if (!existsSync(this.mapPath)) return { version: 1, kind: 'lcov-intervals', intervals: [] };
@@ -193,7 +198,6 @@ export function importMeasured(root, { before, after, manifest, sources, stripPr
       return { changed: false, id: existing.id, notice: MEASURED_NOTICE };
     }
     data.intervals.push(interval);
-    if (Buffer.byteLength(JSON.stringify(data, null, 2)) > 64 * 1024 * 1024) fail('Measurement dataset exceeds 64 MiB.');
     return { changed: true, id: interval.id, notice: MEASURED_NOTICE };
   });
 }
