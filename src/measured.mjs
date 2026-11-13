@@ -242,23 +242,52 @@ export function checkMeasured(root) {
 }
 
 
-export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict' } = {}) {
+function measuredInputs(root, options, localDefault) {
+  let { inputRoots, outcomes, scopeMode } = options;
+  let captureSet = null;
+  if (options.captureSet !== undefined) {
+    if (inputRoots !== undefined || outcomes !== undefined || scopeMode !== undefined) fail('--capture-set cannot be combined with --input-root, --outcomes or --scope.');
+    const path = resolve(root, options.captureSet), input = readInput(path), data = JSON.parse(input.content);
+    keys(data, ['version', 'inputRoots', 'outcomes', 'scope'], 'capture set');
+    if (data.version !== 1 || !Array.isArray(data.inputRoots) || data.inputRoots.some(path => !text(path))
+        || (data.outcomes !== undefined && !text(data.outcomes))) fail('Require capture set version 1, inputRoots and an optional outcomes path.');
+    inputRoots = data.inputRoots.map(value => resolve(dirname(path), value));
+    outcomes = data.outcomes === undefined ? undefined : resolve(dirname(path), data.outcomes);
+    scopeMode = data.scope;
+    captureSet = { path, sha256: input.sha256 };
+  }
+  inputRoots ??= localDefault ? [root] : undefined;
+  scopeMode ??= 'strict';
   if (!['strict', 'source-lines'].includes(scopeMode)) fail('Union --scope must be strict or source-lines.');
-  if (!Array.isArray(inputRoots) || !inputRoots.length || inputRoots.length > 256 || inputRoots.some(path => !text(path))) fail('measure union requires 1-256 --input-root paths.');
+  if (!Array.isArray(inputRoots) || !inputRoots.length || inputRoots.length > 256 || inputRoots.some(path => !text(path))) fail('Require 1-256 measurement input roots.');
+  return { inputRoots, outcomes, scopeMode, captureSet };
+}
+
+function loadMeasuredRecords(root, options, lookupPath) {
+  const { inputRoots, outcomes, scopeMode, captureSet } = measuredInputs(root, options, Boolean(lookupPath));
   const origins = [], records = new Map(), storedIds = new Map(), provenance = new Map();
   let scope, scopeId, sourceLinesId, duplicates = 0;
   for (const inputRoot of inputRoots) {
     const store = new MeasuredStore(resolve(root, inputRoot));
-    if (!existsSync(store.mapPath)) fail('Union input measurement dataset is missing.');
+    if (!existsSync(store.mapPath)) {
+      if (!lookupPath) fail('Union input measurement dataset is missing.');
+      origins.push({ root: store.root, dataset: store.mapPath, sha256: null, intervals: 0, status: 'missing' }); continue;
+    }
     const { data, datasetSha256 } = store.readMap({ withHash: true });
     const origin = { root: store.root, dataset: store.mapPath, sha256: datasetSha256, intervals: data.intervals.length };
     origins.push(origin);
     const checked = new Map();
     for (const interval of data.intervals) {
+      const lookupFile = lookupPath ? interval.files.find(file => file.path === lookupPath) : undefined;
+      let snapshotError = null;
       for (const file of interval.files) {
+        if (lookupPath && file.path !== lookupPath) continue;
         const key = JSON.stringify([file.path, file.sha256, file.rows.at(-1)[0]]);
         if (!checked.has(key)) checked.set(key, currentFile(store, file));
-        if (checked.get(key)) fail(`Union input ${interval.id}: ${checked.get(key)}`);
+        if (checked.get(key)) {
+          if (!lookupPath) fail(`Union input ${interval.id}: ${checked.get(key)}`);
+          snapshotError = checked.get(key);
+        }
       }
       const occurrence = intervalId(interval), { id, payloadSha256, ...content } = interval;
       const digest = sha(JSON.stringify(content)), previous = records.get(occurrence);
@@ -267,7 +296,9 @@ export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict'
       if (previous) {
         if (previous.digest !== digest) fail(`Conflicting duplicate interval: ${id}`);
         if (!previous.aliases.includes(id)) previous.aliases.push(id);
-        previous.origins.push(origins.length - 1); duplicates++; continue;
+        previous.origins.push(origins.length - 1);
+        if (lookupFile && !snapshotError) previous.validOrigins.push(origins.length - 1);
+        duplicates++; continue;
       }
       if (records.size === 10000) fail('Measurement union exceeds 10000 unique intervals.');
       const currentScope = { sourceManifestSha256: interval.manifest.sourceManifestSha256, probeSha256: interval.manifest.probeSha256,
@@ -275,21 +306,23 @@ export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict'
         files: interval.files.map(file => ({ path: file.path, sha256: file.sha256, lines: file.rows.map(row => row[0]) }))
           .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) };
       const currentScopeId = sha(JSON.stringify(currentScope)), currentSourceLinesId = sha(JSON.stringify(currentScope.files));
-      if (scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
+      if (!lookupPath && scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
         fail(`Incompatible measurement scope: ${scopeMode === 'strict' ? scopeId : sourceLinesId} versus ${scopeMode === 'strict' ? currentScopeId : currentSourceLinesId}. Report these scopes separately.`);
       }
       if (!scope) { scope = currentScope; scopeId = currentScopeId; sourceLinesId = currentSourceLinesId; }
       if (!provenance.has(currentScopeId)) {
         const { files, ...identities } = currentScope;
-        provenance.set(currentScopeId, { id: currentScopeId, ...identities, intervalIds: [], origins: new Set() });
+        provenance.set(currentScopeId, { id: currentScopeId, ...identities, intervalIds: [], origins: new Set(),
+          ...(lookupPath ? { familyId: scopeMode === 'strict' ? currentScopeId : currentSourceLinesId, sourceFiles: currentScope.files } : {}) });
       }
       provenance.get(currentScopeId).intervalIds.push(occurrence);
       const observed = new Set();
-      for (const file of interval.files) for (const [line, before, after] of file.rows) if (after > before) observed.add(`${file.path}\0${line}`);
-      records.set(occurrence, { id: occurrence, aliases: [id], digest, observed, provenanceId: currentScopeId, origins: [origins.length - 1] });
+      for (const file of interval.files.filter(file => !lookupPath || file.path === lookupPath)) for (const [line, before, after] of file.rows) if (after > before) observed.add(`${file.path}\0${line}`);
+      records.set(occurrence, { id: occurrence, aliases: [id], digest, observed, provenanceId: currentScopeId, origins: [origins.length - 1],
+        ...(lookupPath ? { lookupFile, snapshotError, actions: interval.manifest.actions, validOrigins: lookupFile && !snapshotError ? [origins.length - 1] : [] } : {}) });
     }
   }
-  if (!scope) fail('measure union requires at least one measured interval.');
+  if (!scope && !lookupPath) fail('measure union requires at least one measured interval.');
   const declarations = new Map(), outcomeBindings = [], declaredIds = new Set();
   let outcomeProvenance = null;
   if (outcomes !== undefined) {
@@ -313,9 +346,14 @@ export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict'
     }
     outcomeProvenance = { path, sha256: input.sha256 };
   }
+  for (const record of records.values()) for (const origin of record.origins) provenance.get(record.provenanceId).origins.add(origin);
+  return { origins, records, provenance, scope, scopeId, sourceLinesId, duplicates, declarations, outcomeBindings, outcomeProvenance, scopeMode, captureSet };
+}
+
+export function unionMeasured(root, options = {}) {
+  const { origins, records, provenance, scope, scopeId, sourceLinesId, duplicates, declarations, outcomeBindings, outcomeProvenance, scopeMode, captureSet } = loadMeasuredRecords(root, options);
   const all = new Set(), passed = new Set(), journeys = new Map(), outcomeCounts = { passed: 0, failed: 0, unknown: 0 };
   for (const record of records.values()) {
-    for (const origin of record.origins) provenance.get(record.provenanceId).origins.add(origin);
     const declaration = declarations.get(record.id), status = declaration?.status ?? 'unknown';
     const journey = declaration?.journey ?? `interval:${record.id}`;
     outcomeCounts[status]++;
@@ -343,6 +381,7 @@ export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict'
     'Missing outcomes remain unknown and contribute only to the all-observed union.',
     'Source-lines mode unions observed presence across provenance groups with exact source bytes and instrumented line sets; it does not establish identical adapters or builds.',
     'Journey marginal novelty depends on first-encounter journey order, then combines that journey’s intervals. It is not per-action causality.'],
+    ...(captureSet ? { captureSet } : {}),
     scope: scopeMode === 'strict' ? { mode: scopeMode, id: scopeId, ...scope } : { mode: scopeMode, id: sourceLinesId, files: scope.files }, origins,
     provenanceGroups: [...provenance.values()].map(group => ({ ...group, origins: [...group.origins] })),
     intervals: { unique: records.size, duplicates, outcomes: outcomeCounts,
@@ -356,4 +395,66 @@ export function unionMeasured(root, { inputRoots, outcomes, scopeMode = 'strict'
     journeys: [...journeys.values()].map(group => ({ journey: group.journey, intervalIds: group.intervalIds, outcomes: group.outcomes,
       allObserved: { observedLines: group.all.size, marginalLines: marginal(group.all, earlier) },
       passedOnlyKnown: { observedLines: group.passed.size, marginalLines: marginal(group.passed, earlierPassed) } })) };
+}
+
+
+export function whereMeasured(root, { source, captureSet } = {}) {
+  const range = parseRange(source, false), store = new MeasuredStore(root), lines = store.readLines(range.path);
+  const sourceSha256 = sha(lines.join('')), start = range.start ?? 1, end = range.end ?? lines.length;
+  if (range.start && end > lines.length) fail('Requested source range is outside the current file.');
+  const loaded = loadMeasuredRecords(root, { captureSet }, range.path);
+  const observed = new Set(), instrumented = new Set(), passed = new Set(), hits = [], historical = [], families = new Map(), journeys = new Map();
+  const sorted = values => [...values].sort((a, b) => a - b);
+  for (const group of loaded.provenance.values()) {
+    const file = group.sourceFiles.find(file => file.path === range.path);
+    if (!file) continue;
+    if (!families.has(group.familyId)) families.set(group.familyId, { id: group.familyId, mode: loaded.scopeMode,
+      sourceUniverseSha256: sha(JSON.stringify(group.sourceFiles)), scopeFiles: group.sourceFiles.length,
+      source: { path: file.path, sha256: file.sha256, instrumentedRanges: compactRanges(file.lines) }, provenanceGroups: [] });
+    const { familyId, sourceFiles, origins, intervalIds, ...identities } = group;
+    families.get(familyId).provenanceGroups.push({ ...identities, intervalCount: intervalIds.length, origins: [...origins] });
+  }
+  for (const record of loaded.records.values()) {
+    const file = record.lookupFile;
+    if (!file) continue;
+    const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
+    const relevant = file.rows.filter(row => row[0] >= start && row[0] <= end);
+    const increased = relevant.filter(row => row[2] > row[1]).map(row => row[0]);
+    const base = { id: record.id, aliases: record.aliases, journey: declaration?.journey ?? null, outcome,
+      provenanceId: record.provenanceId, origins: record.origins };
+    if (!record.validOrigins.length || file.sha256 !== sourceSha256) {
+      if (!relevant.length) continue;
+      historical.push({ ...base, coordinateSpace: 'captured-source', sourceSha256: file.sha256, reason: !record.validOrigins.length ? 'Snapshot source is stale or unavailable.' : 'Current source bytes differ from the captured source.',
+        observedRanges: compactRanges(increased), instrumentedRanges: compactRanges(relevant.map(row => row[0])) });
+      continue;
+    }
+    for (const [line] of relevant) instrumented.add(line);
+    const overlap = relevant.filter(row => row[2] > row[1]).map(row => row[0]);
+    for (const line of overlap) { observed.add(line); if (outcome === 'passed') passed.add(line); }
+    if (overlap.length) {
+      hits.push({ ...base, actions: record.actions, observedRanges: compactRanges(overlap), validatedOrigins: record.validOrigins });
+      const key = JSON.stringify([base.journey, outcome]);
+      if (!journeys.has(key)) journeys.set(key, { journey: base.journey, outcome, intervals: 0, lines: new Set() });
+      const journey = journeys.get(key); journey.intervals++;
+      for (const line of overlap) journey.lines.add(line);
+    }
+  }
+  const instrumentedLines = sorted(instrumented), unknownRanges = [];
+  let next = start;
+  for (const line of instrumentedLines) { if (next < line) unknownRanges.push([next, line - 1]); next = line + 1; }
+  if (next <= end) unknownRanges.push([next, end]);
+  if (sha(store.readLines(range.path).join('')) !== sourceSha256) fail('Requested source changed during measurement lookup.');
+  const returnedIds = new Set(hits.concat(historical).map(record => record.id));
+  return { kind: 'measured-source-lookup', notice: MEASURED_NOTICE,
+    validationScope: 'Dataset payloads and requested snapshot source files are checked. Current credit additionally requires the exact current requested file hash. Other snapshot files are outside this lookup.',
+    aggregation: 'Current physical-source-line presence across the listed independent families. No combined build coverage percentage or assertion proof.',
+    status: observed.size ? 'observed' : instrumented.size ? 'unobserved' : 'unknown',
+    source: { path: range.path, start, end, sha256: sourceSha256, physicalLines: lines.length }, captureSet: loaded.captureSet,
+    observedRanges: compactRanges(sorted(observed)), unobservedInstrumentedRanges: compactRanges(instrumentedLines.filter(line => !observed.has(line))), unknownRanges,
+    passedOnlyKnown: { observedRanges: compactRanges(sorted(passed)) },
+    hits, historical, families: [...families.values()], origins: loaded.origins,
+    journeys: [...journeys.values()].map(({ lines, ...journey }) => ({ ...journey, observedRanges: compactRanges(sorted(lines)) })),
+    outcomes: { kind: 'producer-declared', provenance: loaded.outcomeProvenance,
+      declarations: loaded.outcomeBindings.filter(row => returnedIds.has(row.canonicalId)) },
+    intervals: { unique: loaded.records.size, duplicates: loaded.duplicates, matchingSource: [...loaded.records.values()].filter(record => record.lookupFile).length } };
 }

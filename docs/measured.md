@@ -118,3 +118,29 @@ Each outcome must reference a unique stored or canonical interval ID and use `pa
 The union checks evidence bytes and records their provenance. It does not interpret producer-specific evidence or independently verify assertions. Native or service producers should derive declarations from their actual structured results and validate their own evidence contract. Missing declarations remain `unknown` and are excluded from `passedOnlyKnown`. Zero known-passing observations describes that declared subset, while the separate unknown outcome count remains visible.
 
 Journey groups follow first encounter in input-root order and stored interval order. All intervals bearing that journey label are combined before its marginal novelty is computed against preceding groups. Undeclared journeys use their interval ID. Marginal novelty is order-dependent interval observation, with no per-action or assertion attribution. The command creates no dataset, lock, manual link or approval and executes no application.
+
+## Look up current source before choosing another capture
+
+A reusable external capture set holds the analysis roots, optional outcomes file and scope mode.
+
+```json
+{"version":1,"inputRoots":["first/analysis/source","second/analysis/source"],"outcomes":"outcomes.json","scope":"source-lines"}
+```
+
+Paths inside the capture set resolve relative to its directory. The file uses the existing regular, unsymlinked UTF-8 JSON input limit of 64 MiB. Its exact path and raw SHA256 appear in results. `inputRoots` is required, `outcomes` is optional, and omitted `scope` defaults to `strict`.
+
+```sh
+tracer measure where --capture-set /analysis/captures.json --source src/model.py:40-90
+tracer measure where --capture-set /analysis/captures.json --source src/model.py --json
+tracer measure union --capture-set /analysis/captures.json --json
+```
+
+A capture set provides the roots, outcome path and scope together. Combining it with direct `--input-root`, `--outcomes` or `--scope` flags is an error. Existing direct union flags retain their behavior. Without a capture set, `where` reads only the selected root's conventional measurement dataset. An absent local dataset produces `unknown` query ranges.
+
+`where` hashes the current requested file and checks exact requested bounds. It returns current `observedRanges`, `unobservedInstrumentedRanges` and `unknownRanges`. Unobserved instrumented ranges have usable current counter rows with no observed increase in the listed captures. Unknown ranges lack usable current instrumentation. Changed current source and stale snapshot files contribute historical evidence with original hashes and captured-source coordinates clipped to the requested bounds, while their current query ranges remain unknown. Historical coordinates are never relocated to guess current code identity. The source hash is rechecked before returning.
+
+Each current hit identifies its canonical interval, stored aliases, exact observed overlap and recorded ordered actions. Journey and outcome labels come only from supplied producer declarations. Known-passing observed ranges are separate. Plain output groups hits by journey and declared outcome, with merged ranges and interval counts. JSON retains per-interval details and relevant evidence bindings.
+
+Lookup validates dataset payloads and the requested file in each snapshot. Other snapshot files stay outside its stated `validationScope`, so an unrelated stale file does not gate this source question. Independent capture families retain their identities and the requested file's instrumented universe. Their full-universe hashes and provenance groups remain visible, with no unrelated file-by-file expansion. Overall query classifications express physical-line presence across these listed families. They establish no combined build coverage percentage, compatible-adapter proof or assertion adequacy.
+
+`union --capture-set` still enforces the existing whole-scope compatibility and current-source checks. Both commands are read-only and reuse recorded captures without application execution, manual-link prerequisites or metadata repair.

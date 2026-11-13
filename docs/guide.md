@@ -65,7 +65,7 @@ No test runner or CI is installed. You may add `tracer check` to your own existi
 
 ## Project setup and app delegation
 
-An application CLI is the command interface that lets agents and tests operate the app. Before application coverage or new link-mapping work, inspect every supported feature and establish a CLI exposing every authorized feature, building or extending it when necessary. Tracer explains this during setup; it does not build an application CLI automatically.
+An application CLI is the command interface that lets agents and tests operate the app. Start execution coverage from existing supported CLI routes and capture adapters. Inspect missing features and extend their CLI routes within authorization while independent supported scenarios proceed. Tracer explains this during setup; it does not build an application CLI automatically.
 
 `tracer init` creates absent `tracer.json` and map files without running the app. Existing valid files remain byte-for-byte unchanged, including custom fields and links. Supplied app/discovery/minimum settings must match existing settings or init fails. It never has a force-overwrite mode. To change an existing app connection, inspect and edit `tracer.json` explicitly. To change a minimum, use `tracer config --minimum-traces N`.
 
@@ -101,7 +101,26 @@ The project instruction is only a short pointer to the installed skill and CLI; 
 
 ## Actual instrumented observations
 
-Use the separate `tracer measure import`, `report` and `check` workflow for provenance-bound LCOV pairs. It does not change manual trace counts or infer causality. See [measured evidence](measured.md).
+Before proposing a new test for a source range or claiming code is already covered, look up existing captures. Query a range with `measure where`, or summarize the capture scope with `measure union`.
+
+```sh
+tracer measure where --capture-set /analysis/captures.json --source src/model.swift:40-90
+tracer measure union --capture-set /analysis/captures.json --json
+```
+
+The default source lookup is concise plaintext grouped by journey/outcome, merged ranges and interval count. Add `--json` for detailed programmatic inspection. Keep detailed interval/actions JSON in external artifacts and report the relevant summary.
+
+A reusable external capture set avoids rebuilding a long list of input-root arguments.
+
+```json
+{"version":1,"inputRoots":["first/source","second/source"],"outcomes":"outcomes.json","scope":"source-lines"}
+```
+
+Paths inside the spec resolve relative to its directory. Outcomes are optional producer declarations with digest-bound evidence. Scope retains the existing strict/source-lines rules. Union also accepts direct repeatable `--input-root` arguments. Without a capture set, `tracer measure where --source PATH:START-END` checks the selected root's conventional measurement dataset, returning unknown ranges when usable instrumentation is absent. Keep capture-set selection separate from direct roots/outcomes/scope flags.
+
+Reuse observed intervals and their bound scenarios first. Choose supported routes or focused variants for unobserved instrumented ranges. Missing captures, uninstrumented lines and stale source remain unknown for current coverage. Preserve historical evidence and separate provenance groups. A line hit establishes counter presence during an interval, with passing status and assertion adequacy reported independently. This lookup requires no manual map, semantic audit or application launch and provides no forced production-branch execution.
+
+Capture new observations through the application's supported instrumentation adapter, then use `tracer measure import`, `report`, `check` and `union` for provenance-bound LCOV evidence. These operations leave manual trace counts separate. See [measured evidence](measured.md).
 
 
 ## Inspect exact moved-range candidates

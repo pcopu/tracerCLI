@@ -4,7 +4,7 @@ import { initialize, runApp } from '../src/project.mjs';
 import { bindProposalRoutes } from '../src/route-bindings.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
-import { importMeasured, reportMeasured, checkMeasured, unionMeasured } from '../src/measured.mjs';
+import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
@@ -37,6 +37,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
+  measure union --capture-set FILE [--json]
+  measure where --source PATH[:RANGE] [--capture-set FILE] [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -166,14 +168,15 @@ async function main(args) {
   if (command === 'measure') {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
-      report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--json'] }[mode];
-    if (!allowed) fail('Use measure import, report, check or union.');
+      report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--capture-set', '--json'], where: ['--source', '--capture-set', '--json'] }[mode];
+    if (!allowed) fail('Use measure import, report, check or union. Source lookup uses measure where.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || (Object.hasOwn(options, flag) && flag !== '--input-root')) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
       if (flag === '--input-root') (options[flag] ??= []).push(value(flags, i++, flag));
       else options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
     }
+    if (mode === 'where' && !options['--source']) fail('measure where requires --source.');
     if (mode === 'import' && ['--before', '--after', '--manifest', '--sources'].some(flag => !options[flag])) fail('measure import requires --before, --after, --manifest and --sources.');
     const selectors = ['--source', '--action', '--sequence'].filter(flag => options[flag] !== undefined);
     if (selectors.length > 1) fail('measure report accepts one selector.');
@@ -182,12 +185,18 @@ async function main(args) {
     const result = mode === 'import' ? importMeasured(tracer.root, { before: options['--before'], after: options['--after'],
       manifest: options['--manifest'], sources: options['--sources'], stripPrefix: options['--strip-prefix'], allowStale: !!options['--allow-stale'] })
       : mode === 'report' ? reportMeasured(tracer.root, query) : mode === 'union'
-        ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'] }) : checkMeasured(tracer.root);
+        ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'], captureSet: options['--capture-set'] })
+        : mode === 'where' ? whereMeasured(tracer.root, { source: options['--source'], captureSet: options['--capture-set'] }) : checkMeasured(tracer.root);
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(result.notice);
       if (mode === 'import') console.log(`${result.changed ? 'Imported' : 'Already imported'} interval: ${result.id}`);
-      else if (mode === 'union') {
+      else if (mode === 'where') {
+        console.log(`${result.source.path}:${result.source.start}-${result.source.end}: ${result.status}; ${result.hits.length} observed and ${result.historical.length} historical interval(s).`);
+        console.log(`Observed: ${formatRanges(result.observedRanges)}; unobserved instrumented: ${formatRanges(result.unobservedInstrumentedRanges)}; unknown: ${formatRanges(result.unknownRanges)}.`);
+        console.log('Journey outcomes are producer-declared.');
+        for (const journey of result.journeys) console.log(`${journey.journey ?? '(unknown journey)'} ${journey.outcome}: ${formatRanges(journey.observedRanges)} (${journey.intervals} interval(s))`);
+      } else if (mode === 'union') {
         console.log(`Scope ${result.scope.id} (${result.scope.mode}); ${result.intervals.unique} unique intervals, ${result.intervals.duplicates} duplicates.`);
         console.log(`All observed: ${result.allObserved.observedLines}/${result.allObserved.instrumentedLines}; passed-only known: ${result.passedOnlyKnown.observedLines}/${result.passedOnlyKnown.instrumentedLines}; unknown outcomes: ${result.intervals.outcomes.unknown}.`);
       } else if (mode === 'check') {
