@@ -16,7 +16,7 @@ test('self-host journey: discover Tracer project actions, delegate help, reject 
   const actions = JSON.parse(discovery.stdout);
   assert.equal(actions.application, 'tracercli-self-host');
   assert.ok(actions.actions.some(action => JSON.stringify(action.command) === '["test"]'));
-  for (const group of ['scenarios', 'mapping', 'comments', 'ignore', 'measured', 'project', 'update', 'self-host']) {
+  for (const group of ['scenarios', 'mapping', 'comments', 'ignore', 'measured', 'project', 'update', 'self-host', 'proposal', 'audit-queue', 'scenario-runtime-guards', 'scenario-compiler-guards']) {
     assert.ok(actions.actions.some(action => JSON.stringify(action.command) === JSON.stringify(['test', group])));
   }
   const help = run('app', '--', '--help'); assert.equal(help.status, 0); assert.match(help.stdout, /Run through Tracer/);
@@ -69,7 +69,7 @@ function runnerProject(t) {
   return { root: project, home, env, owned, put, read, run };
 }
 
-const fixtureJourneys = ['scenario', 'measured', 'mapping', 'comment', 'ignore', 'project', 'update', 'self-host'];
+const fixtureJourneys = ['scenario', 'measured', 'mapping', 'comment', 'ignore', 'project', 'update', 'self-host', 'proposal', 'audit-queue', 'scenario-runtime-guards', 'scenario-compiler-guards'];
 function passingRunnerFixtures(f) {
   for (const name of fixtureJourneys) f.put(`tests/e2e/${name}-journeys.test.mjs`, `import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -81,6 +81,7 @@ test('synthetic ${name}', () => {
 });\n`);
   // The advertised self-host file has a singular name.
   f.put('tests/e2e/self-host-journey.test.mjs', f.read('tests/e2e/self-host-journeys.test.mjs'));
+  for (const name of ['scenario-runtime-guards', 'scenario-compiler-guards']) f.put(`tests/e2e/${name}.test.mjs`, f.read(`tests/e2e/${name}-journeys.test.mjs`));
 }
 
 test('self-host runner journey: named and all test dispatch execute only reviewed files and preserve failure exits', t => {
@@ -91,7 +92,7 @@ test('self-host runner journey: named and all test dispatch execute only reviewe
   rmSync(join(f.root, 'executed.jsonl'));
   const all = f.run(['app', '--', 'test']);
   assert.deepEqual(f.read('executed.jsonl').trim().split('\n').map(JSON.parse).sort(), [...fixtureJourneys].sort());
-  assert.match(all.stdout, /(?:#|ℹ) tests 8\n/); assert.match(all.stdout, /(?:#|ℹ) pass 8\n/); assert.match(all.stdout, /(?:#|ℹ) fail 0\n/);
+  assert.match(all.stdout, /(?:#|ℹ) tests 12\n/); assert.match(all.stdout, /(?:#|ℹ) pass 12\n/); assert.match(all.stdout, /(?:#|ℹ) fail 0\n/);
   const recorded = f.read('executed.jsonl');
   for (const args of [['test', 'mapping', 'unexpected'], ['test', '../outside'], ['test', '; touch NEVER']]) {
     const rejected = f.run(['app', '--', ...args], 1);
@@ -219,4 +220,17 @@ test('packaged install journey: offline npm package, both installed bins, mappin
   run(tracercli, ['unlink', map.links[0].id]);
   assert.equal(JSON.parse(readFileSync(mapPath, 'utf8')).links.length, 0);
   assert.equal(JSON.parse(run(tracer, ['check', '--json']).stdout).valid, 0);
+});
+
+test('self-host runner journey: proposal, audit and guard selectors each execute their exact advertised file', t => {
+  const f = runnerProject(t); passingRunnerFixtures(f);
+  for (const name of ['proposal', 'audit-queue', 'scenario-runtime-guards', 'scenario-compiler-guards']) {
+    const result = f.run(['app', '--', 'test', name]);
+    assert.deepEqual(f.read('executed.jsonl').trim().split('\n').map(JSON.parse), [name]);
+    assert.match(result.stdout, /(?:#|ℹ) tests 1\n/); assert.match(result.stdout, /(?:#|ℹ) pass 1\n/);
+    rmSync(join(f.root, 'executed.jsonl'));
+  }
+  const umbrella = f.run(['app', '--', 'test', 'scenarios']);
+  assert.deepEqual(f.read('executed.jsonl').trim().split('\n').map(JSON.parse).sort(), ['scenario', 'proposal', 'audit-queue', 'scenario-runtime-guards', 'scenario-compiler-guards'].sort());
+  assert.match(umbrella.stdout, /(?:#|ℹ) tests 5\n/); assert.match(umbrella.stdout, /(?:#|ℹ) pass 5\n/);
 });

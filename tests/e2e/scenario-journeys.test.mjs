@@ -164,10 +164,3 @@ process.exitCode = result.status === 'passed' ? 0 : 1;
   }
   assert.equal(JSON.parse(p.read(map)).links.length, 0, 'captured application results never create mappings');
 });
-
-import "./scenario-compiler-guards.test.mjs";
-import "./scenario-runtime-guards.test.mjs";
-
-import "./proposal-journeys.test.mjs";
-
-import './audit-queue-journeys.test.mjs';

@@ -735,6 +735,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
+  proposal prioritize --file PROPOSAL [--limit N] [--json]
   scenario prepare|check --file CATALOG [--json]
   scenario report|packet --file CATALOG [--scenario ID] [--json]
   scenario link --file CATALOG [--scenario ID] --reviewed

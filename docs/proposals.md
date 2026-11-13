@@ -63,6 +63,20 @@ Source files must be in the current Tracer inventory. Paths must remain reposito
 
 ## Audit afterward, without automatic promotion
 
+Choose a bounded next batch from the current witnessed mapping gaps:
+
+```sh
+tracer proposal prioritize --file docs/testing/proposed-scenario-map.json --limit 25 --json
+```
+
+This read-only command validates the entire proposal and manual map, then ranks scenarios by marginal unique included lines below the saved **witnessed** trace minimum. Action-only links do not fill witnessed gaps. Exact duplicate action sequences still count once; stale links contribute nothing. Blanks, current declared comments and ignored source stay outside the included denominator. Stale or overlapping proposals receive no target credit, while their diagnostics remain visible even with `--limit 1`.
+
+The greedy selection chooses the scenario with the largest remaining gap-line count, breaking ties by scenario ID in code-point order. Shared association lines count only for the first selected scenario that targets them. It stops at the limit or when no scenario adds another unique gap line. `targetedGapLines` and `remainingGapLines` describe potential targets selected by this heuristic, not completed work, closed trace deficits or a minimum-size scenario set. In particular, a minimum above one may require multiple distinct witnessed traces on each target line. The command neither proves new trace distinctness nor changes any mapping or execution percentage.
+
+`reuseOpportunities` groups eligible scenarios sharing an exact existing test path. These groups suggest where extending a coherent journey may reuse setup; they do not certify that the scenarios can be merged or that their assertions are adequate. Counts in these groups overlap and must not be summed as unique project lines. Inspect the full proposal and audit contracts before writing assertions or promoting links.
+
+The default limit is 25, with a range of 1–1000. Ranking rows carry at most 25 association IDs and 10 existing paths; reuse groups carry at most 25 scenario IDs and there are at most `limit` groups. Explicit counts and truncation flags expose omitted detail. The proposal hash in `progress.proposed` identifies the full input for subsequent audit packets. Global proposal issues, invalid link/comment/dead-code records, ignored scope and inventory exclusions remain available in the output. `valid: false` exposes integrity problems without hiding unrelated candidates; malformed artifacts still fail. Output has a 64 MiB hard limit. No app, stored action, map write or measured import runs.
+
 ```sh
 tracer proposal audit --file docs/testing/proposed-scenario-map.json --offset 0 --limit 25 --json
 ```

@@ -146,6 +146,7 @@ export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25 } =
   const result = { kind: `scenario-proposal-${mode}`, notice: PROPOSAL_NOTICE, valid: inspected.issues.length === 0,
     lineBasis: report.lineBasis, progress };
   if (mode === 'report') return { ...result, scenarios: input.value.scenarios, associations: input.value.associations };
+  if (mode === 'prioritize') return prioritize(inspected, state, report, result, limit);
   if (mode === 'audit') {
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) fail('Proposal audit requires --offset >= 0 and --limit 1-1000.');
     const batch = inspected.candidates.slice(offset, offset + limit);
@@ -162,4 +163,78 @@ export function proposalCommand(tracer, file, { mode, offset = 0, limit = 25 } =
       associations };
   }
   return result;
+}
+
+function prioritize(inspected, state, report, result, limit) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) fail('Proposal prioritize requires --limit 1-1000.');
+  const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const deficits = new Map(); let gapLines = 0;
+  // One prefix count per included file clips proposals to actual witnessed gaps,
+  // including action-only links but excluding blanks and current declared comments.
+  for (const file of report.files) {
+    const lines = state.files.get(file.path), prefix = new Uint32Array(lines.length + 1);
+    let trace = 0, comment = 0;
+    for (let line = 1; line <= lines.length; line++) {
+      while (file.traceCounts[trace]?.end < line) trace++;
+      while (file.commentRanges[comment]?.[1] < line) comment++;
+      const declared = file.commentRanges[comment]?.[0] <= line;
+      const gap = lines[line - 1].trim() && !declared && file.traceCounts[trace].withStepCount < report.minimumTraces;
+      prefix[line] = prefix[line - 1] + (gap ? 1 : 0);
+    }
+    gapLines += prefix[lines.length]; deficits.set(file.path, prefix);
+  }
+  const scenarios = new Map([...inspected.scenarios].sort(([a], [b]) => compare(a, b)).map(([id, scenario]) =>
+    [id, { scenario, rows: [], initial: 0, remaining: 0 }]));
+  let proposedGapLines = 0;
+  for (const { row, current } of inspected.candidates) {
+    const prefix = deficits.get(row.source.path);
+    if (!current || !prefix) continue;
+    const weight = prefix[row.source.end] - prefix[row.source.start - 1];
+    if (!weight) continue;
+    // Valid associations partition source, so row weights are disjoint. Multiple
+    // referring scenarios compete for the same weight instead of multiplying it.
+    const entry = { row, weight, targeted: false }; proposedGapLines += weight;
+    for (const id of row.scenarioIds) {
+      const scenario = scenarios.get(id); scenario.rows.push(entry); scenario.initial += weight; scenario.remaining += weight;
+    }
+  }
+  const eligible = [...scenarios.values()].filter(value => value.initial), ranking = [];
+  let targetedGapLines = 0;
+  while (ranking.length < limit) {
+    let best;
+    for (const candidate of eligible) if (candidate.remaining > (best?.remaining ?? 0)) best = candidate;
+    if (!best) break;
+    const marginalGapLines = best.remaining, { scenario } = best;
+    for (const entry of best.rows) {
+      if (entry.targeted) continue;
+      entry.targeted = true; targetedGapLines += entry.weight;
+      for (const id of entry.row.scenarioIds) scenarios.get(id).remaining -= entry.weight;
+    }
+    const associationIds = best.rows.map(entry => entry.row.rangeId).sort(compare), paths = [...new Set(scenario.existingPaths)].sort(compare);
+    ranking.push({ rank: ranking.length + 1, scenarioId: scenario.id, title: scenario.title, featureId: scenario.featureId, state: scenario.state,
+      initialGapLines: best.initial, marginalGapLines, cumulativeTargetedGapLines: targetedGapLines,
+      associationCount: associationIds.length, associationIds: associationIds.slice(0, 25), associationIdsTruncated: associationIds.length > 25,
+      existingPathCount: paths.length, existingPaths: paths.slice(0, 10), existingPathsTruncated: paths.length > 10 });
+  }
+  const reuse = new Map();
+  for (const candidate of eligible) for (const path of new Set(candidate.scenario.existingPaths)) {
+    let group = reuse.get(path);
+    if (!group) { group = { path, scenarioIds: [], rows: new Set() }; reuse.set(path, group); }
+    group.scenarioIds.push(candidate.scenario.id);
+    for (const row of candidate.rows) group.rows.add(row);
+  }
+  const opportunities = [...reuse.values()].filter(group => group.scenarioIds.length > 1).map(group => ({ path: group.path,
+    gapLines: [...group.rows].reduce((sum, entry) => sum + entry.weight, 0), scenarioCount: group.scenarioIds.length,
+    scenarioIds: group.scenarioIds.slice(0, 25), scenarioIdsTruncated: group.scenarioIds.length > 25 }))
+    .sort((a, b) => b.gapLines - a.gapLines || compare(a.path, b.path));
+  const diagnostics = { invalidLinks: report.invalid, invalidComments: report.invalidComments, invalidDeadCode: report.progress.deadCode.invalid,
+    ignoredSources: report.ignoredSources, ignoredTotals: report.ignoredTotals, excluded: report.excluded };
+  const output = { ...result, valid: result.valid && !diagnostics.invalidLinks.length && !diagnostics.invalidComments.length && !diagnostics.invalidDeadCode.length,
+    selection: { method: 'greedy-marginal-unique-witness-gap-lines', minimumTraces: report.minimumTraces, denominator: report.totals.lines,
+      gapLines, unproposedGapLines: gapLines - proposedGapLines, targetedGapLines, remainingGapLines: gapLines - targetedGapLines,
+      eligibleScenarios: eligible.length, selectedScenarios: ranking.length, limit, hasMore: eligible.some(candidate => candidate.remaining > 0),
+      notice: 'Unreviewed potential targets only, not closed deficits or distinct new witnessed traces. Greedy ranking makes no optimality or execution claim. Shared existing paths are reuse opportunities, not proof that scenarios can be merged. Audit full contracts before linking.' },
+    ranking, reuseOpportunities: opportunities.slice(0, limit), reuseOpportunitiesTruncated: opportunities.length > limit, diagnostics };
+  if (Buffer.byteLength(JSON.stringify(output, null, 2)) + 1 > MAX_EXPANDED_BYTES) fail('Expanded proposal prioritization exceeds 64 MiB; select a smaller limit or inspect global diagnostics separately.');
+  return output;
 }

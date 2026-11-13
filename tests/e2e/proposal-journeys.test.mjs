@@ -215,3 +215,115 @@ test('proposal snapshot journey: concurrent source edits cannot mix numerator an
   const current = JSON.parse(next.stdout).progress.proposed;
   assert.equal(current.lines, 0); assert.equal(current.denominator, 1); assert.equal(current.percent, 0, 'A later command gets fresh source and rejects old pins.');
 });
+
+function priorityProject(t) {
+  const p = project(t);
+  p.put('model.mjs', 'export const a = 1;\n\n// Declared comment\nexport const b = 2;\nexport const c = 3;\nexport const d = 4;\nexport const e = 5;\nexport const f = 6;\n');
+  p.put('orphan.mjs', 'export const orphan = 1;\n');
+  p.put('witness.txt', 'assert retained synthetic state\n');
+  p.draft.scenarios = ['beta', 'gamma', 'alpha', 'delta'].map(id => ({ ...p.draft.scenarios[0], id, title: id,
+    state: 'needs-extension', existingPaths: ['witness.txt'] }));
+  p.draft.associations = [[1, 4, ['alpha', 'beta']], [5, 6, ['alpha', 'gamma']], [7, 8, ['beta', 'delta']]]
+    .map(([start, end, scenarioIds], i) => ({ ...p.draft.associations[0], rangeId: `part-${i}`, source: { path: 'model.mjs', start, end }, scenarioIds }));
+  p.prepare(); p.ok('init'); p.ok('comment', 'model.mjs:3');
+  p.ok('link', 'model.mjs:1', '--action', 'Inspect retained state', '--step', 'witness.txt:1', '--why', 'Assert synthetic retained state.');
+  p.ok('link', 'model.mjs:4', '--action', 'Inspect without witness', '--why', 'Planning-only link.');
+  return p;
+}
+
+test('proposal prioritization journey: greedy unique gains, stable ties, reuse opportunities and read-only limits', t => {
+  const p = priorityProject(t), before = p.read(map), plan = p.read(proposal);
+  assert.match(p.ok('proposal', '--help').stdout, /proposal prioritize --file PROPOSAL \[--limit N\]/);
+  p.put('tracer.json', { version: 1, app: [process.execPath, '-e', "require('fs').writeFileSync('EXECUTED', 'bad')"] });
+  const r = p.json('proposal', 'prioritize', '--file', proposal, '--json');
+  assert.equal(r.valid, true); assert.equal(r.kind, 'scenario-proposal-prioritize');
+  assert.equal(r.progress.executed.percent, null); assert.equal(r.selection.minimumTraces, 1);
+  assert.equal(r.selection.gapLines, 6); assert.equal(r.selection.unproposedGapLines, 1);
+  assert.equal(r.selection.targetedGapLines, 5); assert.equal(r.selection.remainingGapLines, 1);
+  assert.deepEqual(r.ranking.map(row => [row.scenarioId, row.initialGapLines, row.marginalGapLines]), [['alpha', 3, 3], ['beta', 3, 2]]);
+  assert.equal(r.ranking[1].cumulativeTargetedGapLines, 5);
+  assert.deepEqual(r.reuseOpportunities[0].scenarioIds, ['alpha', 'beta', 'delta', 'gamma']);
+  assert.equal(r.reuseOpportunities[0].path, 'witness.txt'); assert.match(r.selection.notice, /not.*optimal|no.*optimal/i);
+  const limited = p.json('proposal', 'prioritize', '--file', proposal, '--limit', '1');
+  assert.equal(limited.ranking.length, 1); assert.equal(limited.selection.remainingGapLines, 3); assert.equal(limited.selection.hasMore, true);
+  assert.equal(p.read(map), before); assert.equal(p.read(proposal), plan); assert.equal(existsSync(join(p.root, 'EXECUTED')), false);
+  const reordered = JSON.parse(plan); reordered.scenarios.reverse(); reordered.associations.reverse(); p.put(proposal, reordered);
+  assert.deepEqual(p.json('proposal', 'prioritize', '--file', proposal).ranking, r.ranking);
+  for (const args of [['--limit', '0'], ['--limit', '1001'], ['--limit', '9007199254740992'], ['--limit', '-1'], ['--limit', '1.5'], ['--offset', '1'], ['--limit', '1', '--limit', '2']]) {
+    assert.notEqual(p.run('proposal', 'prioritize', '--file', proposal, ...args).status, 0);
+  }
+});
+
+test('proposal prioritization journey: exact witnessed sequences and higher minimums never imply closed deficits', t => {
+  const p = priorityProject(t);
+  // A second assertion witness for the same ordered actions is still one trace.
+  p.put('second.txt', 'assert the same retained state\n');
+  p.ok('link', 'model.mjs:1', '--action', 'Inspect retained state', '--step', 'second.txt:1', '--why', 'Same sequence, alternate witness.');
+  p.ok('link', 'model.mjs:1', '--action', 'Other planned inspection', '--why', 'A distinct action-only link is not a witnessed trace.');
+  p.ok('config', '--minimum-traces', '2');
+  const r = p.json('proposal', 'prioritize', '--file', proposal);
+  assert.equal(r.selection.minimumTraces, 2); assert.equal(r.selection.gapLines, 7);
+  assert.equal(r.selection.targetedGapLines, 6); assert.equal(r.selection.remainingGapLines, 1);
+  assert.deepEqual(r.ranking.map(row => [row.scenarioId, row.marginalGapLines]), [['alpha', 4], ['beta', 2]]);
+  assert.match(r.selection.notice, /potential targets/); assert.match(r.selection.notice, /distinct.*trace/i);
+  p.ok('config', '--minimum-traces', '1'); p.put('witness.txt', 'changed witness\n'); p.put('second.txt', 'changed alternate witness\n');
+  const stale = p.json('proposal', 'prioritize', '--file', proposal, '--limit', '1');
+  assert.equal(stale.valid, false); assert.equal(stale.selection.gapLines, 7); assert.equal(stale.diagnostics.invalidLinks.length, 2);
+});
+
+test('proposal prioritization journey: global stale and ignored diagnostics survive ranking limits and empty scope', t => {
+  const p = priorityProject(t);
+  p.put('stale.mjs', 'export const stale = 1;\n'); p.put('ignored.mjs', '// ignored comment\nexport const ignored = 1;\n');
+  p.draft.associations.push({ ...p.draft.associations[0], rangeId: 'stale', source: { path: 'stale.mjs', start: 1, end: 1 } });
+  p.prepare(); p.ok('comment', 'ignored.mjs:1');
+  p.ok('link', 'ignored.mjs:2', '--action', 'Inspect ignored fixture', '--step', 'witness.txt:1', '--why', 'Ignored integrity fixture.');
+  p.ok('dead-code', 'ignored.mjs:2', '--why', 'Synthetic stale declaration.', '--evidence', 'Synthetic fixture only; no production reachability claim.');
+  p.ok('ignore', 'ignored.mjs', '--why', 'Synthetic ignored scope.');
+  p.put('stale.mjs', 'export const stale = 2;\n'); p.put('ignored.mjs', '// changed comment\nexport const ignored = 2;\n');
+  const mapBefore = p.read(map), planBefore = p.read(proposal), r = p.json('proposal', 'prioritize', '--file', proposal, '--limit', '1');
+  assert.equal(r.valid, false); assert.equal(r.ranking.length, 1);
+  assert.ok(r.progress.proposed.issues.some(value => value.includes('stale: Stale')));
+  assert.equal(r.diagnostics.invalidLinks.length, 1); assert.equal(r.diagnostics.invalidComments.length, 1);
+  assert.equal(r.diagnostics.invalidDeadCode.length, 1);
+  assert.deepEqual(r.diagnostics.ignoredSources.map(row => row.path), ['ignored.mjs']);
+  assert.equal(r.selection.gapLines, 7); assert.equal(r.selection.unproposedGapLines, 2);
+  assert.equal(p.read(map), mapBefore); assert.equal(p.read(proposal), planBefore);
+  const overlap = JSON.parse(planBefore); overlap.associations.push({ ...overlap.associations[0], rangeId: 'overlap' }); p.put('overlap.json', overlap);
+  const overlapping = p.json('proposal', 'prioritize', '--file', 'overlap.json', '--limit', '1');
+  assert.equal(overlapping.selection.unproposedGapLines, 3); assert.ok(overlapping.progress.proposed.issues.some(value => value.includes('Overlapping')));
+  for (const name of ['model.mjs', 'orphan.mjs', 'stale.mjs']) p.ok('ignore', name, '--why', 'Empty synthetic scope.');
+  const empty = p.json('proposal', 'prioritize', '--file', proposal);
+  assert.deepEqual(empty.ranking, []); assert.equal(empty.selection.gapLines, 0); assert.equal(empty.progress.reviewed.percent, null);
+  const invalid = JSON.parse(planBefore); invalid.scenarios[0].existingPaths = ['missing.txt']; p.put(proposal, invalid);
+  assert.notEqual(p.run('proposal', 'prioritize', '--file', proposal).status, 0, 'Global path validation cannot be skipped by a small ranking.');
+});
+
+test('proposal prioritization journey: bounded previews expose truncation and fully witnessed plans add no targets', t => {
+  const p = project(t);
+  p.put('model.mjs', 'export const n = 1;\n'.repeat(30));
+  const paths = Array.from({ length: 11 }, (_, i) => `witness-${i}.txt`);
+  for (const path of paths) p.put(path, 'assert synthetic state\n');
+  p.draft.scenarios = Array.from({ length: 30 }, (_, i) => ({ ...p.draft.scenarios[0], id: `plan-${String(i).padStart(2, '0')}`,
+    state: 'needs-extension', existingPaths: paths }));
+  p.draft.associations = p.draft.scenarios.map((scenario, i) => ({ ...p.draft.associations[0], rangeId: `row-${i}`,
+    source: { path: 'model.mjs', start: i + 1, end: i + 1 }, scenarioIds: [scenario.id] }));
+  p.prepare();
+  const r = p.json('proposal', 'prioritize', '--file', proposal);
+  assert.equal(r.ranking.length, 25); assert.equal(r.selection.hasMore, true);
+  assert.equal(r.ranking[0].existingPathCount, 11); assert.equal(r.ranking[0].existingPaths.length, 10); assert.equal(r.ranking[0].existingPathsTruncated, true);
+  assert.equal(r.reuseOpportunities[0].scenarioCount, 30); assert.equal(r.reuseOpportunities[0].scenarioIds.length, 25); assert.equal(r.reuseOpportunities[0].scenarioIdsTruncated, true);
+  const one = p.json('proposal', 'prioritize', '--file', proposal, '--limit', '1');
+  assert.equal(one.reuseOpportunities.length, 1); assert.equal(one.reuseOpportunitiesTruncated, true);
+  p.draft.associations.forEach(row => { row.scenarioIds = ['plan-00']; }); p.prepare();
+  const broad = p.json('proposal', 'prioritize', '--file', proposal);
+  assert.equal(broad.ranking.length, 1); assert.equal(broad.ranking[0].associationCount, 30);
+  assert.equal(broad.ranking[0].associationIds.length, 25); assert.equal(broad.ranking[0].associationIdsTruncated, true);
+  p.ok('link', 'model.mjs:1-30', '--action', 'Inspect synthetic state', '--step', 'witness-0.txt:1', '--why', 'Synthetic complete fixture.');
+  const complete = p.json('proposal', 'prioritize', '--file', proposal);
+  assert.equal(complete.selection.gapLines, 0); assert.deepEqual(complete.ranking, []);
+  // These diagnostics fit as compact JSON but exceed 64 MiB with the actual CLI indentation.
+  p.put(map, { version: 1, links: Array.from({ length: 4000 }, (_, i) => ({ id: `bad-${i}`, source: { path: 'model.mjs', start: 1, end: 1, sha256: '0'.repeat(64) },
+    actions: ['Inspect synthetic state'], why: 'x'.repeat(16384) })) });
+  const oversized = p.run('proposal', 'prioritize', '--file', proposal, '--limit', '1');
+  assert.equal(oversized.status, 1); assert.equal(oversized.stdout, ''); assert.match(oversized.stderr, /exceeds 64 MiB/);
+});
