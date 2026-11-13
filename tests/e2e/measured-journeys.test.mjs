@@ -384,8 +384,8 @@ test('measured journey: human output distinguishes import, replay, current, zero
 
 test('measured journey: reject invalid command selectors without state and preserve evidence on empty lookups', t => {
   const f = project(t), invalid = [
-    [['measure'], /Use measure import, report or check/],
-    [['measure', 'unknown'], /Use measure import, report or check/],
+    [['measure'], /Use measure import, report, check or union/],
+    [['measure', 'unknown'], /Use measure import, report, check or union/],
     [['measure', 'report', '--unknown'], /Unknown or duplicate measure report option/],
     [['measure', 'report', '--json', '--json'], /Unknown or duplicate measure report option/],
     [['measure', 'import', '--before'], /--before requires a value/],
@@ -495,4 +495,120 @@ test('measured journey: the exact UTF-8 output cap includes the final newline an
   assert.deepEqual(JSON.parse(accepted).intervals[0], JSON.parse(original).intervals[0]);
   const checked = f.json('measure', 'check');
   assert.equal(checked.intervals, 2); assert.deepEqual(checked.invalid, [], 'a maximum-size dataset remains readable and valid');
+});
+
+test('measured union journey: overlap and duplicate IDs preserve one denominator, explicit outcomes and marginal novelty', t => {
+  const a = project(t), b = project(t);
+  a.json(...a.args);
+  b.manifest.runId = b.manifest.before.runId = b.manifest.after.runId = 'second-journey';
+  b.put('after.lcov', b.record('DA:1,1\nDA:2,1\nDA:3,9')); b.refresh(); b.json(...b.args);
+  const first = JSON.parse(readFileSync(join(a.root, dataPath))).intervals[0];
+  const second = JSON.parse(readFileSync(join(b.root, dataPath))).intervals[0];
+  a.jsonFile('first-evidence.json', { status: 'passed', synthetic: true });
+  a.jsonFile('second-evidence.json', { status: 'failed', synthetic: true });
+  a.jsonFile('outcomes.json', { version: 1, intervals: [
+    { id: first.id, journey: 'first', status: 'passed', evidence: { path: 'first-evidence.json', sha256: a.hash('first-evidence.json') } },
+    { id: second.id, journey: 'second', status: 'failed', evidence: { path: 'second-evidence.json', sha256: a.hash('second-evidence.json') } },
+  ] });
+  const args = ['measure', 'union', '--input-root', a.root, '--input-root', b.root, '--input-root', a.root, '--outcomes', 'outcomes.json', '--json'];
+  const before = [readFileSync(join(a.root, dataPath)), readFileSync(join(b.root, dataPath))];
+  const response = a.run(args); assert.equal(response.stderr, ''); const union = JSON.parse(response.stdout);
+  assert.equal(union.intervals.unique, 2); assert.equal(union.intervals.duplicates, 1);
+  assert.deepEqual(union.intervals.outcomes, { passed: 1, failed: 1, unknown: 0 });
+  assert.equal(union.allObserved.instrumentedLines, 3); assert.equal(union.allObserved.observedLines, 3);
+  assert.equal(union.passedOnlyKnown.observedLines, 2); assert.equal(union.passedOnlyKnown.gapLines, 1);
+  assert.deepEqual(union.files[0].allObserved.observedRanges, [[1, 3]]);
+  assert.deepEqual(union.files[0].passedOnlyKnown.gapRanges, [[2, 2]]);
+  assert.deepEqual(union.journeys.map(row => [row.journey, row.allObserved.marginalLines, row.passedOnlyKnown.marginalLines]), [['first', 2, 2], ['second', 1, 0]]);
+  assert.equal(union.outcomes.kind, 'producer-declared');
+  assert.deepEqual([readFileSync(join(a.root, dataPath)), readFileSync(join(b.root, dataPath))], before);
+  assert.equal(existsSync(join(a.root, dataPath + '.lock')), false);
+  const unknown = a.json('measure', 'union', '--input-root', a.root);
+  assert.equal(unknown.intervals.outcomes.unknown, 1); assert.equal(unknown.passedOnlyKnown.observedLines, 0);
+});
+
+test('measured union journey: reject incompatible scope, conflicting duplicate IDs, stale sources and unbound outcomes', t => {
+  const a = project(t), b = project(t); a.json(...a.args);
+  b.manifest.runId = b.manifest.before.runId = b.manifest.after.runId = 'other-run'; b.save(); b.json(...b.args);
+  const args = ['measure', 'union', '--input-root', a.root, '--input-root', b.root, '--json'];
+  const original = readFileSync(join(b.root, dataPath));
+  const change = edit => {
+    const data = JSON.parse(original); edit(data.intervals[0]);
+    const { payloadSha256, ...payload } = data.intervals[0]; data.intervals[0].payloadSha256 = sha(JSON.stringify(payload));
+    b.jsonFile(dataPath, data);
+  };
+  change(interval => { interval.manifest.probeSha256 = sha('different-probe'); });
+  assert.match(a.run(args, 1).stderr, /Incompatible measurement scope/);
+  change(interval => { interval.files[0].rows.pop(); });
+  assert.match(a.run(args, 1).stderr, /Incompatible measurement scope/);
+  // Rebuild a valid same-ID record with conflicting metadata, retaining its run identity.
+  const duplicate = JSON.parse(readFileSync(join(a.root, dataPath)));
+  duplicate.intervals[0].manifest.limitations.push('A differing supplied limitation.');
+  const { payloadSha256, ...payload } = duplicate.intervals[0]; duplicate.intervals[0].payloadSha256 = sha(JSON.stringify(payload));
+  b.jsonFile(dataPath, duplicate);
+  assert.match(a.run(args, 1).stderr, /Conflicting duplicate interval/);
+  const changedSource = 'altered\nsecond\nthird\nfourth\n';
+  b.put('src/app.py', changedSource); change(interval => { interval.files[0].sha256 = sha(changedSource); });
+  assert.match(a.run(args, 1).stderr, /Incompatible measurement scope/);
+  b.put(dataPath, original); b.put('src/app.py', 'changed\n');
+  assert.match(a.run(args, 1).stderr, /stale|outside the source/i);
+  const id = JSON.parse(readFileSync(join(a.root, dataPath))).intervals[0].id;
+  a.jsonFile('evidence.json', { status: 'passed' });
+  a.jsonFile('bad-outcomes.json', { version: 1, intervals: [{ id, journey: 'example', status: 'passed', evidence: { path: 'evidence.json', sha256: sha('wrong') } }] });
+  assert.match(a.run(['measure', 'union', '--input-root', a.root, '--outcomes', 'bad-outcomes.json', '--json'], 1).stderr, /evidence.*digest/i);
+  a.jsonFile('bad-outcomes.json', { version: 1, intervals: [{ id: sha('unknown-id'), journey: 'example', status: 'passed', evidence: { path: 'evidence.json', sha256: a.hash('evidence.json') } }] });
+  assert.match(a.run(['measure', 'union', '--input-root', a.root, '--outcomes', 'bad-outcomes.json', '--json'], 1).stderr, /unknown or duplicate/);
+  a.run(['measure', 'union'], 1);
+  a.run(['measure', 'union', '--input-root', a.root, '--outcomes', 'bad-outcomes.json', '--outcomes', 'bad-outcomes.json'], 1);
+});
+
+test('measured union journey: explicit source-lines mode retains distinct producer identities across matching line universes', t => {
+  const a = project(t), b = project(t); a.json(...a.args);
+  b.manifest.runId = b.manifest.before.runId = b.manifest.after.runId = 'new-build';
+  b.manifest.before.buildSha256 = b.manifest.after.buildSha256 = sha('second-build');
+  b.manifest.probeSha256 = sha('second-probe'); b.save(); b.json(...b.args);
+  const args = ['measure', 'union', '--input-root', a.root, '--input-root', b.root];
+  assert.match(a.run([...args, '--json'], 1).stderr, /Incompatible measurement scope/);
+  const response = a.run([...args, '--scope', 'source-lines', '--json']);
+  assert.equal(response.stderr, ''); const result = JSON.parse(response.stdout);
+  assert.equal(result.scope.mode, 'source-lines');
+  assert.equal(result.provenanceGroups.length, 2);
+  assert.deepEqual(result.provenanceGroups.map(group => group.buildSha256), [a.manifest.before.buildSha256, b.manifest.before.buildSha256]);
+  assert.equal(result.allObserved.instrumentedLines, 3);
+  assert.equal(result.allObserved.observedLines, 2);
+  const original = JSON.parse(readFileSync(join(b.root, dataPath)));
+  const baseline = structuredClone(original);
+  original.intervals[0].files[0].rows.pop();
+  const { payloadSha256, ...payload } = original.intervals[0]; original.intervals[0].payloadSha256 = sha(JSON.stringify(payload));
+  b.jsonFile(dataPath, original);
+  assert.match(a.run([...args, '--scope', 'source-lines', '--json'], 1).stderr, /Incompatible measurement scope/);
+  const changedSource = 'altered\nsecond\nthird\nfourth\n'; b.put('src/app.py', changedSource);
+  baseline.intervals[0].files[0].sha256 = sha(changedSource);
+  const { payloadSha256: previousHash, ...changedPayload } = baseline.intervals[0];
+  baseline.intervals[0].payloadSha256 = sha(JSON.stringify(changedPayload)); b.jsonFile(dataPath, baseline);
+  assert.match(a.run([...args, '--scope', 'source-lines', '--json'], 1).stderr, /Incompatible measurement scope/);
+  a.run([...args, '--scope', 'unknown', '--json'], 1);
+});
+
+test('measured union journey: legacy and run-scoped IDs for one capture deduplicate with preserved aliases and bound outcomes', t => {
+  const a = project(t), b = project(t); a.json(...a.args);
+  const current = JSON.parse(readFileSync(join(a.root, dataPath))), modern = current.intervals[0].id;
+  const legacy = sha(JSON.stringify([current.intervals[0].manifest.before.sha256, current.intervals[0].manifest.after.sha256, current.intervals[0].manifest.before.buildSha256]));
+  current.intervals[0].id = legacy;
+  const { payloadSha256, ...payload } = current.intervals[0]; current.intervals[0].payloadSha256 = sha(JSON.stringify(payload)); b.jsonFile(dataPath, current);
+  a.jsonFile('evidence.json', { synthetic: true, status: 'passed' });
+  const evidence = { path: 'evidence.json', sha256: a.hash('evidence.json') };
+  a.jsonFile('outcomes.json', { version: 1, intervals: [{ id: legacy, journey: 'one-capture', status: 'passed', evidence }] });
+  const args = ['measure', 'union', '--input-root', a.root, '--input-root', b.root, '--outcomes', 'outcomes.json'];
+  const result = a.json(...args);
+  assert.equal(result.intervals.unique, 1); assert.equal(result.intervals.duplicates, 1);
+  assert.deepEqual(result.intervals.aliases, [{ id: modern, storedIds: [modern, legacy] }]);
+  assert.equal(result.passedOnlyKnown.observedLines, 2);
+  assert.deepEqual(result.journeys[0].intervalIds, [modern]);
+  a.jsonFile('outcomes.json', { version: 1, intervals: [{ id: legacy, journey: 'one-capture', status: 'passed', evidence }, { id: modern, journey: 'one-capture', status: 'passed', evidence }] });
+  const agreement = a.json(...args);
+  assert.equal(agreement.intervals.outcomes.passed, 1);
+  assert.equal(agreement.outcomes.declarations.length, 2);
+  a.jsonFile('outcomes.json', { version: 1, intervals: [{ id: legacy, journey: 'one-capture', status: 'passed', evidence }, { id: modern, journey: 'one-capture', status: 'failed', evidence }] });
+  assert.match(a.run([...args, '--json'], 1).stderr, /Conflicting.*outcome/);
 });

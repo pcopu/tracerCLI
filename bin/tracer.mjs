@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { Tracer, VERSION, NOTICE, location, validateMinimum } from '../src/tracer.mjs';
 import { initialize, runApp } from '../src/project.mjs';
+import { bindProposalRoutes } from '../src/route-bindings.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
-import { importMeasured, reportMeasured, checkMeasured } from '../src/measured.mjs';
+import { importMeasured, reportMeasured, checkMeasured, unionMeasured } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
@@ -23,7 +24,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   undead-code ID
   report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE]
           | --sequence '["first action","next action"]'] [--minimum-traces N] [--json]
-  check [--require-minimum] [--minimum-traces N] [--json]
+  check [--require-minimum] [--minimum-traces N] [--suggest-moves] [--json]
   config [--minimum-traces N] [--json]
   unlink ID
   comment SOURCE:START-END  Declare reviewed comment lines (not syntax-verified)
@@ -35,6 +36,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure import --before FILE --after FILE --manifest FILE --sources FILE
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
+  measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -44,6 +46,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   audit retry --job ID [--json]
   audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
+  proposal bind --file PROPOSAL --routes CATALOG [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prioritize --file PROPOSAL [--limit N] [--json]
   next [--file PROPOSAL] [--limit N] [--scenario ID] [--json]
@@ -120,16 +123,17 @@ async function main(args) {
   }
   if (command === 'proposal' || command === 'next') {
     const [mode, ...flags] = command === 'next' ? ['next', ...rest] : rest, options = {};
-    if (!['prepare', 'check', 'report', 'audit', 'prioritize', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit or prioritize.');
-    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : [])];
+    if (!['prepare', 'check', 'report', 'audit', 'prioritize', 'bind', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit or prioritize.');
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : [])];
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
       options[flag] = flag === '--json' ? true : value(flags, i++, flag);
     }
     if (!options['--file'] && mode !== 'next') fail(`proposal ${mode} requires --file.`);
+    if (mode === 'bind' && !options['--routes']) fail('proposal bind requires --routes.');
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
-    const result = proposalCommand(new Tracer(settings), options['--file'] ?? DEFAULT_PROPOSAL, { mode, scenarioId: options['--scenario'],
+    const result = mode === 'bind' ? bindProposalRoutes(new Tracer(settings), options['--file'], options['--routes']) : proposalCommand(new Tracer(settings), options['--file'] ?? DEFAULT_PROPOSAL, { mode, scenarioId: options['--scenario'],
       offset: options['--offset'] === undefined ? 0 : Number(options['--offset']), limit: options['--limit'] === undefined ? (mode === 'next' ? 1 : 25) : Number(options['--limit']) });
     console.log(JSON.stringify(result, null, 2));
     if (mode === 'check' && !result.valid) process.exitCode = 1;
@@ -162,12 +166,13 @@ async function main(args) {
   if (command === 'measure') {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
-      report: ['--source', '--action', '--sequence', '--json'], check: ['--json'] }[mode];
-    if (!allowed) fail('Use measure import, report or check.');
+      report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--json'] }[mode];
+    if (!allowed) fail('Use measure import, report, check or union.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
-      if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
-      options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
+      if (!allowed.includes(flag) || (Object.hasOwn(options, flag) && flag !== '--input-root')) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
+      if (flag === '--input-root') (options[flag] ??= []).push(value(flags, i++, flag));
+      else options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
     }
     if (mode === 'import' && ['--before', '--after', '--manifest', '--sources'].some(flag => !options[flag])) fail('measure import requires --before, --after, --manifest and --sources.');
     const selectors = ['--source', '--action', '--sequence'].filter(flag => options[flag] !== undefined);
@@ -176,12 +181,16 @@ async function main(args) {
     const tracer = new Tracer(settings);
     const result = mode === 'import' ? importMeasured(tracer.root, { before: options['--before'], after: options['--after'],
       manifest: options['--manifest'], sources: options['--sources'], stripPrefix: options['--strip-prefix'], allowStale: !!options['--allow-stale'] })
-      : mode === 'report' ? reportMeasured(tracer.root, query) : checkMeasured(tracer.root);
+      : mode === 'report' ? reportMeasured(tracer.root, query) : mode === 'union'
+        ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'] }) : checkMeasured(tracer.root);
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(result.notice);
       if (mode === 'import') console.log(`${result.changed ? 'Imported' : 'Already imported'} interval: ${result.id}`);
-      else if (mode === 'check') {
+      else if (mode === 'union') {
+        console.log(`Scope ${result.scope.id} (${result.scope.mode}); ${result.intervals.unique} unique intervals, ${result.intervals.duplicates} duplicates.`);
+        console.log(`All observed: ${result.allObserved.observedLines}/${result.allObserved.instrumentedLines}; passed-only known: ${result.passedOnlyKnown.observedLines}/${result.passedOnlyKnown.instrumentedLines}; unknown outcomes: ${result.intervals.outcomes.unknown}.`);
+      } else if (mode === 'check') {
         console.log(`${result.intervals} interval(s); ${result.invalid.length} stale source file(s).`);
         for (const item of result.invalid) console.log(`STALE ${item.path}: ${item.error}`);
       } else for (const interval of result.intervals) {
@@ -245,13 +254,13 @@ async function main(args) {
   const allowed = {
     init: ['--app-json', '--actions-json', '--minimum-traces', '--agent', '--install-skill', '--add-instruction'],
     link: ['--action', '--step', '--why'], report: ['--source', '--action', '--step', '--sequence', '--json', '--minimum-traces'],
-    check: ['--json', '--require-minimum', '--minimum-traces'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [], 'dead-code': ['--why', '--evidence'], 'undead-code': [], ignore: ['--why'], unignore: [],
+    check: ['--json', '--require-minimum', '--minimum-traces', '--suggest-moves'], config: ['--json', '--minimum-traces'], unlink: [], comment: [], uncomment: [], 'dead-code': ['--why', '--evidence'], 'undead-code': [], ignore: ['--why'], unignore: [],
   }[command];
   for (let i = 0; i < optionArgs.length; i++) {
     const flag = optionArgs[i];
     if (!allowed.includes(flag)) fail(`Unknown ${command} option: ${flag}`);
     if (Object.hasOwn(options, flag) && !(command === 'link' && flag === '--action')) fail(`Duplicate option: ${flag}`);
-    if (['--json', '--require-minimum', '--install-skill', '--add-instruction'].includes(flag)) options[flag] = true;
+    if (['--json', '--require-minimum', '--suggest-moves', '--install-skill', '--add-instruction'].includes(flag)) options[flag] = true;
     else {
       const supplied = value(optionArgs, i, flag); i++;
       if (command === 'link' && flag === '--action') actions.push(supplied);
@@ -309,7 +318,7 @@ async function main(args) {
     const result = tracer.config(minimumTraces);
     console.log(options['--json'] ? JSON.stringify(result, null, 2) : `Project minimum: ${result.minimumTraces} distinct manual trace(s) per nonblank source line.\n${NOTICE}`);
   } else if (command === 'check') {
-    const result = tracer.check({ requireMinimum: !!options['--require-minimum'], minimumTraces });
+    const result = tracer.check({ requireMinimum: !!options['--require-minimum'], minimumTraces, suggestMoves: !!options['--suggest-moves'] });
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(`${result.valid}/${result.total} links have current snippets and valid ranges. This is link integrity.\n${NOTICE}`);
@@ -319,6 +328,11 @@ async function main(args) {
       for (const { mark, errors } of result.invalidDeadCode) console.log(`INVALID DEAD CODE ${mark.id ?? '(no id)'}: ${errors.join('; ')}`);
       console.log(`${result.scopeNotice}\nIgnored scope: ${result.ignoredFiles.length} inventoried source files.`);
       for (const rule of result.ignoredSources) console.log(`IGNORE RULE ${rule.path}: ${rule.matchedFiles} source files; ${rule.why}`);
+      if (result.moveSuggestions) {
+        console.log(result.moveSuggestions.notice);
+        console.log(`Move suggestions: ${result.moveSuggestions.totals.returnedReferences} references; ${result.moveSuggestions.totals.omittedReferences} omitted; truncated=${result.moveSuggestions.truncated}.`);
+        for (const row of result.moveSuggestions.items) console.log(`MOVE ${row.linkIndex} ${row.id ?? '(no id)'} ${row.field}: ${row.status}; matches=${row.matchCount ?? 'unknown'}; ${row.candidates.map(location).join(', ')}`);
+      }
       if (result.minimumTraces !== undefined) console.log(`${result.belowMinimum} nonblank source lines below project minimum ${result.minimumTraces}; ${result.blankLines} blank lines excluded; ${result.commentLines} declared comment lines excluded.`);
     }
     if (result.invalid.length || result.invalidComments.length || result.invalidDeadCode.length || result.belowMinimum) process.exitCode = 1;

@@ -11,7 +11,7 @@ By default Tracer chooses the Git repository containing the current working dire
 - `app -- ARGS...`
 - `link SOURCE:START-END --action TEXT [--action TEXT ...] [--step TEST:START-END] --why TEXT`
 - `report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE] | --sequence JSON_ARRAY] [--minimum-traces N] [--json]`
-- `check [--require-minimum] [--minimum-traces N] [--json]`
+- `check [--require-minimum] [--minimum-traces N] [--suggest-moves] [--json]`
 - `config [--minimum-traces N] [--json]`
 - `unlink ID`
 - `ignore PATH --why TEXT`
@@ -102,3 +102,12 @@ The project instruction is only a short pointer to the installed skill and CLI; 
 ## Actual instrumented observations
 
 Use the separate `tracer measure import`, `report` and `check` workflow for provenance-bound LCOV pairs. It does not change manual trace counts or infer causality. See [measured evidence](measured.md).
+
+
+## Inspect exact moved-range candidates
+
+`tracer check --suggest-moves --json` adds read-only `moveSuggestions` for stale manual-link source and witness references. It searches the same eligible file for the stored exact snippet hash at the original physical range length, preserving CRLF, Unicode, BOM and final-newline bytes. Original integrity findings and exit codes remain unchanged. Each candidate needs independent semantic review before an explicit unlink/relink repair.
+
+Statuses distinguish a complete `unique` match, complete `ambiguous` matches, complete `no-match`, an `unavailable` reference or file, and an `incomplete` budget-limited scan. Partial scans expose unknown `matchCount` and lower-bound `matchesFound`. Repeated references share one file-and-range-length scan. Missing or renamed files remain unavailable in this same-file search.
+
+The additive output contains the exact map hash, current file hashes, work counters and limits. It returns at most 1000 references and five coordinates per reference, with explicit omitted counts and candidate truncation. Shared scan work stops at 250000 windows or 128 MiB of hashed window bytes. Every partial group remains incomplete. Comment and retained-dead-code declarations retain their existing integrity checks, while move suggestions cover manual-link source and witness ranges.

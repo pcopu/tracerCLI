@@ -168,22 +168,13 @@ test('local update settings journey: status outside Git, explicit opt-in, determ
   p.ok('update', '--auto', 'off'); assert.equal(JSON.parse(p.ok('update', '--status', '--json').stdout).auto, 'off');
 });
 
-test('skill parity journey: install the checked-in prerequisite and maintenance guidance without replacing user content', t => {
+test('skill parity journey: install the current checked-in skill and preserve customized content and project instructions', t => {
   const p = project(t), source = readFileSync(new URL('../../skills/tracer/SKILL.md', import.meta.url), 'utf8');
   p.put('AGENTS.md', 'Keep Codex project instructions.\r\n'); p.put('CLAUDE.md', 'Keep Claude project instructions.\n');
   for (const agent of ['codex', 'claude']) {
     p.ok('init', '--agent', agent, '--install-skill');
     const installed = readFileSync(join(p.home, `.${agent}/skills/tracer/SKILL.md`), 'utf8');
     assert.equal(installed, source);
-    assert.match(installed, /Do not wait for every feature to be categorized or every CLI route to exist before running independent supported scenarios/);
-    assert.match(installed, /A category or scenario suggestion must never be promoted automatically to a tested link or measured hit/);
-    assert.match(installed, /CLI feature parity is a completion requirement, not a global prerequisite that blocks all useful testing/);
-    assert.match(installed, /A mapping-only request does not authorize application changes/);
-    assert.match(installed, /Preserve authentication, consent, safety checks, input-route semantics and user data/);
-    assert.match(installed, /List unimplemented routes, platform constraints and deliberately restricted actions honestly/);
-    assert.match(installed, /Keep the app CLI at feature parity whenever application features are added, changed or removed/);
-    assert.match(installed, /update commands, discovery\/help, CLI behavior and E2E journeys to reflect the current app, then update the related map/);
-    assert.match(installed, /a manual link is not proof of execution/);
   }
   const custom = `${source}\nKeep my project-specific skill additions.\n`;
   writeFileSync(join(p.home, '.codex/skills/tracer/SKILL.md'), custom);

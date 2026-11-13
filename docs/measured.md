@@ -79,3 +79,42 @@ Legacy version-1 records whose IDs contain only capture content identity remain 
 Reports show each interval separately with its full manifest, source status, current observed ranges, unchanged instrumented ranges, historical increased ranges and exact tool counters. Totals distinguish historical instrumented/increased records from current instrumented/observed records. They do not sum overlapping intervals or combine build denominators. Missing instrumentation is unknown, not proof of nonexecution. `measure check` exits nonzero for stale files or invalid data. Normal `check`, `report` and `config --minimum-traces` continue to concern manual links only. The measured dataset and its working-file suffixes are always excluded from manual source inventory and test witnesses, even with custom extensions or a custom manual map.
 
 Keep raw captures and private provenance out of public repositories unless sharing is explicitly authorized and sanitized. The importer performs no network requests or app execution, and `measure` commands never trigger automatic updates. It does not modify skills or agent instructions.
+
+## Union compatible external captures
+
+Run a read-only union across analysis roots that contain imported measurement datasets and their pinned source copies.
+
+```sh
+tracer measure union --input-root /analysis/first --input-root /analysis/second --json
+tracer measure union --input-root /analysis/first --outcomes /analysis/outcomes.json --json
+tracer measure union --input-root /analysis/first --input-root /analysis/second --scope source-lines --json
+```
+
+Each dataset passes the existing interval/payload validation and current source checks. The default `--scope strict` requires exact agreement on the source-manifest, probe, build and toolchain hashes, source file hashes and instrumented DA line sets. Incompatible scopes fail with their scope identities so they can be reported separately. A repeated capture occurrence counts once, including legacy capture-content IDs and modern run-scoped IDs for the same capture and run. The output preserves every stored alias under its canonical run-scoped ID. Conflicting content under an ID or occurrence fails. Empty input datasets cannot establish a union denominator.
+
+`--scope source-lines` explicitly permits different build, source-manifest, probe and toolchain identities when every source path, full-source hash and instrumented DA line set agrees exactly. Every original identity group remains visible in `provenanceGroups`, with its interval IDs and origin indexes. This is a cross-provenance source-line presence union. It does not establish identical instrumentation adapters or builds, and it never sums counters across intervals. Changed source bytes or DA line sets fail in both modes.
+
+The output contains `allObserved` and `passedOnlyKnown` totals, per-file observed ranges and gaps, the compatible `scope`, dataset origin hashes and per-journey marginal novelty. Both denominators describe the supplied instrumented line universe. Lines absent from that universe remain unknown. Repeated intervals and overlapping observations add no extra denominator or observed line.
+
+Outcomes are optional producer declarations with digest-bound evidence. Their JSON format is
+
+```json
+{
+  "version": 1,
+  "intervals": [{
+    "id": "64-character imported interval SHA-256 ID",
+    "journey": "document-roundtrip",
+    "status": "passed",
+    "evidence": {
+      "path": "document-roundtrip-evidence.json",
+      "sha256": "64-character exact evidence-file SHA-256"
+    }
+  }]
+}
+```
+
+Each outcome must reference a unique stored or canonical interval ID and use `passed` or `failed`. Unknown and duplicate declared IDs fail. Different aliases for one occurrence must agree on journey and outcome. Their evidence bindings remain visible while that occurrence contributes once. Input roots and the outcomes path resolve relative to the selected Tracer root. Evidence paths resolve relative to the outcomes file. Evidence must be a regular unsymlinked UTF-8 file within the existing 64 MiB input limit, with the supplied exact digest.
+
+The union checks evidence bytes and records their provenance. It does not interpret producer-specific evidence or independently verify assertions. Native or service producers should derive declarations from their actual structured results and validate their own evidence contract. Missing declarations remain `unknown` and are excluded from `passedOnlyKnown`. Zero known-passing observations describes that declared subset, while the separate unknown outcome count remains visible.
+
+Journey groups follow first encounter in input-root order and stored interval order. All intervals bearing that journey label are combined before its marginal novelty is computed against preceding groups. Undeclared journeys use their interval ID. Marginal novelty is order-dependent interval observation, with no per-action or assertion attribution. The command creates no dataset, lock, manual link or approval and executes no application.

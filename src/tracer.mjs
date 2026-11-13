@@ -363,8 +363,8 @@ export class Tracer {
     this.mutate(data => { data.minimumTraces = minimumTraces; return { changed: true }; });
     return { minimumTraces };
   }
-  check({ requireMinimum = false, minimumTraces } = {}) {
-    const data = this.readMap(), state = this.inventory(), inspected = this.inspect(data, state), comments = this.inspectComments(data, state);
+  check({ requireMinimum = false, minimumTraces, suggestMoves = false } = {}) {
+    const { data, mapSha256 } = this.readMap({ withHash: true }), state = this.inventory(), inspected = this.inspect(data, state), comments = this.inspectComments(data, state);
     const ignoredSources = ignoredScope(data, state), dead = this.inspectDeadCode(data, state);
     const invalid = inspected.filter(row => row.errors.length);
     const result = { kind: 'manual-link-integrity', notice: NOTICE, total: inspected.length,
@@ -377,6 +377,8 @@ export class Tracer {
       result.lineBasis = report.lineBasis; result.physicalLines = report.totals.physicalLines; result.blankLines = report.totals.blankLines;
       result.commentLines = report.totals.commentLines; result.ignoredTotals = report.ignoredTotals;
     }
+    if (suggestMoves) result.moveSuggestions = rangeMoveSuggestions(data, state, this.#snapshots.get(state)?.witnesses,
+      (range, step) => this.snapshot(range, state, step), mapSha256);
     return result;
   }
   report(query, { minimumTraces } = {}) {
@@ -562,4 +564,77 @@ function validateIgnoredSources(data) {
 function matchesIgnored(path, rule) { return rule.endsWith('/') ? path.startsWith(rule) : path === rule; }
 function ignoredScope(data, state) {
   return (data.ignoredSources ?? []).map(rule => ({ ...rule, matchedFiles: [...state.files.keys()].filter(path => matchesIgnored(path, rule.path)).length }));
+}
+
+
+// These candidates preserve exact bytes only. All original integrity findings
+// remain invalid until an operator independently reviews and repairs the map.
+function rangeMoveSuggestions(data, state, witnesses, snapshot, mapSha256) {
+  const limits = { maxRows: 1000, maxCandidatesPerRow: 5, maxWindows: 250000, maxHashedBytes: 128 * 1024 * 1024 };
+  const totals = { referencesChecked: 0, currentReferences: 0, candidateReferences: 0, returnedReferences: 0, omittedReferences: 0 };
+  const items = [], groups = new Map(), files = new Map();
+  const work = { groupsScanned: 0, windowsHashed: 0, bytesHashed: 0 };
+  for (const [linkIndex, link] of data.links.entries()) {
+    for (const field of ['source', 'step']) {
+      if (field === 'step' && link?.step === undefined) continue;
+      totals.referencesChecked++;
+      const range = link?.[field];
+      let valid = Boolean(range && typeof range === 'object' && !Array.isArray(range)
+        && Number.isSafeInteger(range.start) && Number.isSafeInteger(range.end) && range.start > 0 && range.end >= range.start
+        && typeof range.sha256 === 'string' && /^[a-f0-9]{64}$/.test(range.sha256));
+      try { safePath(range?.path); } catch { valid = false; }
+      if (valid) {
+        try { if (snapshot(range, field === 'step').sha256 === range.sha256) { totals.currentReferences++; continue; } }
+        catch { /* A well-formed old range can extend beyond the current EOF. */ }
+      }
+      totals.candidateReferences++;
+      if (items.length === limits.maxRows) { totals.omittedReferences++; continue; }
+      const item = { linkIndex, id: typeof link?.id === 'string' && /^[A-Za-z0-9_-]+$/.test(link.id) ? link.id : null,
+        field, original: valid ? { path: range.path, start: range.start, end: range.end, sha256: range.sha256 } : null,
+        currentFileSha256: null, status: 'unavailable', reason: valid ? 'file-unavailable' : 'invalid-reference',
+        scanComplete: false, matchCount: null, candidates: [], candidatesTruncated: false };
+      items.push(item);
+      const lines = valid && (state.files.get(range.path) ?? (field === 'step' ? witnesses?.get(range.path) : undefined));
+      if (!lines) continue;
+      delete item.reason;
+      const length = range.end - range.start + 1, key = JSON.stringify([range.path, length]);
+      if (!groups.has(key)) groups.set(key, { path: range.path, length, lines, targets: new Map() });
+      const group = groups.get(key);
+      if (!group.targets.has(range.sha256)) group.targets.set(range.sha256, { count: 0, candidates: [], items: [] });
+      group.targets.get(range.sha256).items.push(item);
+    }
+  }
+  const ordered = [...groups.values()].sort((a, b) => compare(a.path, b.path) || a.length - b.length);
+  for (const group of ordered) {
+    if (!files.has(group.path)) {
+      const bytes = Buffer.from(group.lines.join('')), offsets = [0];
+      for (const line of group.lines) offsets.push(offsets.at(-1) + Buffer.byteLength(line));
+      files.set(group.path, { bytes, offsets, sha256: digest(bytes) });
+    }
+    const file = files.get(group.path), windows = Math.max(0, group.lines.length - group.length + 1);
+    let scanned = 0;
+    for (let start = 0; start < windows; start++) {
+      const size = file.offsets[start + group.length] - file.offsets[start];
+      if (work.windowsHashed >= limits.maxWindows || size > limits.maxHashedBytes - work.bytesHashed) break;
+      const sha256 = digest(file.bytes.subarray(file.offsets[start], file.offsets[start + group.length]));
+      work.windowsHashed++; work.bytesHashed += size; scanned++;
+      const target = group.targets.get(sha256);
+      if (!target) continue;
+      target.count++;
+      if (target.candidates.length < limits.maxCandidatesPerRow) target.candidates.push({ path: group.path, start: start + 1, end: start + group.length, sha256 });
+    }
+    if (scanned || !windows) work.groupsScanned++;
+    const complete = scanned === windows;
+    for (const target of group.targets.values()) for (const item of target.items) {
+      Object.assign(item, { currentFileSha256: file.sha256, status: !complete ? 'incomplete' : target.count === 0 ? 'no-match' : target.count === 1 ? 'unique' : 'ambiguous',
+        scanComplete: complete, matchCount: complete ? target.count : null, candidates: target.candidates,
+        candidatesTruncated: target.count > target.candidates.length });
+      if (!complete) item.matchesFound = target.count;
+    }
+  }
+  totals.returnedReferences = items.length;
+  return { kind: 'exact-same-file-range-suggestions',
+    notice: 'Exact current-file hash candidates require independent semantic review. This command does not rebind, approve, repair or establish execution.',
+    mapSha256, scope: 'manual-link-source-and-step', limits, work, totals,
+    truncated: totals.omittedReferences > 0 || items.some(item => item.status === 'incomplete' || item.candidatesTruncated), items };
 }

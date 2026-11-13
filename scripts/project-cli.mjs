@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const journeys = {
+  'route-bindings': { file: 'tests/e2e/route-binding-journeys.test.mjs', description: 'Read-only exact proposal path joins to reviewed route selectors, restrictions and unresolved gaps.' },
   scenarios: { file: 'tests/e2e/scenario-journeys.test.mjs', description: 'Reusable named steps, source/assertion pins, atomic reviewed linking and explicit runtime outcomes.' },
   proposal: { file: 'tests/e2e/proposal-journeys.test.mjs', description: 'Pinned proposals, bounded audits and read-only prioritization of witnessed mapping gaps.' },
   'audit-queue': { file: 'tests/e2e/audit-queue-journeys.test.mjs', description: 'Immutable audit jobs, independent receipts, stale review and completion gates.' },

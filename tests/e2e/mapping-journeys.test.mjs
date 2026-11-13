@@ -46,7 +46,7 @@ function project(t, files = {}) {
   for (const [path, bytes] of Object.entries({ 'src/cart.py': cartSource, 'tests/cart.spec': cartStep, ...files })) put(path, bytes);
   const launch = (args, { cwd = root, explicitRoot = true } = {}) => {
     const argv = [cli, ...(explicitRoot ? ['--root', root] : []), ...args];
-    const result = spawnSync(process.execPath, argv, { cwd, env, encoding: 'utf8', timeout: 15000 });
+    const result = spawnSync(process.execPath, argv, { cwd, env, encoding: 'utf8', timeout: 15000, maxBuffer: 8 * 1024 * 1024 });
     assert.ifError(result.error);
     assert.equal(result.signal, null, `CLI unexpectedly terminated: ${JSON.stringify(args)}\n${result.stderr}`);
     return { ...result, argv };
@@ -713,7 +713,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
        [--step TEST:START-END] --why TEXT\n  dead-code PATH:START-END --why TEXT --evidence TEXT\n  undead-code ID
   report [--source PATH[:RANGE] | --action TEXT | --step PATH[:RANGE]
           | --sequence '["first action","next action"]'] [--minimum-traces N] [--json]
-  check [--require-minimum] [--minimum-traces N] [--json]
+  check [--require-minimum] [--minimum-traces N] [--suggest-moves] [--json]
   config [--minimum-traces N] [--json]
   unlink ID
   comment SOURCE:START-END  Declare reviewed comment lines (not syntax-verified)
@@ -725,6 +725,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure import --before FILE --after FILE --manifest FILE --sources FILE
                  [--strip-prefix PREFIX/] [--allow-stale] [--json]
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
+  measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -734,6 +735,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   audit retry --job ID [--json]
   audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
+  proposal bind --file PROPOSAL --routes CATALOG [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prioritize --file PROPOSAL [--limit N] [--json]
   next [--file PROPOSAL] [--limit N] [--scenario ID] [--json]
@@ -859,4 +861,90 @@ test('progress journey: human output identifies catalog issues and dead-code rev
   assert.match(human, /CATALOG ISSUE:/);
   assert.match(human, /INVALID DEAD CODE .*stale/);
   assert.match(human, /DECLARED DEAD CODE: 0 \/ 3 whole included lines \(0\.00%\)/);
+});
+
+test('move suggestions: exact source and witness shifts remain invalid and read-only', t => {
+  const p = project(t); p.ok(...p.link());
+  p.put('src/cart.py', '# inserted\n' + cartSource);
+  p.put('tests/cart.spec', 'setup\n' + cartStep);
+  const before = tree(p.root), plain = p.check(1);
+  const response = p.expect(['check', '--suggest-moves', '--json'], 1);
+  assert.equal(response.stderr, '');
+  const suggested = JSON.parse(response.stdout);
+  const { moveSuggestions: moves, ...integrity } = suggested;
+  assert.deepEqual(integrity, plain);
+  assert.equal(moves.mapSha256, sha256(p.bytes()));
+  assert.deepEqual(moves.items.map(row => [row.field, row.status, row.candidates.map(r => [r.start, r.end])]),
+    [['source', 'unique', [[2, 3]]], ['step', 'unique', [[3, 4]]]]);
+  assert.ok(moves.items.every(row => row.scanComplete && row.matchCount === 1));
+  assert.deepEqual(tree(p.root), before);
+  assert.match(p.expect(['check', '--suggest-moves'], 1).stdout, /semantic review/);
+});
+
+test('move suggestions: ambiguity, exact text bytes, EOF ranges and unavailable references stay explicit', t => {
+  const p = project(t, { 'src/cart.py': 'old\nneedle\n', 'tests/cart.spec': '\ufeffassert café\r\n' });
+  p.ok(...p.link({ source: 'src/cart.py:2', step: 'tests/cart.spec:1' }));
+  p.put('src/cart.py', 'needle\nneedle\nneedle\nneedle\nneedle\nneedle\n');
+  p.put('tests/cart.spec', 'setup\r\n\ufeffassert café\r\n');
+  let moves = p.check(1, '--suggest-moves').moveSuggestions;
+  // The original coordinate still matches, so only the moved witness needs help.
+  assert.deepEqual(moves.items.map(row => [row.field, row.status]), [['step', 'unique']]);
+  p.put('src/cart.py', 'changed\nchanged\nneedle\nneedle\nneedle\nneedle\nneedle\nneedle\n');
+  moves = p.check(1, '--suggest-moves').moveSuggestions;
+  assert.equal(moves.items[0].status, 'ambiguous');
+  assert.equal(moves.items[0].matchCount, 6);
+  assert.equal(moves.items[0].candidates.length, 5);
+  assert.equal(moves.items[0].candidatesTruncated, true);
+  p.put('src/cart.py', 'needle\n'); // The stored line2 is past EOF, but its length fits.
+  p.put('tests/cart.spec', '\ufeffassert café\n'); // LF cannot match the stored CRLF bytes.
+  moves = p.check(1, '--suggest-moves').moveSuggestions;
+  assert.deepEqual(moves.items.map(row => row.status), ['unique', 'no-match']);
+  p.put('tests/cart.spec', '\ufeffassert café'); // An absent final newline is also distinct.
+  assert.equal(p.check(1, '--suggest-moves').moveSuggestions.items[1].status, 'no-match');
+  p.editMap(data => { data.links.push({ ...data.links[0], id: 'invalid-hash', source: { ...data.links[0].source, sha256: 'bad' } }); });
+  assert.equal(p.check(1, '--suggest-moves').moveSuggestions.items.find(row => row.id === 'invalid-hash' && row.field === 'source').status, 'unavailable');
+  p.editMap(data => { data.links.push({ ...data.links[0], id: 'array-hash', source: { ...data.links[0].source, sha256: [data.links[0].source.sha256] } }); });
+  assert.equal(p.check(1, '--suggest-moves').moveSuggestions.items.find(row => row.id === 'array-hash' && row.field === 'source').status, 'unavailable');
+  p.put('elsewhere.spec', '\ufeffassert café\r\n');
+  rmSync(join(p.root, 'tests/cart.spec'));
+  assert.equal(p.check(1, '--suggest-moves').moveSuggestions.items.find(row => row.field === 'step').status, 'unavailable');
+  symlinkSync(join(p.root, 'elsewhere.spec'), join(p.root, 'tests/cart.spec'));
+  assert.equal(p.check(1, '--suggest-moves').moveSuggestions.items.find(row => row.field === 'step').status, 'unavailable');
+});
+
+test('move suggestions: shared scans and bounded rows preserve minimum failures and app isolation', t => {
+  const p = project(t); p.ok(...p.link());
+  p.put('src/cart.py', '# inserted\n' + cartSource);
+  p.editMap(data => { data.links = Array.from({ length: 1001 }, (_, i) => ({ ...data.links[0], id: `copy-${i}` })); });
+  const before = tree(p.root), plain = p.check(1, '--require-minimum');
+  const { moveSuggestions: moves, ...integrity } = p.check(1, '--require-minimum', '--suggest-moves');
+  assert.deepEqual(integrity, plain);
+  assert.equal(moves.items.length, 1000);
+  assert.equal(moves.totals.omittedReferences, 1);
+  assert.equal(moves.work.groupsScanned, 1);
+  assert.equal(moves.work.windowsHashed, 4);
+  assert.equal(moves.truncated, true);
+  assert.ok(moves.items.every(row => row.status === 'unique'));
+  assert.deepEqual(tree(p.root), before);
+  p.expect(['check', '--suggest-moves', '--suggest-moves'], 1);
+});
+
+test('move suggestions: exhausted hash-work budgets never claim uniqueness or absence', t => {
+  const p = project(t, { 'src/cart.py': ('x'.repeat(2048) + '\n').repeat(1000) });
+  p.ok(...p.link({ source: 'src/cart.py:1-100', step: undefined }));
+  p.put('src/cart.py', ('y'.repeat(2048) + '\n').repeat(1000));
+  let moves = p.check(1, '--suggest-moves').moveSuggestions;
+  assert.equal(moves.items[0].status, 'incomplete');
+  assert.equal(moves.items[0].matchCount, null);
+  assert.equal(moves.items[0].scanComplete, false);
+  assert.ok(moves.work.bytesHashed <= moves.limits.maxHashedBytes);
+  assert.equal(moves.truncated, true);
+  p.put('src/cart.py', 'needle\n');
+  p.ok('unlink', p.map().links[0].id);
+  p.ok(...p.link({ source: 'src/cart.py:1', step: undefined }));
+  p.put('src/cart.py', 'other\n'.repeat(250010));
+  moves = p.check(1, '--suggest-moves').moveSuggestions;
+  assert.equal(moves.items[0].status, 'incomplete');
+  assert.equal(moves.items[0].matchCount, null);
+  assert.equal(moves.work.windowsHashed, moves.limits.maxWindows);
 });
