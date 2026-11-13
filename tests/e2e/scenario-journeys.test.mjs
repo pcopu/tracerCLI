@@ -164,3 +164,73 @@ process.exitCode = result.status === 'passed' ? 0 : 1;
   }
   assert.equal(JSON.parse(p.read(map)).links.length, 0, 'captured application results never create mappings');
 });
+
+test('scenario preflight classifies new, identical and conflicting links without changing reviewed bytes', t => {
+  const p = project(t); p.ok('init'); const pinned = p.prepare();
+  const initial = p.read(map);
+  const fresh = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.deepEqual(fresh.integration.totals, { new: 4, identical: 0, conflicting: 0 });
+  assert.equal(fresh.integration.ready, true);
+  assert.equal(fresh.integration.mapSha256, hash(initial));
+  assert.equal(p.read(map), initial);
+  p.link(['--scenario', 'simple']); const linked = p.read(map);
+  const partial = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.equal(p.json('scenario', 'check', '--file', 'catalog.json').valid, true);
+  assert.deepEqual(partial.integration.totals, { new: 2, identical: 2, conflicting: 0 });
+  const changed = structuredClone(pinned); changed.steps[0].mappings[0].why = 'Different reviewed rationale.';
+  p.put('catalog.json', changed);
+  const selected = p.json('scenario', 'report', '--file', 'catalog.json', '--scenario', 'simple');
+  assert.deepEqual(selected.integration.totals, { new: 0, identical: 1, conflicting: 1 });
+  assert.equal(selected.integration.ready, false);
+  const conflict = selected.integration.links.find(row => row.status === 'conflicting');
+  const existing = JSON.parse(linked).links.find(row => row.source.start === 3);
+  assert.deepEqual(conflict.existing, [{ id: existing.id, differingFields: ['why'] }]);
+  assert.equal(conflict.proposedId, existing.id);
+  assert.throws(() => p.link(['--scenario', 'simple']));
+  assert.equal(p.read(map), linked);
+  assert.equal(existsSync(join(p.root, `${map}.lock`)), false);
+  assert.equal(existsSync(join(p.root, 'state.json')), false);
+  const corrupted = JSON.parse(linked); corrupted.links[0].source.sha256 = '0'.repeat(64); p.put(map, corrupted);
+  const corruptBytes = p.read(map);
+  const invalid = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.equal(invalid.integration.ready, false);
+  assert.equal(invalid.integration.sidecarValid, false);
+  assert.equal(invalid.integration.totals, null);
+  assert.ok(invalid.integration.diagnostics.total > 0);
+  assert.ok(invalid.integration.diagnostics.items.length > 0);
+  assert.equal(p.json('scenario', 'check', '--file', 'catalog.json').valid, true);
+  assert.equal(p.read(map), corruptBytes);
+});
+
+test('scenario preflight reports ID collisions, duplicate identities and bounded sidecar failures', t => {
+  const p = project(t); p.prepare();
+  assert.equal(p.json('scenario', 'report', '--file', 'catalog.json').integration.totals.new, 4);
+  assert.equal(existsSync(join(p.root, map)), false);
+  p.ok('init');
+  const candidates = p.json('scenario', 'packet', '--file', 'catalog.json').links;
+  const collision = structuredClone(candidates[0]); collision.actions = ['app different'];
+  p.put(map, { version: 1, links: [collision] }); const original = p.read(map);
+  const report = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.equal(report.integration.sidecarValid, true);
+  assert.deepEqual(report.integration.totals, { new: 3, identical: 0, conflicting: 1 });
+  assert.deepEqual(report.integration.links.find(row => row.status === 'conflicting').existing,
+    [{ id: collision.id, differingFields: ['actions'] }]);
+  assert.equal(p.read(map), original);
+  const duplicate = structuredClone(candidates[0]); duplicate.id = 'custom-reviewed-id';
+  p.put(map, { version: 1, links: [candidates[0], duplicate] });
+  const identical = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.equal(identical.integration.totals.identical, 1);
+  assert.deepEqual(identical.integration.links.find(row => row.status === 'identical').existing,
+    [{ id: candidates[0].id, differingFields: [] }, { id: duplicate.id, differingFields: [] }]);
+  duplicate.why = 'Different existing rationale.'; p.put(map, { version: 1, links: [candidates[0], duplicate] });
+  assert.equal(p.json('scenario', 'report', '--file', 'catalog.json').integration.sidecarValid, false);
+  p.put(map, { version: 1, links: Array.from({ length: 26 }, (_, i) => ({ ...candidates[0], id: `stale-${i}`, source: { ...candidates[0].source, sha256: '0'.repeat(64) } })) });
+  const invalid = p.json('scenario', 'report', '--file', 'catalog.json');
+  assert.equal(invalid.integration.diagnostics.total, 26);
+  assert.equal(invalid.integration.diagnostics.items.length, 25);
+  assert.equal(invalid.integration.diagnostics.truncated, true);
+  p.put(map, '{invalid JSON'); const malformed = p.read(map);
+  assert.equal(p.json('scenario', 'report', '--file', 'catalog.json').integration.sidecarValid, false);
+  assert.equal(p.json('scenario', 'check', '--file', 'catalog.json').valid, true);
+  assert.equal(p.read(map), malformed);
+});

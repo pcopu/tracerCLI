@@ -187,7 +187,7 @@ export function checkScenarios(tracer, file) {
     valid: true, totals: result.totals };
 }
 export function reportScenarios(tracer, file, scenarioId) {
-  const result = load(tracer, file, scenarioId), texts = new Map(result.state.files);
+  const result = load(tracer, file, scenarioId), integration = integrationPreflight(tracer, result), texts = new Map(result.state.files);
   let expandedBytes = 0;
   const snippet = range => {
     if (!texts.has(range.path)) texts.set(range.path, tracer.readLines(range.path));
@@ -211,7 +211,7 @@ export function reportScenarios(tracer, file, scenarioId) {
     return { id: scenario.id, title: scenario.title, actions: scenario.actions, occurrences };
   });
   return { kind: 'scenario-step-catalog-report', notice: SCENARIO_NOTICE, catalogSha256: result.catalogSha256,
-    mapSha256: hash(mapBytes(tracer)), totals: result.totals, steps, scenarios };
+    mapSha256: integration.mapSha256, totals: result.totals, steps, scenarios, integration };
 }
 export function scenarioPacket(tracer, file, scenarioId) {
   return { version: 1, links: load(tracer, file, scenarioId).links };
@@ -279,4 +279,53 @@ export function linkScenarios(tracer, file, { scenarioId, expectedCatalogSha256,
       changed: additions.length > 0, added: additions.length, existing: imported.length - additions.length, total: data.links.length,
       scenarioIds: result.scenarios.map(scenario => scenario.id), links: imported };
   });
+}
+
+
+// Read-only comparison uses the same sidecar integrity and link identity rules as
+// guarded integration. A ready snapshot still requires fresh hashes and review.
+function integrationPreflight(tracer, result) {
+  const diagnostics = [], byIdentity = new Map(), byId = new Map();
+  let mapSha256 = hash(mapBytes(tracer)), diagnosticTotal = 0;
+  const diagnostic = (id, errors) => {
+    diagnosticTotal++;
+    if (diagnostics.length < 25) diagnostics.push({ id, errors });
+  };
+  try {
+    const current = tracer.readMap({ withHash: true });
+    mapSha256 = current.mapSha256;
+    const invalid = [...tracer.inspect(current.data, result.state), ...tracer.inspectComments(current.data, result.state),
+      ...tracer.inspectDeadCode(current.data, result.state)].filter(row => row.errors.length);
+    for (const row of invalid) diagnostic(row.link?.id ?? row.comment?.id ?? row.mark?.id ?? null, row.errors);
+    if (!invalid.length) for (const previous of current.data.links) {
+      const key = identity(previous), matches = byIdentity.get(key) ?? [];
+      if (matches.length && !sameLink(matches[0], previous)) diagnostic(previous.id, ['Sidecar contains conflicting links for the same source, action sequence and witness.']);
+      matches.push(previous); byIdentity.set(key, matches); byId.set(previous.id, previous);
+    }
+  } catch {
+    // Report historically reads catalog snippets even when sidecar JSON/schema is
+    // invalid. Keep that contract and leave detailed repair to the public check.
+    diagnostic(null, ['Sidecar could not be validated. Run check for details.']);
+  }
+  const base = { mapSha256, sidecarValid: diagnosticTotal === 0,
+    diagnostics: { total: diagnosticTotal, items: diagnostics, truncated: diagnosticTotal > diagnostics.length } };
+  if (diagnosticTotal) return { ...base, ready: false, totals: null, links: [] };
+  const totals = { new: 0, identical: 0, conflicting: 0 };
+  const links = result.links.map(candidate => {
+    const matches = byIdentity.get(identity(candidate)) ?? (byId.has(candidate.id) ? [byId.get(candidate.id)] : []);
+    const existing = matches.map(previous => ({ id: previous.id, differingFields: differingLinkFields(previous, candidate) }));
+    const status = !existing.length ? 'new' : existing.some(row => row.differingFields.length) ? 'conflicting' : 'identical';
+    totals[status]++;
+    return { proposedId: candidate.id, status, existing };
+  });
+  return { ...base, ready: totals.conflicting === 0, totals, links };
+}
+function differingLinkFields(previous, candidate) {
+  const fields = [];
+  for (const key of ['source', 'step']) for (const field of ['path', 'start', 'end', 'sha256']) {
+    if (previous[key]?.[field] !== candidate[key]?.[field]) fields.push(`${key}.${field}`);
+  }
+  if (JSON.stringify(previous.actions) !== JSON.stringify(candidate.actions)) fields.push('actions');
+  if (previous.why !== candidate.why) fields.push('why');
+  return fields;
 }

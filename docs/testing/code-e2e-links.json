@@ -1347,7 +1347,7 @@
         "path": "src/scenarios.mjs",
         "start": 189,
         "end": 216,
-        "sha256": "45c253ba1fb5a5f0f05b3984c4b5da0f874455aa15e1d9eb53a24147f88b8af9"
+        "sha256": "a9b0a4081503e2555dc62e8d77e615d5f9460abb294fb0d161026fee79d6b487"
       },
       "actions": [
         "tracer init",
@@ -8214,6 +8214,34 @@
       "why": "The next mode accepts a bounded batch or one known targeted scenario, dispatches its current marginal selection and rejects invalid selection constraints."
     },
     {
+      "id": "c62a852672de2829",
+      "source": {
+        "path": "src/scenarios.mjs",
+        "start": 323,
+        "end": 331,
+        "sha256": "6edd06cba47e2defa12c9815a903691ff75c2920c47faf16c2906e33857ad4e8"
+      },
+      "actions": [
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario report --file catalog.json",
+        "tracer init",
+        "tracer scenario packet --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario check --file catalog.json"
+      ],
+      "step": {
+        "path": "tests/e2e/scenario-journeys.test.mjs",
+        "start": 205,
+        "end": 224,
+        "sha256": "fada0801748cd4398eae0192cf4cf3bc2d9d3d30197e1c1b0ceeb4a96995e002"
+      },
+      "why": "Public report exposes exact differing actions for an ID collision and both existing IDs with empty difference lists for an identical identity. Other field differences follow shared comparison structure, without an execution claim for every field."
+    },
+    {
       "id": "c6f2156b570581a0",
       "source": {
         "path": "bin/tracer.mjs",
@@ -9795,6 +9823,34 @@
       "why": "Both npm-installed aliases load the packaged entry point and all imported modules, report the package version and expose consent/manual-only help. This structural link does not assert every imported branch ran."
     },
     {
+      "id": "f189864e23c04dd6",
+      "source": {
+        "path": "src/scenarios.mjs",
+        "start": 300,
+        "end": 322,
+        "sha256": "75c3012bc4bf2666a5ea99e4bc4a5c30421e4e89f0e028116ec0c599c60508af"
+      },
+      "actions": [
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario report --file catalog.json",
+        "tracer init",
+        "tracer scenario packet --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario check --file catalog.json"
+      ],
+      "step": {
+        "path": "tests/e2e/scenario-journeys.test.mjs",
+        "start": 205,
+        "end": 235,
+        "sha256": "14304ecbbffb0eb7f53b7d4e74045d37efb864af740f4a14645e77889d1971ae"
+      },
+      "why": "Synthetic sidecars distinguish generated-ID collisions and identical identities with custom IDs, reject conflicting duplicate identities, and bound 26 stale diagnostic rows to 25 without mutating map bytes. The closing brace is structural support for that helper."
+    },
+    {
       "id": "f1e58ba82c7777b1",
       "source": {
         "path": "bin/tracer.mjs",
@@ -10113,6 +10169,34 @@
         "sha256": "f246ed8df287d688435b5d331eb74503b199ce1eab4f78a0ab7dc1b2f32730a7"
       },
       "why": "Reject an escaping Git tree path before creating a managed release or touching the escaped target; the same journey preserves fail-closed behavior for corrupt and unsafe runtime trees. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
+    },
+    {
+      "id": "fbb56d4d07aac93a",
+      "source": {
+        "path": "src/scenarios.mjs",
+        "start": 285,
+        "end": 299,
+        "sha256": "cc52be527bd7efc03d34c949cda34655f63184b8ca4c8e4c7ba75b734239f2d4"
+      },
+      "actions": [
+        "tracer init",
+        "tracer scenario prepare --file draft.json --json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario link --file catalog.json --scenario simple --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario check --file catalog.json",
+        "tracer scenario report --file catalog.json --scenario simple",
+        "tracer scenario link --file catalog.json --scenario simple --reviewed --expect-catalog-sha256 $CATALOG_SHA --expect-map-sha256 $MAP_SHA --json",
+        "tracer scenario report --file catalog.json",
+        "tracer scenario check --file catalog.json"
+      ],
+      "step": {
+        "path": "tests/e2e/scenario-journeys.test.mjs",
+        "start": 168,
+        "end": 202,
+        "sha256": "ff52125304a5482e1e7cfc62c3029d3b7bcaab7151640a38a20eaf11f037e04d"
+      },
+      "why": "Read-only report validates current sidecar integrity and classifies four new candidates, then a mixed batch and changed-rationale conflict; stale map pins leave totals unknown while catalog check stays usable."
     },
     {
       "id": "fbc177bc0965fc05",

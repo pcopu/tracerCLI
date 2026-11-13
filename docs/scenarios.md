@@ -103,3 +103,12 @@ Results are labeled `adapter-reported`. The result's `catalogSha256` hashes `JSO
 ## Where this saves time
 
 Review and record each reusable action/assertion/source relationship once, then validate only changed definitions and new composition assumptions. Run independent service/tooling groups while map-only proposals are prepared. Choose broad journeys with substantial newly asserted behavior rather than repeatedly mining almost-complete scenarios for tiny gaps. Measure newly mapped unique included lines per complete review/integration/checkpoint time and newly passing behavioral assertions separately. Compiler/import timing alone is not an end-to-end mapping speedup.
+
+
+## Inspect integration before guarded linking
+
+`scenario report` adds a read-only `integration` preflight for the selected scenarios against the current sidecar. `totals.new`, `totals.identical` and `totals.conflicting` count compiled candidate links. Each candidate row includes its `proposedId`, status and matching existing IDs with exact `differingFields`. Identity uses the exact source range, ordered action array and witness range, as guarded linking does. A changed explanation therefore conflicts with an existing identity. A generated ID collision also reports the existing ID and differing fields.
+
+`sidecarValid` gates classification. An invalid or stale sidecar produces `ready: false`, unknown `totals: null` and at most 25 diagnostic rows, with `total` and `truncated` describing omitted rows. Run `tracer check` for complete integrity findings. `scenario check` continues to validate the catalog independently of sidecar integrity.
+
+A `ready: true` result describes that read-only snapshot. It grants no approval, changes no links and establishes no execution evidence. Review source, actions, witnesses and explanations, resolve conflicts explicitly, then supply current catalog and map hashes to `scenario link --reviewed`. The locked integration still performs its complete checks.
