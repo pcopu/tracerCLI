@@ -144,3 +144,18 @@ Each current hit identifies its canonical interval, stored aliases, exact observ
 Lookup validates dataset payloads and the requested file in each snapshot. Other snapshot files stay outside its stated `validationScope`, so an unrelated stale file does not gate this source question. Independent capture families retain their identities and the requested file's instrumented universe. Their full-universe hashes and provenance groups remain visible, with no unrelated file-by-file expansion. Overall query classifications express physical-line presence across these listed families. They establish no combined build coverage percentage, compatible-adapter proof or assertion adequacy.
 
 `union --capture-set` still enforces the existing whole-scope compatibility and current-source checks. Both commands are read-only and reuse recorded captures without application execution, manual-link prerequisites or metadata repair.
+
+## Rank gaps against a reference build
+
+```sh
+tracer measure gaps --capture-set /analysis/captures.json \
+  --reference-root /analysis/latest/analysis/source --json
+```
+
+Choose an analysis root listed in the capture set, usually the latest captured build. A relative `--reference-root` resolves from the selected repository root. The reference dataset must be nonempty and internally compatible in strict mode. Its recorded files and DA lines fix the denominator, and its snapshot source must still match. This command reads the capture set once and ranks reference files by missing passing lines, with path as the tie breaker. The capture set's `scope` option still governs `union`; `gaps` always uses the explicit reference and per-file rules below.
+
+A compatible interval must carry the same repository-relative file path, exact full-file source hash and exact DA line set as the reference. Its snapshot and the current checkout must also contain those source bytes. Compatible observations across independently recorded builds keep their original provenance. Current files with changed or unavailable bytes retain their reference lines in the denominator, earn zero current observation credit, and have those lines listed in `unavailableReferenceRanges`. Snapshots with source or instrumented universe conflicts are listed per file. Captured paths outside the reference appear in `outOfReferenceFiles`. The report makes no claim about repository components absent from its reference instrumentation.
+
+`referencePassingObservedRanges` counts passing observations from the strict reference identity. `reusedPassingObservedRanges` lists the additional lines observed during passing intervals with other compatible file evidence. Remaining reference lines are classified as unavailable, observed only in known failed runs, observed with an unknown outcome, or unobserved instrumented lines. An unknown outcome takes precedence over a known failure when both observed the same line and no known passing interval did. `unknownInstrumentationRanges` uses current file coordinates, including the entire physical current file when its bytes differ from the reference. It is `null` when current source is unavailable. Use `measure where` for interval and journey details on a selected source range.
+
+The concise output lists up to 20 files and directs readers to `--json` for the complete file list, range classifications, dataset provenance and digest-bound outcomes. The command neither executes a scenario nor changes a capture. It ranks measured gaps with a fixed scope; it cannot predict unexecuted routes, report whole-project coverage or prove branch or assertion coverage.

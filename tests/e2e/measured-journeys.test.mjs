@@ -723,3 +723,97 @@ test('measured where journey: unrelated stale files do not gate requested-source
   assert.match(result.validationScope, /Other snapshot files are outside/);
   assert.match(f.run(['measure', 'union', '--capture-set', 'captures.json', '--json'], 1).stderr, /stale/i);
 });
+
+test('measured gaps journey: preserve the strict denominator and distinguish failed observations from unknown outcomes', t => {
+  const f = project(t);
+  const hits = ['DA:1,2\nDA:2,0\nDA:3,9', 'DA:1,1\nDA:2,1\nDA:3,9', 'DA:1,1\nDA:2,0\nDA:3,10'];
+  const ids = hits.map((rows, index) => {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = `gap-run-${index}`;
+    f.put('after.lcov', f.record(rows)); f.refresh(); return f.json(...f.args).id;
+  });
+  f.jsonFile('evidence.json', { synthetic: true });
+  const evidence = { path: 'evidence.json', sha256: f.hash('evidence.json') };
+  const intervals = [
+    { id: ids[0], status: 'passed', journey: 'passing journey', evidence },
+    { id: ids[1], status: 'failed', journey: 'failing journey', evidence },
+  ];
+  f.jsonFile('outcomes.json', { version: 1, intervals });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.', '.'], outcomes: 'outcomes.json' });
+  const args = ['measure', 'gaps', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const before = f.hash(dataPath), result = f.json(...args), union = f.json('measure', 'union', '--capture-set', 'captures.json');
+  assert.deepEqual(result.allObserved, union.allObserved);
+  assert.deepEqual(result.passedOnlyKnown, union.passedOnlyKnown);
+  assert.deepEqual(result.intervals.outcomes, { passed: 1, failed: 1, unknown: 1 });
+  assert.equal(result.intervals.duplicates, 3);
+  assert.deepEqual(result.files[0].failedOnlyRanges, [[2, 2]]);
+  assert.deepEqual(result.files[0].unknownOutcomeRanges, [[3, 3]]);
+  assert.deepEqual(result.files[0].unknownInstrumentationRanges, [[4, 4]]);
+  assert.deepEqual(result.files[0].unobservedInstrumentedRanges, []);
+  assert.match(f.run(args).stdout, /src\/app.py.*2 passing gaps/);
+  f.jsonFile('outcomes.json', { version: 1, intervals: [...intervals, { ...intervals[0], status: 'failed' }] });
+  assert.match(f.run(args, 1).stderr, /duplicate/i);
+  assert.equal(f.hash(dataPath), before);
+  assert.equal(existsSync(join(f.root, `${dataPath}.lock`)), false);
+});
+
+test('measured gaps journey: historical observations earn credit only with matching source and line universe', t => {
+  const ref = project(t), old = project(t), changed = project(t), universe = project(t);
+  const prep = (f, runId) => {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
+    f.manifest.before.buildSha256 = f.manifest.after.buildSha256 = sha(runId);
+    f.refresh(); return f.json(...f.args).id;
+  };
+  ref.put('after.lcov', ref.record('DA:1,2\nDA:2,0\nDA:3,9'));
+  old.put('after.lcov', old.record('DA:1,1\nDA:2,1\nDA:3,9'));
+  universe.put('before.lcov', universe.record('DA:1,1\nDA:3,9'));
+  universe.put('after.lcov', universe.record('DA:1,1\nDA:3,10'));
+  changed.put('src/app.py', 'prior\nsecond\nthird\nfourth\n');
+  changed.jsonFile('sources.json', { files: [{ path: 'src/app.py', sha256: changed.hash('src/app.py') }] });
+  changed.manifest.sourceManifestSha256 = changed.manifest.before.sourceManifestSha256 = changed.manifest.after.sourceManifestSha256 = changed.hash('sources.json');
+  changed.put('after.lcov', changed.record('DA:1,1\nDA:2,0\nDA:3,10'));
+  const fixtures = [old, universe, changed, ref];
+  ref.jsonFile('evidence.json', { status: 'passed', synthetic: true });
+  ref.jsonFile('outcomes.json', { version: 1, intervals: fixtures.map((f, i) => ({
+    id: prep(f, `build-${i}`), journey: `journey-${i}`, status: 'passed', evidence: { path: 'evidence.json', sha256: ref.hash('evidence.json') },
+  })) });
+  ref.jsonFile('captures.json', { version: 1, inputRoots: fixtures.map(f => f.root), outcomes: 'outcomes.json' });
+  const args = ['measure', 'gaps', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const result = ref.json(...args);
+  assert.equal(result.reference.buildSha256, ref.manifest.before.buildSha256);
+  assert.equal(result.provenanceGroups.length, 4);
+  assert.deepEqual(result.files[0].referencePassingObservedRanges, [[1, 1]]);
+  assert.deepEqual(result.files[0].reusedPassingObservedRanges, [[2, 2]]);
+  assert.deepEqual(result.files[0].unobservedInstrumentedRanges, [[3, 3]]);
+  assert.deepEqual(result.files[0].incompatibleEvidence.map(item => item.reason).sort(), ['source-mismatch', 'universe-mismatch']);
+  old.put('src/app.py', 'stale snapshot\n');
+  const stale = ref.json(...args);
+  assert.equal(stale.passedOnlyKnown.observedLines, 1);
+  assert.ok(stale.files[0].incompatibleEvidence.some(item => item.reason === 'snapshot-invalid'));
+});
+
+test('measured gaps journey: stale or missing current files remain in the ranked reference denominator', t => {
+  const ref = project(t), current = project(t), outsider = project(t);
+  ref.put('src/other.py', 'ready\nsteady\n');
+  ref.jsonFile('sources.json', { files: ['src/app.py', 'src/other.py'].map(path => ({ path, sha256: ref.hash(path) })) });
+  ref.manifest.sourceManifestSha256 = ref.manifest.before.sourceManifestSha256 = ref.manifest.after.sourceManifestSha256 = ref.hash('sources.json');
+  ref.put('before.lcov', ref.record('DA:1,1\nDA:2,0\nDA:3,9') + 'SF:/capture/src/other.py\nDA:1,0\nDA:2,0\nend_of_record\n');
+  ref.put('after.lcov', ref.record('DA:1,3\nDA:2,0\nDA:3,10') + 'SF:/capture/src/other.py\nDA:1,1\nDA:2,0\nend_of_record\n');
+  ref.refresh(); const id = ref.json(...ref.args).id;
+  ref.jsonFile('outcome-evidence.json', { status: 'passed', synthetic: true });
+  ref.jsonFile('outcomes.json', { version: 1, intervals: [{ id, status: 'passed', journey: 'example', evidence: { path: 'outcome-evidence.json', sha256: ref.hash('outcome-evidence.json') } }] });
+  ref.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const args = ['measure', 'gaps', '--capture-set', join(ref.root, 'captures.json'), '--reference-root', ref.root];
+  const missing = current.json(...args);
+  assert.equal(missing.passedOnlyKnown.instrumentedLines, 5);
+  assert.equal(missing.passedOnlyKnown.observedLines, 2);
+  assert.deepEqual(missing.files.map(({ path, status }) => [path, status]), [['src/other.py', 'unavailable-current-source'], ['src/app.py', 'current']]);
+  assert.deepEqual(missing.files[0].unavailableReferenceRanges, [[1, 2]]);
+  assert.deepEqual(missing.files[0].unobservedInstrumentedRanges, []);
+  current.put('src/other.py', 'changed\n');
+  const stale = current.json(...args);
+  assert.equal(stale.files[0].status, 'stale-current-source');
+  assert.deepEqual(stale.files[0].unknownInstrumentationRanges, [[1, 1]]);
+  assert.match(current.run([...args.slice(0, -1), outsider.root], 1).stderr, /reference root.*capture set/i);
+  ref.put('src/other.py', 'stale reference\n');
+  assert.match(current.run(args, 1).stderr, /reference.*stale/i);
+});
