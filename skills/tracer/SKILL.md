@@ -19,6 +19,22 @@ To rank gaps across a reference build in one pass, use `tracer measure gaps --ca
 
 Reuse valid captures before rerunning unchanged scenarios. For unavailable instrumentation, report the missing adapter or build and continue supported work. Tracer supplies lookup and union primitives. A reusable capture-set reduces orchestration work without introducing a scheduler, persistent cache or a forced-path execution mechanism.
 
+## Run a repeatable capture batch
+
+1. Keep reference analysis roots, source/build manifests, raw snapshots, scenario receipts and digest-bound outcome declarations in durable private storage outside the tracked source tree. Save a capture set for the baseline, use `measure gaps` to find the largest observed shortfalls, and use `measure where` to check which real journeys already reach a named range. Keep different metric families, such as Swift DA lines and Worker statement anchors, separate. Use strict `measure union` when all captures share one complete instrumentation identity and the report is about that build alone.
+2. Choose a small number of real state changes with evidence-backed potential. Group related missing behavior into broad journeys, and deduplicate the selectors and required fixture states before running. Reuse the same verified instrumented build across test-only changes when its build and application inputs are unchanged. Exercise the supported public application routes with the project's real capture adapter and check user-visible outcomes. Read the project's adapter instructions for explicit opt-ins and provenance checks.
+3. Separate initialization, ordinary requests and lifecycle or fault cases. Use a real producer capture that covers startup if startup is part of the metric, since post-start snapshots cannot prove boot execution. Use isolated, supported dependency fixtures for naturally occurring failure outcomes, cancellation, recovery and timers. Preserve the real entrypoints and branch guards. Record unreachable platform paths, missing instrumentation and unsupported fixture states explicitly.
+4. Queue the longest independent jobs first when they have separate processes, fixtures, ports, storage, homes and output roots. Limit concurrency to available resources. Keep one driver for shared native UI or device state. Record monotonic elapsed wall time at the producer's declared batch boundary and save the exact selectors, successful and failed receipts and interval IDs. Keep scenario time, whole-batch wall time, preparation and build time labeled separately. Concurrent job durations cannot be summed as batch wall time.
+5. Validate imports and source/build/tool identities, then save a current cumulative capture set with the new eligible inputs. Compare current passing evidence with the saved baseline against one explicit strict reference. The reference analysis root must be in the current set and may be absent from the baseline set when a rebuild was needed.
+
+```sh
+tracer measure gaps --capture-set /evidence/current.json \
+  --reference-root /evidence/latest/analysis/source \
+  --baseline-capture-set /evidence/baseline.json --json
+```
+
+Rank the gained lines from `comparison.files` and investigate lost passing evidence. A new or missing outcome declaration can change those counts without another execution. For a batch's marginal gain, keep the complete baseline evidence and outcomes frozen and append only the new measured captures with their outcomes. Report passing lines without a comparable baseline separately. When elapsed time and interval identities match that recorded batch or serialized candidate, divide comparable gained lines by elapsed wall minutes in the same scope. Use measured gains to choose the next state families. Recompute from the newly retained capture set at the end of each batch.
+
 ## Measure existing scenarios first
 
 For an execution-coverage task, start with existing runnable scenarios and instrumentation. Reuse source tags, proposals, discovery catalogs and prior captures. New manual links, assertion audits and complete categorization are optional planning work unless the user requested them or an affected contract requires review. They do not gate a legitimate measurement run. Preserve the user's requested metric and agreed denominator.

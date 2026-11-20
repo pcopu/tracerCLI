@@ -39,7 +39,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure union --capture-set FILE [--json]
   measure where --source PATH[:RANGE] [--capture-set FILE] [--json]
-  measure gaps --capture-set FILE --reference-root DIR [--json]
+  measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -170,7 +170,7 @@ async function main(args) {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
       report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--capture-set', '--json'], where: ['--source', '--capture-set', '--json'],
-      gaps: ['--capture-set', '--reference-root', '--json'] }[mode];
+      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--json'] }[mode];
     if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file or measure gaps for a reference build.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
@@ -190,7 +190,7 @@ async function main(args) {
       : mode === 'report' ? reportMeasured(tracer.root, query) : mode === 'union'
         ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'], captureSet: options['--capture-set'] })
         : mode === 'where' ? whereMeasured(tracer.root, { source: options['--source'], captureSet: options['--capture-set'] })
-          : mode === 'gaps' ? gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'] }) : checkMeasured(tracer.root);
+          : mode === 'gaps' ? gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'] }) : checkMeasured(tracer.root);
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(result.notice);
@@ -209,6 +209,7 @@ async function main(args) {
         console.log(`${result.files.filter(file => file.status !== 'current').length} stale or unavailable current file(s), ${result.outOfReferenceFiles.length} captured file(s) outside the reference, ${result.intervals.outcomes.unknown} interval(s) with unknown outcomes, ${result.origins.filter(origin => origin.status === 'missing').length} missing dataset(s).`);
         for (const file of gaps.slice(0, 20)) console.log(`${file.path} — ${file.passedOnlyKnown.gapLines} passing gaps${file.status === 'current' ? '' : ` (${file.status})`}`);
         if (gaps.length > 20) console.log(`${gaps.length - 20} more files have gaps. Use --json for all files, outcome ranges and provenance.`);
+        if (result.comparison) printGapComparison(result.comparison);
       } else if (mode === 'check') {
         console.log(`${result.intervals} interval(s); ${result.invalid.length} stale source file(s).`);
         for (const item of result.invalid) console.log(`STALE ${item.path}: ${item.error}`);
@@ -401,3 +402,11 @@ try {
   }
 }
 catch (error) { console.error(`tracer: ${error.message}`); process.exitCode = 1; }
+
+function printGapComparison({ gainedLines, lostLines, passingLinesWithoutComparableBaseline, files }) {
+  console.log(`Known-passing evidence: ${gainedLines} passing line(s) gained, ${lostLines} lost, ${passingLinesWithoutComparableBaseline} without comparable baseline.`);
+  for (const file of files.slice(0, 10)) {
+    console.log(`${file.path} — ${file.gainedLines} gained, ${file.lostLines} lost, ${file.passingLinesWithoutComparableBaseline} without comparable baseline`);
+  }
+  if (files.length > 10) console.log(`${files.length - 10} more files changed. Use --json for all comparison ranges and provenance.`);
+}

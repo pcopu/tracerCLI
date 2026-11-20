@@ -728,7 +728,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure union --capture-set FILE [--json]
   measure where --source PATH[:RANGE] [--capture-set FILE] [--json]
-  measure gaps --capture-set FILE --reference-root DIR [--json]
+  measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]

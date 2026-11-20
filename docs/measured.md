@@ -159,3 +159,17 @@ A compatible interval must carry the same repository-relative file path, exact f
 `referencePassingObservedRanges` counts passing observations from the strict reference identity. `reusedPassingObservedRanges` lists the additional lines observed during passing intervals with other compatible file evidence. Remaining reference lines are classified as unavailable, observed only in known failed runs, observed with an unknown outcome, or unobserved instrumented lines. An unknown outcome takes precedence over a known failure when both observed the same line and no known passing interval did. `unknownInstrumentationRanges` uses current file coordinates, including the entire physical current file when its bytes differ from the reference. It is `null` when current source is unavailable. Use `measure where` for interval and journey details on a selected source range.
 
 The concise output lists up to 20 files and directs readers to `--json` for the complete file list, range classifications, dataset provenance and digest-bound outcomes. The command neither executes a scenario nor changes a capture. It ranks measured gaps with a fixed scope; it cannot predict unexecuted routes, report whole-project coverage or prove branch or assertion coverage.
+
+### Compare with an earlier capture set
+
+```sh
+tracer measure gaps --capture-set /analysis/current.json \
+  --reference-root /analysis/latest/analysis/source \
+  --baseline-capture-set /analysis/baseline.json --json
+```
+
+The reference root must be in the current capture set. The baseline may come from earlier builds. Tracer validates the prior dataset payloads, snapshots and digest-bound outcomes independently. Comparison requires all listed datasets and rejects conflicting payloads or outcome declarations for a shared capture occurrence. Each file is comparable only if the validated baseline has the same path, exact source bytes and DA line set as the reference and the current checkout still matches.
+
+In `comparison`, `gainedLines` and `lostLines` are the set differences in known passing observations for comparable files. `passingLinesWithoutComparableBaseline` counts newly measured current files separately when baseline identity is missing or incompatible. A comparable interval with an unknown outcome provides instrumentation identity but no passing credit. `files` ranks changed paths by gains, then losses, then path and includes exact ranges for each category. `baseline` preserves origin hashes, producer identities and outcome bindings. Earlier source changes are not counted as comparable gains and unavailable current files remain visible in the primary gap report.
+
+Adding or dropping an outcome declaration can change gained or lost known-passing lines without a new execution. To measure a batch's contribution, keep the complete baseline captures and declarations frozen, then append only the new captures and their outcomes. Review losses for omitted captures or absent declarations. Pair comparable gains with verified producer elapsed wall time for the same batch. Keep build and preparation time explicit and do not sum jobs that ran in parallel.

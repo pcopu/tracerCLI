@@ -817,3 +817,50 @@ test('measured gaps journey: stale or missing current files remain in the ranked
   ref.put('src/other.py', 'stale reference\n');
   assert.match(current.run(args, 1).stderr, /reference.*stale/i);
 });
+
+test('measured gaps journey: compare passing gains and losses even when the old set lacks the new reference', t => {
+  const older = project(t), latest = project(t);
+  for (const f of [older, latest]) {
+    const previous = f === older, extra = previous ? 'older bytes\n' : 'current bytes\n';
+    f.put('src/extra.py', extra);
+    f.jsonFile('sources.json', { files: [{ path: 'src/app.py', sha256: sha(source) }, { path: 'src/extra.py', sha256: sha(extra) }] });
+    f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+    f.manifest.before.buildSha256 = f.manifest.after.buildSha256 = sha(extra);
+    f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0') + 'SF:/capture/src/extra.py\nDA:1,0\nend_of_record\n');
+    f.put('after.lcov', f.record(previous ? 'DA:1,1\nDA:2,0\nDA:3,1' : 'DA:1,0\nDA:2,1\nDA:3,1') + 'SF:/capture/src/extra.py\nDA:1,1\nend_of_record\n');
+    f.refresh(); const id = f.json(...f.args).id;
+    f.jsonFile('evidence.json', { status: 'passed', synthetic: true });
+    f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: 'example journey', status: 'passed', evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+    f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  }
+  const args = ['measure', 'gaps', '--reference-root', '.', '--capture-set', 'captures.json', '--baseline-capture-set', join(older.root, 'captures.json')];
+  const before = [older, latest].map(f => f.hash(dataPath));
+  const result = latest.json(...args);
+  assert.equal(result.passedOnlyKnown.observedLines, 3);
+  assert.equal(result.comparison.baseline.captureSet.sha256, older.hash('captures.json'));
+  assert.equal(result.comparison.gainedLines, 1);
+  assert.equal(result.comparison.lostLines, 1);
+  assert.equal(result.comparison.passingLinesWithoutComparableBaseline, 1);
+  assert.deepEqual(result.comparison.files.map(file => [file.path, file.gainedRanges, file.lostRanges, file.passingRangesWithoutComparableBaseline]), [
+    ['src/app.py', [[2, 2]], [[1, 1]], []], ['src/extra.py', [], [], [[1, 1]]],
+  ]);
+  assert.match(latest.run(args).stdout, /1 passing line\(s\) gained.*1 lost.*1 without comparable baseline/);
+  assert.deepEqual([older, latest].map(f => f.hash(dataPath)), before);
+});
+
+test('measured gaps journey: reject conflicting evidence declarations for the same occurrence across comparison sets', t => {
+  const f = project(t), id = f.json(...f.args).id;
+  f.jsonFile('evidence.json', { synthetic: true });
+  const evidence = { path: 'evidence.json', sha256: f.hash('evidence.json') };
+  for (const status of ['passed', 'failed']) {
+    f.jsonFile(`${status}-outcomes.json`, { version: 1, intervals: [{ id, journey: 'same journey', status, evidence }] });
+    f.jsonFile(`${status}-captures.json`, { version: 1, inputRoots: ['.'], outcomes: `${status}-outcomes.json` });
+  }
+  const args = ['measure', 'gaps', '--reference-root', '.', '--capture-set', 'passed-captures.json', '--baseline-capture-set', 'failed-captures.json'];
+  assert.match(f.run(args, 1).stderr, /conflicting.*outcome.*comparison/i);
+  f.jsonFile('unknown-captures.json', { version: 1, inputRoots: ['.'] });
+  const updatedOutcome = f.json(...args.slice(0, -1), 'unknown-captures.json');
+  assert.equal(updatedOutcome.comparison.baseline.origins[0].sha256, updatedOutcome.origins[0].sha256);
+  assert.equal(updatedOutcome.comparison.baseline.intervals.outcomes.unknown, 1);
+  assert.equal(updatedOutcome.comparison.gainedLines, 2, 'known-passing evidence can grow with the same recorded interval');
+});

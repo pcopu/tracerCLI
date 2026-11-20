@@ -263,7 +263,7 @@ function measuredInputs(root, options, localDefault) {
   return { inputRoots, outcomes, scopeMode, captureSet };
 }
 
-function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) {
+function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainFiles = Boolean(referenceRoot) } = {}) {
   const { inputRoots, outcomes, scopeMode, captureSet } = measuredInputs(root, options, Boolean(lookupPath));
   if (referenceRoot) {
     const index = inputRoots.findIndex(path => realpathSync(resolve(root, path)) === referenceRoot);
@@ -271,14 +271,14 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) 
     inputRoots.unshift(...inputRoots.splice(index, 1));
   }
   const origins = [], records = new Map(), storedIds = new Map(), provenance = new Map();
-  const snapshots = referenceRoot ? new Map() : undefined;
+  const snapshots = retainFiles ? new Map() : undefined;
   let scope, scopeId, sourceLinesId, duplicates = 0;
   for (const inputRoot of inputRoots) {
     const store = new MeasuredStore(resolve(root, inputRoot));
     const isReference = store.root === referenceRoot;
     if (!existsSync(store.mapPath)) {
       if (isReference) fail('The reference measurement dataset is missing.');
-      if (!lookupPath && !referenceRoot) fail('Union input measurement dataset is missing.');
+      if (!lookupPath && !retainFiles) fail('Union input measurement dataset is missing.');
       origins.push({ root: store.root, dataset: store.mapPath, sha256: null, intervals: 0, status: 'missing' }); continue;
     }
     // A repeated root retains origin/duplicate accounting without rereading the dataset.
@@ -288,10 +288,10 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) 
     if (isReference && !data.intervals.length) fail('The reference measurement dataset must contain at least one interval.');
     const origin = { root: store.root, dataset: store.mapPath, sha256: datasetSha256, intervals: data.intervals.length };
     origins.push(origin);
-    const invalidFiles = referenceRoot ? new Map() : undefined;
+    const invalidFiles = retainFiles ? new Map() : undefined;
     for (const interval of data.intervals) {
       const lookupFile = lookupPath ? interval.files.find(file => file.path === lookupPath) : undefined;
-      const validFiles = referenceRoot ? new Set() : undefined;
+      const validFiles = retainFiles ? new Set() : undefined;
       let snapshotError = null;
       for (const file of interval.files) {
         if (lookupPath && file.path !== lookupPath) continue;
@@ -299,7 +299,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) 
         if (!checked.has(key)) checked.set(key, currentFile(store, file));
         if (checked.get(key)) {
           if (isReference) fail(`Reference interval ${interval.id}, ${file.path}: ${checked.get(key)}`);
-          if (!lookupPath && !referenceRoot) fail(`Union input ${interval.id}: ${checked.get(key)}`);
+          if (!lookupPath && !retainFiles) fail(`Union input ${interval.id}: ${checked.get(key)}`);
           invalidFiles?.set(key, { path: file.path, sourceSha256: file.sha256, error: checked.get(key) });
           snapshotError = checked.get(key);
         } else validFiles?.add(file.path);
@@ -323,7 +323,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) 
           .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) };
       const currentScopeId = sha(JSON.stringify(currentScope)), currentSourceLinesId = sha(JSON.stringify(currentScope.files));
       if (isReference && scope && scopeId !== currentScopeId) fail('Incompatible strict measurement scope within the reference dataset.');
-      if (!lookupPath && !referenceRoot && scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
+      if (!lookupPath && !retainFiles && scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
         fail(`Incompatible measurement scope: ${scopeMode === 'strict' ? scopeId : sourceLinesId} versus ${scopeMode === 'strict' ? currentScopeId : currentSourceLinesId}. Report these scopes separately.`);
       }
       if (!scope) { scope = currentScope; scopeId = currentScopeId; sourceLinesId = currentSourceLinesId; }
@@ -334,16 +334,16 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot } = {}) 
       }
       provenance.get(currentScopeId).intervalIds.push(occurrence);
       const observed = new Set();
-      if (!referenceRoot) {
+      if (!retainFiles) {
         for (const file of interval.files.filter(file => !lookupPath || file.path === lookupPath)) for (const [line, before, after] of file.rows) if (after > before) observed.add(`${file.path}\0${line}`);
       }
       records.set(occurrence, { id: occurrence, aliases: [id], digest, observed, provenanceId: currentScopeId, origins: [origins.length - 1],
-        ...(referenceRoot ? { captureFiles: interval.files, validFiles } : {}),
+        ...(retainFiles ? { captureFiles: interval.files, validFiles } : {}),
         ...(lookupPath ? { lookupFile, snapshotError, actions: interval.manifest.actions, validOrigins: lookupFile && !snapshotError ? [origins.length - 1] : [] } : {}) });
     }
     if (invalidFiles?.size) origin.invalidSnapshotFiles = [...invalidFiles.values()];
   }
-  if (!scope && !lookupPath) fail('measure union requires at least one measured interval.');
+  if (!scope && !lookupPath) fail(retainFiles ? 'Comparison requires at least one measured baseline interval.' : 'measure union requires at least one measured interval.');
   const declarations = new Map(), outcomeBindings = [], declaredIds = new Set();
   let outcomeProvenance = null;
   if (outcomes !== undefined) {
@@ -494,9 +494,10 @@ function currentSource(store, path) {
   }
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet }) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot });
+  const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true });
   const { files: referenceFiles, ...referenceIdentity } = loaded.scope;
   const store = new MeasuredStore(root), referenceFilesByPath = new Map();
   for (const file of referenceFiles) {
@@ -517,9 +518,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet }) {
         outOfReference.get(captured.path).add(provenanceId); continue;
       }
       const { file } = target;
-      const reason = captured.sha256 !== file.sha256 ? 'source-mismatch'
-        : !record.validFiles.has(captured.path) ? 'snapshot-invalid'
-        : captured.rows.length !== file.lines.length || captured.rows.some(([line], i) => line !== file.lines[i]) ? 'universe-mismatch' : null;
+      const reason = fileEvidenceMismatch(record, captured, file);
       if (reason) {
         const key = `${provenanceId}:${reason}`;
         const entry = target.incompatible.get(key) ?? { provenanceId, reason, intervals: 0 };
@@ -570,5 +569,56 @@ export function gapsMeasured(root, { referenceRoot, captureSet }) {
     outcomes: { kind: 'producer-declared', provenance: loaded.outcomeProvenance, declarations: loaded.outcomeBindings },
     allObserved: totals(files.reduce((sum, file) => sum + file.observedLines, 0)),
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
-    outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })) };
+    outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
+    ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
+}
+
+function fileEvidenceMismatch(record, captured, reference) {
+  if (captured.sha256 !== reference.sha256) return 'source-mismatch';
+  if (!record.validFiles.has(captured.path)) return 'snapshot-invalid';
+  if (captured.rows.length !== reference.lines.length || captured.rows.some(([line], i) => line !== reference.lines[i])) return 'universe-mismatch';
+  return null;
+}
+
+function comparePassingEvidence(current, baseline, referenceFiles, currentFiles) {
+  if ([...baseline.origins, ...current.origins].some(origin => origin.status === 'missing')) fail('Comparison requires every listed measurement dataset.');
+  const previousPassing = new Map(), outcomes = { passed: 0, failed: 0, unknown: 0 };
+  for (const record of baseline.records.values()) {
+    const now = current.records.get(record.id), beforeOutcome = baseline.declarations.get(record.id), afterOutcome = current.declarations.get(record.id);
+    if (now && now.digest !== record.digest) fail(`Conflicting duplicate interval across comparison capture sets: ${record.id}`);
+    if (beforeOutcome && afterOutcome && (beforeOutcome.status !== afterOutcome.status || beforeOutcome.journey !== afterOutcome.journey)) {
+      fail(`Conflicting outcome declarations across comparison capture sets: ${record.id}`);
+    }
+    outcomes[beforeOutcome?.status ?? 'unknown']++;
+    for (const captured of record.captureFiles) {
+      const target = referenceFiles.get(captured.path);
+      if (!target?.comparable || fileEvidenceMismatch(record, captured, target.file)) continue;
+      if (!previousPassing.has(captured.path)) previousPassing.set(captured.path, new Set());
+      if (beforeOutcome?.status !== 'passed') continue;
+      const known = previousPassing.get(captured.path);
+      for (const [line, before, after] of captured.rows) if (after > before) known.add(line);
+    }
+  }
+
+  const totals = { gainedLines: 0, lostLines: 0, passingLinesWithoutComparableBaseline: 0, filesWithoutComparableBaseline: 0 };
+  const files = [];
+  for (const { path, status } of currentFiles) {
+    if (status !== 'current') continue;
+    const { file, observed: { passed } } = referenceFiles.get(path), before = previousPassing.get(path);
+    const gained = before ? file.lines.filter(line => passed.has(line) && !before.has(line)) : [];
+    const lost = before ? file.lines.filter(line => before.has(line) && !passed.has(line)) : [];
+    const fresh = before ? [] : file.lines.filter(line => passed.has(line));
+    totals.gainedLines += gained.length;
+    totals.lostLines += lost.length;
+    totals.passingLinesWithoutComparableBaseline += fresh.length;
+    if (!before) totals.filesWithoutComparableBaseline++;
+    if (gained.length || lost.length || fresh.length) files.push({ path, gainedLines: gained.length, gainedRanges: compactRanges(gained),
+      lostLines: lost.length, lostRanges: compactRanges(lost), passingLinesWithoutComparableBaseline: fresh.length,
+      passingRangesWithoutComparableBaseline: compactRanges(fresh) });
+  }
+  files.sort((a, b) => b.gainedLines - a.gainedLines || b.lostLines - a.lostLines || (a.path < b.path ? -1 : 1));
+  return { ...totals, files, baseline: { captureSet: baseline.captureSet, origins: baseline.origins,
+    provenanceGroups: [...baseline.provenance.values()].map(group => ({ ...group, origins: [...group.origins] })),
+    intervals: { unique: baseline.records.size, duplicates: baseline.duplicates, outcomes },
+    outcomes: { kind: 'producer-declared', provenance: baseline.outcomeProvenance, declarations: baseline.outcomeBindings } } };
 }
