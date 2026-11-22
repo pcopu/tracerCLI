@@ -24,6 +24,8 @@ tracer measure check
 
 The required manifest pins the run, application build, probe, tools, exact exports and capture-time source manifest. It preserves tool-hash timing and missing hashes explicitly. The source manifest must come from the recorded build, not a hash of today's files invented after the fact. See [the measured-evidence guide and complete schema](docs/measured.md).
 
+Use `tracer measure gaps --series series.json --reference-root /analysis/latest/source` to compare successive measured batches in one command. See [the measured batch series format](docs/measured.md#compare-several-batches-in-one-command).
+
 An increase means **observed during the whole interval**, not caused by each listed action. Background activity and snapshot work can overlap. Zero deltas are retained but not counted as observed. Only matching instrumented `DA` line records form this denominator; missing lines are unknown. Changed source becomes stale and contributes zero current observations. Import normally rejects stale source; explicit `--allow-stale` preserves a historical interval without rebinding it to changed code. Measured evidence never alters the manual map or its minimum gate.
 
 ## Install

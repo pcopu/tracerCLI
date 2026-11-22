@@ -17,6 +17,8 @@ A range lookup separates observed, unobserved instrumented and unknown physical 
 
 To rank gaps across a reference build in one pass, use `tracer measure gaps --capture-set /external/captures.json --reference-root /external/latest/analysis/source`. Select a capture-set input with a verified, strictly compatible reference dataset. Its DA lines fix the denominator. The report reuses other intervals only where snapshot/current source hashes and the per-file DA line set match. Preserve the distinction between strict reference observations and cross-build source-line presence. Changed or missing current files retain their reference denominator with unavailable observations. Failed-only and unknown-outcome lines are separate from passing lines. See `docs/measured.md` for the JSON range fields and explicit reference exclusions.
 
+For several completed batches, use `measure gaps --series /external/series.json --reference-root /external/latest/analysis/source`. Place the baseline first in the series file, then the succeeding capture sets in execution order. Each report compares to the preceding set. The command reuses verified reads across these comparisons in the invocation. Continue to pair every reported gain with the producing batch's elapsed wall time.
+
 Reuse valid captures before rerunning unchanged scenarios. For unavailable instrumentation, report the missing adapter or build and continue supported work. Tracer supplies lookup and union primitives. A reusable capture-set reduces orchestration work without introducing a scheduler, persistent cache or a forced-path execution mechanism.
 
 ## Run a repeatable capture batch

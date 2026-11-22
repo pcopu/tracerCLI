@@ -4,7 +4,7 @@ import { initialize, runApp } from '../src/project.mjs';
 import { bindProposalRoutes } from '../src/route-bindings.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
-import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, gapsMeasured } from '../src/measured.mjs';
+import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, gapsMeasured, gapsSeries } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
@@ -40,6 +40,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure union --capture-set FILE [--json]
   measure where --source PATH[:RANGE] [--capture-set FILE] [--json]
   measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
+  measure gaps --series FILE --reference-root DIR [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -170,7 +171,7 @@ async function main(args) {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
       report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--capture-set', '--json'], where: ['--source', '--capture-set', '--json'],
-      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--json'] }[mode];
+      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--series', '--json'] }[mode];
     if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file or measure gaps for a reference build.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
@@ -179,7 +180,10 @@ async function main(args) {
       else options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
     }
     if (mode === 'where' && !options['--source']) fail('measure where requires --source.');
-    if (mode === 'gaps' && (!options['--capture-set'] || !options['--reference-root'])) fail('measure gaps requires --capture-set and --reference-root.');
+    if (mode === 'gaps' && options['--series']) {
+      if (options['--capture-set'] || options['--baseline-capture-set']) fail('--series cannot be combined with --capture-set or --baseline-capture-set.');
+      if (!options['--reference-root']) fail('measure gaps --series requires --reference-root.');
+    } else if (mode === 'gaps' && (!options['--capture-set'] || !options['--reference-root'])) fail('measure gaps requires --capture-set and --reference-root.');
     if (mode === 'import' && ['--before', '--after', '--manifest', '--sources'].some(flag => !options[flag])) fail('measure import requires --before, --after, --manifest and --sources.');
     const selectors = ['--source', '--action', '--sequence'].filter(flag => options[flag] !== undefined);
     if (selectors.length > 1) fail('measure report accepts one selector.');
@@ -190,7 +194,10 @@ async function main(args) {
       : mode === 'report' ? reportMeasured(tracer.root, query) : mode === 'union'
         ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'], captureSet: options['--capture-set'] })
         : mode === 'where' ? whereMeasured(tracer.root, { source: options['--source'], captureSet: options['--capture-set'] })
-          : mode === 'gaps' ? gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'] }) : checkMeasured(tracer.root);
+          : mode === 'gaps' ? (options['--series']
+            ? gapsSeries(tracer.root, { referenceRoot: options['--reference-root'], series: options['--series'] })
+            : gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'] }))
+            : checkMeasured(tracer.root);
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
       console.log(result.notice);
@@ -204,6 +211,14 @@ async function main(args) {
         console.log(`Scope ${result.scope.id} (${result.scope.mode}); ${result.intervals.unique} unique intervals, ${result.intervals.duplicates} duplicates.`);
         console.log(`All observed: ${result.allObserved.observedLines}/${result.allObserved.instrumentedLines}; passed-only known: ${result.passedOnlyKnown.observedLines}/${result.passedOnlyKnown.instrumentedLines}; unknown outcomes: ${result.intervals.outcomes.unknown}.`);
       } else if (mode === 'gaps') {
+        if (options['--series']) {
+          for (const report of result.reports) {
+            const { observedLines, instrumentedLines, percent } = report.passedOnlyKnown;
+            const { gainedLines, lostLines, passingLinesWithoutComparableBaseline } = report.comparison;
+            console.log(`${report.captureSet.path} — ${observedLines}/${instrumentedLines} passing lines (${percent.toFixed(2)}%); ${gainedLines} passing line(s) gained, ${lostLines} lost, ${passingLinesWithoutComparableBaseline} without comparable baseline.`);
+          }
+          return;
+        }
         const { allObserved, passedOnlyKnown } = result, gaps = result.files.filter(file => file.passedOnlyKnown.gapLines);
         console.log(`Passing source-line evidence: ${passedOnlyKnown.observedLines}/${passedOnlyKnown.instrumentedLines} (${passedOnlyKnown.percent.toFixed(2)}%); all observed: ${allObserved.observedLines}/${allObserved.instrumentedLines}.`);
         console.log(`${result.files.filter(file => file.status !== 'current').length} stale or unavailable current file(s), ${result.outOfReferenceFiles.length} captured file(s) outside the reference, ${result.intervals.outcomes.unknown} interval(s) with unknown outcomes, ${result.origins.filter(origin => origin.status === 'missing').length} missing dataset(s).`);

@@ -173,3 +173,23 @@ The reference root must be in the current capture set. The baseline may come fro
 In `comparison`, `gainedLines` and `lostLines` are the set differences in known passing observations for comparable files. `passingLinesWithoutComparableBaseline` counts newly measured current files separately when baseline identity is missing or incompatible. A comparable interval with an unknown outcome provides instrumentation identity but no passing credit. `files` ranks changed paths by gains, then losses, then path and includes exact ranges for each category. `baseline` preserves origin hashes, producer identities and outcome bindings. Earlier source changes are not counted as comparable gains and unavailable current files remain visible in the primary gap report.
 
 Adding or dropping an outcome declaration can change gained or lost known-passing lines without a new execution. To measure a batch's contribution, keep the complete baseline captures and declarations frozen, then append only the new captures and their outcomes. Review losses for omitted captures or absent declarations. Pair comparable gains with verified producer elapsed wall time for the same batch. Keep build and preparation time explicit and do not sum jobs that ran in parallel.
+
+### Compare several batches in one command
+
+List the baseline first and the succeeding capture sets in execution order. Paths are relative to the series file and may also be absolute. A series accepts 2–32 capture sets and up to 256 distinct measurement input roots across them. Split larger sequences at a shared checkpoint.
+
+```json
+{
+  "version": 1,
+  "captureSets": ["baseline.json", "batch-one.json", "batch-two.json"]
+}
+```
+
+```sh
+tracer measure gaps --series /analysis/series.json \
+  --reference-root /analysis/latest/analysis/source --json
+```
+
+Each stage compares with the preceding capture set. Keep the same reference root in every set after the baseline. JSON `reports` contains an ordinary gap comparison for each stage in input order. The default text output shows each stage's passing total, comparable gains and losses, and passing lines without a comparable baseline.
+
+Shared manifests, dataset payloads, captured source snapshots, and producer evidence are read once during the invocation. Outcome declarations, compatibility checks, and current checkout source checks still apply to each comparison. A later command verifies the inputs again. The command is read-only and waits for every comparison to validate before printing reports.

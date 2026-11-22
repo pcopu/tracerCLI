@@ -864,3 +864,46 @@ test('measured gaps journey: reject conflicting evidence declarations for the sa
   assert.equal(updatedOutcome.comparison.baseline.intervals.outcomes.unknown, 1);
   assert.equal(updatedOutcome.comparison.gainedLines, 2, 'known-passing evidence can grow with the same recorded interval');
 });
+
+test('measured gaps journey: compare an ordered series using the same verified evidence as separate reports', t => {
+  const first = project(t), added = project(t);
+  const firstID = first.json(...first.args).id;
+  added.manifest.runId = added.manifest.before.runId = added.manifest.after.runId = 'synthetic-run-2';
+  added.put('after.lcov', added.record('DA:1,1\nDA:2,1\nDA:3,9'));
+  added.refresh();
+  const addedID = added.json(...added.args).id;
+  first.put('observed.json', 'Completed synthetic journeys\n');
+  const evidence = { path: '../observed.json', sha256: first.hash('observed.json') };
+  const passed = (id, journey) => ({ id, journey, status: 'passed', evidence });
+  first.jsonFile('stages/first-outcomes.json', { version: 1, intervals: [passed(firstID, 'original')] });
+  first.jsonFile('stages/both-outcomes.json', { version: 1, intervals: [passed(firstID, 'original'), passed(addedID, 'follow-up')] });
+  first.jsonFile('stages/baseline.json', { version: 1, inputRoots: ['..'] });
+  first.jsonFile('stages/first.json', { version: 1, inputRoots: ['..', added.root], outcomes: 'first-outcomes.json' });
+  first.jsonFile('stages/both.json', { version: 1, inputRoots: ['..', added.root, added.root], outcomes: 'both-outcomes.json' });
+  first.jsonFile('stages/series.json', { version: 1, captureSets: ['baseline.json', 'first.json', 'both.json'] });
+
+  const common = ['measure', 'gaps', '--reference-root', '.'];
+  const series = [...common, '--series', 'stages/series.json'];
+  const separate = stage => first.json(...common, '--capture-set', `stages/${stage[1]}.json`, '--baseline-capture-set', `stages/${stage[0]}.json`);
+  const stages = [['baseline', 'first'], ['first', 'both']];
+  const result = first.json(...series);
+  assert.equal(result.kind, 'lcov-reference-gap-series');
+  assert.equal(result.series.sha256, first.hash('stages/series.json'));
+  assert.deepEqual(result.reports, stages.map(separate));
+  assert.deepEqual(result.reports.map(item => item.comparison.gainedLines), [2, 1]);
+  assert.equal(result.reports[1].intervals.duplicates, 1);
+  assert.match(first.run(series).stdout, /first\.json.*2 passing line\(s\) gained/);
+  assert.match(first.run([...series, '--capture-set', 'stages/first.json'], 1).stderr, /series.*cannot be combined/i);
+  first.jsonFile('stages/too-many.json', { version: 1, captureSets: Array(33).fill('first.json') });
+  assert.match(first.run([...common, '--series', 'stages/too-many.json'], 1).stderr, /2-32 capture sets/i);
+
+  added.put('src/app.py', 'Different snapshot bytes\n');
+  const stale = first.json(...series);
+  assert.deepEqual(stale.reports, stages.map(separate));
+  assert.equal(stale.reports[1].comparison.gainedLines, 0, 'A subsequent command must validate changed source bytes');
+  const wrongDigest = { ...passed(addedID, 'follow-up'), evidence: { ...evidence, sha256: sha('Incorrect digest') } };
+  first.jsonFile('stages/both-outcomes.json', { version: 1, intervals: [passed(firstID, 'original'), wrongDigest] });
+  const refused = first.run([...series, '--json'], 1);
+  assert.equal(refused.stdout, '');
+  assert.match(refused.stderr, /outcome evidence digest mismatch/i);
+});

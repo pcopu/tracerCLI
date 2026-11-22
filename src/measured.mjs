@@ -242,19 +242,29 @@ export function checkMeasured(root) {
 }
 
 
-function measuredInputs(root, options, localDefault) {
+function readMeasurementManifest(path, manifests) {
+  let manifest = manifests?.get(path);
+  if (!manifest) {
+    const input = readInput(path);
+    manifest = { sha256: input.sha256, data: JSON.parse(input.content) };
+    manifests?.set(path, manifest);
+  }
+  return manifest;
+}
+
+function measuredInputs(root, options, localDefault, manifests) {
   let { inputRoots, outcomes, scopeMode } = options;
   let captureSet = null;
   if (options.captureSet !== undefined) {
     if (inputRoots !== undefined || outcomes !== undefined || scopeMode !== undefined) fail('--capture-set cannot be combined with --input-root, --outcomes or --scope.');
-    const path = resolve(root, options.captureSet), input = readInput(path), data = JSON.parse(input.content);
+    const path = resolve(root, options.captureSet), { sha256, data } = readMeasurementManifest(path, manifests);
     keys(data, ['version', 'inputRoots', 'outcomes', 'scope'], 'capture set');
     if (data.version !== 1 || !Array.isArray(data.inputRoots) || data.inputRoots.some(path => !text(path))
         || (data.outcomes !== undefined && !text(data.outcomes))) fail('Require capture set version 1, inputRoots and an optional outcomes path.');
     inputRoots = data.inputRoots.map(value => resolve(dirname(path), value));
     outcomes = data.outcomes === undefined ? undefined : resolve(dirname(path), data.outcomes);
     scopeMode = data.scope;
-    captureSet = { path, sha256: input.sha256 };
+    captureSet = { path, sha256 };
   }
   inputRoots ??= localDefault ? [root] : undefined;
   scopeMode ??= 'strict';
@@ -263,18 +273,38 @@ function measuredInputs(root, options, localDefault) {
   return { inputRoots, outcomes, scopeMode, captureSet };
 }
 
-function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainFiles = Boolean(referenceRoot) } = {}) {
-  const { inputRoots, outcomes, scopeMode, captureSet } = measuredInputs(root, options, Boolean(lookupPath));
+function intervalIdentity(interval) {
+  const { id, payloadSha256, ...content } = interval;
+  return { occurrence: intervalId(interval), digest: sha(JSON.stringify(content)) };
+}
+
+function intervalScope(interval, scopes) {
+  const scope = { sourceManifestSha256: interval.manifest.sourceManifestSha256, probeSha256: interval.manifest.probeSha256,
+    buildSha256: interval.manifest.before.buildSha256, toolchainSha256: interval.manifest.before.toolchainSha256,
+    files: interval.files.map(file => ({ path: file.path, sha256: file.sha256, lines: file.rows.map(row => row[0]) }))
+      .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) };
+  const scopeId = sha(JSON.stringify(scope));
+  const seen = scopes?.get(scopeId);
+  if (seen) return seen;
+  const result = { scope, scopeId, sourceLinesId: sha(JSON.stringify(scope.files)) };
+  scopes?.set(scopeId, result);
+  return result;
+}
+
+function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainFiles = Boolean(referenceRoot), shared } = {}) {
+  const { inputRoots, outcomes, scopeMode, captureSet } = measuredInputs(root, options, Boolean(lookupPath), shared?.manifests);
   if (referenceRoot) {
     const index = inputRoots.findIndex(path => realpathSync(resolve(root, path)) === referenceRoot);
     if (index < 0) fail('The reference root must be listed in the capture set.');
     inputRoots.unshift(...inputRoots.splice(index, 1));
   }
   const origins = [], records = new Map(), storedIds = new Map(), provenance = new Map();
-  const snapshots = retainFiles ? new Map() : undefined;
+  const snapshots = retainFiles ? shared?.datasets ?? new Map() : undefined;
   let scope, scopeId, sourceLinesId, duplicates = 0;
   for (const inputRoot of inputRoots) {
-    const store = new MeasuredStore(resolve(root, inputRoot));
+    const path = resolve(root, inputRoot);
+    const store = shared?.stores.get(path) ?? new MeasuredStore(path);
+    shared?.stores.set(path, store);
     const isReference = store.root === referenceRoot;
     if (!existsSync(store.mapPath)) {
       if (isReference) fail('The reference measurement dataset is missing.');
@@ -282,7 +312,11 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
       origins.push({ root: store.root, dataset: store.mapPath, sha256: null, intervals: 0, status: 'missing' }); continue;
     }
     // A repeated root retains origin/duplicate accounting without rereading the dataset.
-    const snapshot = snapshots?.get(store.root) ?? { ...store.readMap({ withHash: true }), checked: new Map() };
+    const reused = snapshots?.get(store.root);
+    if (!reused && shared?.maxDatasets !== undefined && snapshots.size === shared.maxDatasets) {
+      fail(`Gap series exceeds ${shared.maxDatasets} distinct measurement input roots.`);
+    }
+    const snapshot = reused ?? { ...store.readMap({ withHash: true }), checked: new Map() };
     snapshots?.set(store.root, snapshot);
     const { data, datasetSha256, checked } = snapshot;
     if (isReference && !data.intervals.length) fail('The reference measurement dataset must contain at least one interval.');
@@ -304,8 +338,9 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
           snapshotError = checked.get(key);
         } else validFiles?.add(file.path);
       }
-      const occurrence = intervalId(interval), { id, payloadSha256, ...content } = interval;
-      const digest = sha(JSON.stringify(content)), previous = records.get(occurrence);
+      const identity = shared?.intervals.get(interval) ?? intervalIdentity(interval);
+      shared?.intervals.set(interval, identity);
+      const { occurrence, digest } = identity, { id } = interval, previous = records.get(occurrence);
       if (storedIds.has(id) && storedIds.get(id) !== occurrence) fail(`Conflicting duplicate interval: ${id}`);
       storedIds.set(id, occurrence);
       if (previous) {
@@ -317,11 +352,8 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
         duplicates++; continue;
       }
       if (records.size === 10000) fail('Measurement union exceeds 10000 unique intervals.');
-      const currentScope = { sourceManifestSha256: interval.manifest.sourceManifestSha256, probeSha256: interval.manifest.probeSha256,
-        buildSha256: interval.manifest.before.buildSha256, toolchainSha256: interval.manifest.before.toolchainSha256,
-        files: interval.files.map(file => ({ path: file.path, sha256: file.sha256, lines: file.rows.map(row => row[0]) }))
-          .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) };
-      const currentScopeId = sha(JSON.stringify(currentScope)), currentSourceLinesId = sha(JSON.stringify(currentScope.files));
+      const { scope: currentScope, scopeId: currentScopeId, sourceLinesId: currentSourceLinesId } =
+        (identity.scope ??= intervalScope(interval, shared?.scopes));
       if (isReference && scope && scopeId !== currentScopeId) fail('Incompatible strict measurement scope within the reference dataset.');
       if (!lookupPath && !retainFiles && scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
         fail(`Incompatible measurement scope: ${scopeMode === 'strict' ? scopeId : sourceLinesId} versus ${scopeMode === 'strict' ? currentScopeId : currentSourceLinesId}. Report these scopes separately.`);
@@ -347,10 +379,10 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
   const declarations = new Map(), outcomeBindings = [], declaredIds = new Set();
   let outcomeProvenance = null;
   if (outcomes !== undefined) {
-    const path = resolve(root, outcomes), input = readInput(path), data = JSON.parse(input.content);
+    const path = resolve(root, outcomes), { sha256, data } = readMeasurementManifest(path, shared?.manifests);
     keys(data, ['version', 'intervals'], 'union outcomes');
     if (data.version !== 1 || !Array.isArray(data.intervals) || data.intervals.length > 10000) fail('Require outcomes version 1 and at most 10000 interval declarations.');
-    const evidenceFiles = new Map();
+    const evidenceFiles = shared?.evidenceDigests ?? new Map();
     for (const row of data.intervals) {
       keys(row, ['id', 'journey', 'status', 'evidence'], 'interval outcome');
       keys(row.evidence, ['path', 'sha256'], 'outcome evidence');
@@ -365,7 +397,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
       declaredIds.add(row.id); declarations.set(canonicalId, declaration);
       outcomeBindings.push({ id: row.id, canonicalId, ...declaration });
     }
-    outcomeProvenance = { path, sha256: input.sha256 };
+    outcomeProvenance = { path, sha256 };
   }
   for (const record of records.values()) for (const origin of record.origins) provenance.get(record.provenanceId).origins.add(origin);
   return { origins, records, provenance, scope, scopeId, sourceLinesId, duplicates, declarations, outcomeBindings, outcomeProvenance, scopeMode, captureSet };
@@ -494,10 +526,17 @@ function currentSource(store, path) {
   }
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }) {
+function gapSnapshot(maxDatasets) {
+  // Each report validates its own scope and outcome declarations against the
+  // exact dataset, snapshot-source and producer-evidence bytes read once here.
+  return { maxDatasets, stores: new Map(), datasets: new Map(), manifests: new Map(),
+    intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
+}
+
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }, shared = gapSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
-  const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot });
-  const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true });
+  const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
+  const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
   const { files: referenceFiles, ...referenceIdentity } = loaded.scope;
   const store = new MeasuredStore(root), referenceFilesByPath = new Map();
   for (const file of referenceFiles) {
@@ -571,6 +610,19 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
+}
+
+export function gapsSeries(root, { referenceRoot, series }) {
+  const path = resolve(root, series), input = readInput(path), manifest = JSON.parse(input.content);
+  keys(manifest, ['version', 'captureSets'], 'gap series');
+  const sets = manifest.captureSets;
+  if (manifest.version !== 1 || !Array.isArray(sets) || sets.length < 2 || sets.length > 32 || sets.some(set => !text(set))) {
+    fail('Require gap series version 1 and 2-32 capture sets beginning with a baseline.');
+  }
+  const captureSets = sets.map(set => resolve(dirname(path), set)), shared = gapSnapshot(256);
+  const reports = captureSets.slice(1).map((captureSet, index) =>
+    gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet: captureSets[index] }, shared));
+  return { kind: 'lcov-reference-gap-series', notice: MEASURED_NOTICE, series: { path, sha256: input.sha256 }, reports };
 }
 
 function fileEvidenceMismatch(record, captured, reference) {
