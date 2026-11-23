@@ -7,6 +7,36 @@ description: Measure real CLI scenario execution, provisionally bind existing pl
 
 Documentation paths in this skill are relative to the selected trusted Tracer package root, the parent of its `bin` directory. They are not relative to the application being tested or the installed skill directory, which contains only this file. Resolve the selected CLI entrypoint and read that package's matching documentation; do not assume a different globally installed version supports the same commands.
 
+## Match the behavior to a CLI action
+
+Start with what the application does. Trace it from the relevant source range
+to the public command, UI control, runtime registration or external callback
+that reaches it. A user action may reach several shared helpers. Group those
+ranges under the behaviors that reach them. Use the application’s actual CLI
+discovery and capability output to verify action IDs and scopes.
+
+1. For an existing action, find its real scenario selector and run the missing
+   case. Reuse the action for valid inputs, failures and recovery. Use an owned
+   fixture at the genuine dependency boundary to produce realistic responses,
+   timers and state transitions.
+2. When the app has a reachable behavior with a missing CLI action, add a
+   narrowly scoped action that reaches the same production behavior. Add a
+   scenario with a user-visible assertion. Keep separate fixture contexts when
+   they have different preconditions or permissions.
+3. Trace startup through launch, callbacks through the event source that
+   dispatches them, and errors through the operation that produces them. If a
+   runtime path stays unknown, check callers, registrations, platform builds,
+   and external entry points before removing code. Record any specific blocker.
+4. Run real scenarios, then measure. Record unique passing lines added,
+   remaining instrumented gaps, the scoped numerator and denominator, and
+   elapsed wall time. Preserve the source and build identities.
+
+Use `tracer proposal bind --file PROPOSAL --routes CATALOG --json` for the
+read-only match. Add the verified discovery IDs to `actions` in the catalog
+and record `entryPoint` and `actionIds` on the relevant proposal scenarios.
+Read the plan’s `behavior.next` and the shared `behaviorRanges`. The result
+is provisional. Keep it separate from passed scenarios and measured execution.
+
 ## Look up existing execution before adding tests
 
 Before proposing a new test for a requested source range or claiming code is already covered, query the existing real captures with `tracer measure where --capture-set /external/captures.json --source PATH:START-END`. For a whole capture scope, run `tracer measure union --capture-set /external/captures.json --json` first. Use the resulting observations and bound scenario labels to reuse existing execution, then choose supported routes for actual gaps. Prefer the concise plaintext lookup, grouped by journey/outcome with merged ranges and interval counts. Use `--json` for programmatic inspection and keep detailed interval/action payloads in external artifacts instead of dumping them into the conversation. This required lookup adds no manual-link or assertion-review gate and grants no permission to force production branches.
@@ -37,9 +67,9 @@ tracer measure gaps --capture-set /evidence/current.json \
 
 Rank the gained lines from `comparison.files` and investigate lost passing evidence. A new or missing outcome declaration can change those counts without another execution. For a batch's marginal gain, keep the complete baseline evidence and outcomes frozen and append only the new measured captures with their outcomes. Report passing lines without a comparable baseline separately. When elapsed time and interval identities match that recorded batch or serialized candidate, divide comparable gained lines by elapsed wall minutes in the same scope. Use measured gains to choose the next state families. Recompute from the newly retained capture set at the end of each batch.
 
-## Measure existing scenarios first
+## Plan and verify execution
 
-For an execution-coverage task, start with existing runnable scenarios and instrumentation. Reuse source tags, proposals, discovery catalogs and prior captures. New manual links, assertion audits and complete categorization are optional planning work unless the user requested them or an affected contract requires review. They do not gate a legitimate measurement run. Preserve the user's requested metric and agreed denominator.
+After identifying the behavior and checking its CLI actions, reuse existing runnable scenarios and instrumentation. Reuse source tags, proposals, discovery catalogs and prior captures. New manual links, assertion audits and complete categorization are optional planning work unless the user requested them or an affected contract requires review. They do not gate a legitimate measurement run. Preserve the user's requested metric and agreed denominator.
 
 1. Read repository guidance, inspect the trusted configured CLI and discover its exact selectors. Identify available instrumented builds, adapters, provenance and existing measured datasets. Perform the required source lookup or capture-scope union above. Use `tracer measure check --json` and `tracer measure report --json` for individual dataset validation and inspection. Mapping reports can supply context when needed.
 2. Provisionally connect tagged source and planned scenarios to existing routes. Prefer exact plan IDs, source ranges, catalog paths and selector argv. Keep inferred or speculative connections explicitly provisional with their basis, unresolved alternatives and source/discovery hashes. Assertion adequacy can remain unknown. Missing exact bindings should remain visible while supported routes proceed.

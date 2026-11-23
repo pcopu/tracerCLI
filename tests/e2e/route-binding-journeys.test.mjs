@@ -159,3 +159,49 @@ test('route binding public journey accepts an external catalog while enforcing c
   writeFileSync(catalog, Buffer.from([0xff]));
   assert.notEqual(p.run('proposal', 'bind', '--file', 'proposal.json', '--routes', catalog).status, 0);
 });
+
+test('route binding matches reviewed runtime entry points to discovered CLI actions and scenario work', t => {
+  const p = fixture(t), proposal = JSON.parse(p.read('proposal.json'));
+  const entry = { path: 'src/model.mjs', symbol: 'saveProject' };
+  const [shared, also, blocked, unwritten] = proposal.scenarios;
+  Object.assign(shared, { state: 'existing', entryPoint: entry, actionIds: ['open', 'save', 'open'] });
+  Object.assign(also, { entryPoint: entry, actionIds: ['save', 'recover'] });
+  Object.assign(blocked, { entryPoint: entry, actionIds: ['open'] });
+  Object.assign(unwritten, { entryPoint: entry, actionIds: ['save'] });
+  proposal.scenarios.push({ ...unwritten, id: 'needs-condition', state: 'needs-extension', existingPaths: ['tests/a.mjs'] });
+  proposal.scenarios.push({ ...unwritten, id: 'runtime-unknown', entryPoint: undefined });
+  proposal.scenarios.push({ ...unwritten, id: 'cli-unknown', actionIds: undefined });
+  proposal.scenarios.push({ ...shared, id: 'route-found', entryPoint: undefined, actionIds: undefined });
+  proposal.scenarios.push({ ...unwritten, id: 'action-restricted', actionIds: ['require-fixture'] });
+  const actions = [{ id: 'open' }, { id: 'save' }, { id: 'require-fixture', restriction: 'Requires a permitted fixture' }];
+  const catalog = { ...p.routes, actions };
+  p.put('proposal.json', proposal); p.put('routes.json', catalog);
+  const result = p.bind();
+  const behaviors = Object.fromEntries(result.plans.map(({ id, behavior }) => [id, behavior]));
+  assert.deepEqual(Object.entries(behaviors).map(([id, b]) => [id, b.next]), [
+    ['shared', 'action-and-scenario'], ['also', 'needs-cli-action'], ['blocked', 'blocked'],
+    ['unwritten', 'needs-scenario'], ['needs-condition', 'needs-scenario'], ['runtime-unknown', 'review-runtime-path'],
+    ['cli-unknown', 'review-cli-match'], ['route-found', 'review-cli-match'], ['action-restricted', 'blocked']
+  ]);
+  assert.deepEqual(behaviors.shared.actionIds, ['open', 'save', 'open']);
+  assert.deepEqual(behaviors.also.missingActionIds, ['recover']);
+  assert.deepEqual(behaviors.blocked.restrictions, ['Requires permitted new route']);
+  assert.deepEqual(behaviors['action-restricted'].restrictions, ['Requires a permitted fixture']);
+  assert.deepEqual(result.behaviorRanges.map(r => [r.rangeId, r.status, r.planIds]), [
+    ['model-range', 'provisional', ['shared', 'also']]
+  ]);
+  assert.equal(result.bindings.length, 2, 'Action matching preserves deduplicated run selection');
+  p.put('src/model.mjs', '// revised source\n');
+  assert.equal(p.bind().behaviorRanges[0].status, 'stale');
+  for (const mutate of [
+    value => { value.scenarios[0].entryPoint.path = '../bad.mjs'; },
+    value => { value.scenarios[0].actionIds = ['']; },
+    value => { value.scenarios[0].restriction = ''; }
+  ]) {
+    const malformed = structuredClone(proposal); mutate(malformed); p.put('proposal.json', malformed);
+    assert.notEqual(p.run('proposal', 'bind', '--file', 'proposal.json', '--routes', 'routes.json').status, 0);
+  }
+  p.put('proposal.json', proposal);
+  p.put('routes.json', { ...catalog, actions: [...actions, { id: 'save', restriction: 'Conflicting action' }] });
+  assert.notEqual(p.run('proposal', 'bind', '--file', 'proposal.json', '--routes', 'routes.json').status, 0);
+});

@@ -38,7 +38,7 @@ function readRoutes(root, file) {
   const bytes = readFileSync(path);
   if (bytes.length > 32 * 1024 * 1024) fail('Route catalog exceeds 32 MiB.');
   const catalog = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-  object(catalog, ['version', 'routes']);
+  object(catalog, ['version', 'routes'], ['actions']);
   if (catalog.version !== 1) fail('Expected version-1 route catalog.');
   list(catalog.routes, true);
   const ids = new Map(), executions = new Map();
@@ -65,36 +65,82 @@ function readRoutes(root, file) {
     for (const path of route.paths) if (!execution.paths.includes(path)) execution.paths.push(path);
     if (route.restriction && !execution.restrictions.includes(route.restriction)) execution.restrictions.push(route.restriction);
   }
-  return { routesSha256: hash(bytes), executions: [...executions.values()] };
+  let actions;
+  if (Object.hasOwn(catalog, 'actions')) {
+    list(catalog.actions, true);
+    actions = new Map();
+    for (const action of catalog.actions) {
+      object(action, ['id'], ['restriction']);
+      text(action.id);
+      if (Object.hasOwn(action, 'restriction')) text(action.restriction);
+      if (actions.has(action.id)) fail(`Duplicate CLI action id: ${action.id}`);
+      actions.set(action.id, action);
+    }
+  }
+  return { routesSha256: hash(bytes), executions: [...executions.values()], actions };
+}
+
+function sourcePrediction({ row, current, errors }) {
+  return { rangeId: row.rangeId, source: row.source,
+    status: current ? 'provisional' : errors.every(error => error.startsWith('Stale ')) ? 'stale' : 'invalid',
+    scoreEligible: current, issues: [...errors] };
+}
+
+function matchBehavior(plan, actions, candidates) {
+  const hasRoute = candidates.some(binding => binding.selectable);
+  const actionIds = plan.actionIds ?? [];
+  const missingActionIds = actionIds.filter(id => !actions.has(id));
+  const restrictions = [...new Set([
+    plan.restriction, ...actionIds.map(id => actions.get(id)?.restriction),
+    ...(hasRoute ? [] : candidates.flatMap(binding => binding.restrictions))
+  ].filter(Boolean))];
+  let next;
+  if (restrictions.length) next = 'blocked';
+  else if (!plan.entryPoint && !hasRoute) next = 'review-runtime-path';
+  else if (!plan.entryPoint || plan.actionIds === undefined) next = 'review-cli-match';
+  else if (!actionIds.length || missingActionIds.length) next = 'needs-cli-action';
+  else if (!hasRoute || plan.state !== 'existing') next = 'needs-scenario';
+  else next = 'action-and-scenario';
+  return { entryPoint: plan.entryPoint ?? null, actionIds: plan.actionIds ?? null, missingActionIds, restrictions, next };
 }
 
 export function bindProposalRoutes(tracer, file, routesFile) {
   const proposal = readProposal(tracer.root, file, tracer.map);
   const inspected = inspectProposal(tracer.root, proposal.value, tracer.inventory());
   const catalog = readRoutes(tracer.root, routesFile);
-  const bindings = [], plans = [];
+  const bindings = [], plans = [], unmatchedRouteIds = [], byPlan = new Map();
   for (const execution of catalog.executions) {
     const matches = proposal.value.scenarios.map(plan => ({ planId: plan.id, paths: plan.existingPaths.filter(path => execution.paths.includes(path)) }))
       .filter(match => match.paths.length);
-    if (!matches.length) continue;
+    if (!matches.length) {
+      unmatchedRouteIds.push(...execution.routeIds);
+      continue;
+    }
     const planIds = matches.map(match => match.planId);
-    bindings.push({ ...execution, selectable: execution.restrictions.length === 0, status: 'provisional', assertionMatch: 'unknown',
+    const planIdSet = new Set(planIds);
+    const binding = { ...execution, selectable: execution.restrictions.length === 0, status: 'provisional', assertionMatch: 'unknown',
       planIds, matches, basis: 'exact-existing-path', measurementAdapter: 'unknown',
-      predictedSources: inspected.candidates.filter(({ row }) => row.scenarioIds.some(id => planIds.includes(id)))
-        .map(({ row, current, errors }) => ({ rangeId: row.rangeId, source: row.source,
-          status: current ? 'provisional' : errors.every(error => error.startsWith('Stale ')) ? 'stale' : 'invalid',
-          scoreEligible: current, issues: [...errors] })) });
+      predictedSources: inspected.candidates.filter(({ row }) => row.scenarioIds.some(id => planIdSet.has(id)))
+        .map(sourcePrediction) };
+    bindings.push(binding);
+    for (const id of planIds) {
+      if (!byPlan.has(id)) byPlan.set(id, []);
+      byPlan.get(id).push(binding);
+    }
   }
   for (const plan of proposal.value.scenarios) {
-    const candidates = bindings.filter(binding => binding.planIds.includes(plan.id));
+    const candidates = byPlan.get(plan.id) ?? [];
     const matched = new Set(candidates.flatMap(binding => binding.matches.find(match => match.planId === plan.id).paths));
     plans.push({ id: plan.id, state: plan.state, status: candidates.some(binding => binding.selectable) ? 'candidate' : candidates.length ? 'restricted' : 'unmatched',
-      routeIds: candidates.flatMap(binding => binding.routeIds), unmatchedPaths: plan.existingPaths.filter(path => !matched.has(path)) });
+      routeIds: candidates.flatMap(binding => binding.routeIds), unmatchedPaths: plan.existingPaths.filter(path => !matched.has(path)),
+      ...(catalog.actions && { behavior: matchBehavior(plan, catalog.actions, candidates) }) });
   }
   return { version: 1, kind: 'provisional-plan-route-bindings', status: 'provisional', assertionMatch: 'unknown',
     notice: 'Exact path joins only. Source predictions and route candidates are provisional. No route is executed, assertion matched, manual link promoted or coverage observed.',
     proposalSha256: proposal.proposalSha256, routesSha256: catalog.routesSha256,
     proposalValidation: { valid: inspected.issues.length === 0, issues: inspected.issues }, bindings, plans,
-    unmatchedRouteIds: catalog.executions.filter(execution => !bindings.some(binding => JSON.stringify(binding.argv) === JSON.stringify(execution.argv)))
-      .flatMap(execution => execution.routeIds) };
+    ...(catalog.actions && { behaviorRanges: inspected.candidates.map(candidate => ({
+      ...sourcePrediction(candidate), featureId: candidate.row.featureId, planIds: candidate.row.scenarioIds
+    })) }),
+    unmatchedRouteIds };
 }

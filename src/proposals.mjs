@@ -59,6 +59,14 @@ export function inspectProposal(root, value, state, { prepare = false } = {}) {
     strings(scenario.existingPaths, 'existing paths', true); strings(scenario.plannedActions, 'planned actions'); strings(scenario.expectedOutcomes, 'expected outcomes');
     if (scenario.state === 'unwritten' && scenario.existingPaths.length) fail(`Unwritten proposal cannot claim existing test files: ${scenario.id}`);
     for (const path of scenario.existingPaths) filePath(root, path);
+    if (Object.hasOwn(scenario, 'entryPoint')) {
+      const entry = scenario.entryPoint;
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)
+          || Object.keys(entry).length !== 2 || !Object.hasOwn(entry, 'path') || !Object.hasOwn(entry, 'symbol')) fail('Invalid proposal runtime entry point.');
+      filePath(root, entry.path); text(entry.symbol, 'runtime entry point symbol');
+    }
+    if (Object.hasOwn(scenario, 'actionIds')) strings(scenario.actionIds, 'action ids', true);
+    if (Object.hasOwn(scenario, 'restriction')) text(scenario.restriction, 'restriction');
     scenarios.set(scenario.id, scenario);
   }
   for (const [index, row] of value.associations.entries()) {

@@ -48,3 +48,44 @@ Bindings deduplicate complete ordered argv arrays while retaining advertised `ro
 Each binding includes proposed source ranges referenced by its plans. These `predictedSources` retain their source pins and range IDs. Current predictions have provisional status. Stale pins produce stale status, while missing source, invalid pins, overlapping associations or out-of-bounds ranges produce invalid status. Each prediction includes its validation issues and `scoreEligible`. Only current predictions are eligible for a source-prediction score. Top-level `proposalValidation` reports all source issues, while exact-path binding continues for structurally valid plans. The command preserves original proposal bytes and hashes throughout. `measurementAdapter` remains unknown because the generic catalog has no verified instrumentation configuration. An actual execution must separately select the appropriate build, source identity, fixture configuration and measurement adapter.
 
 The command neither executes catalog argv nor discovers the configured app. It writes no proposal, reviewed map, assertion result or measurement dataset. A successful exact-path join establishes a candidate route. Assertion adequacy, observed execution and measured coverage require their own evidence.
+
+## Match a behavior to its CLI actions
+
+Use the application’s current action discovery or capability report to add
+`actions` to the route catalog. Each record has an exact string `id` and an
+optional `restriction`. Use the identifiers the application actually exposes.
+An action ID can identify a documented command scope. Duplicate IDs are errors.
+
+For a behavior you have traced in source, add these optional fields to its
+proposal scenario:
+
+```json
+{
+  "entryPoint": { "path": "src/project.mjs", "symbol": "save" },
+  "actionIds": ["open-project", "save-project"]
+}
+```
+
+The entry point names a real runtime caller, registration or callback. Its
+path is validated. Its connection to the assessed behavior requires source
+review. Keep `actionIds` ordered, including repeated actions. An empty array
+records an explicitly missing CLI route. Omit the field when the match still
+needs review. A proposal scenario may supply a `restriction` with its reason.
+
+With an `actions` catalog, each plan has a `behavior.next` result.
+
+| Result | Meaning |
+| --- | --- |
+| `action-and-scenario` | All required action IDs were discovered and an existing scenario has a selectable path match. |
+| `needs-scenario` | The actions exist. Add a scenario or extend it with the required condition. |
+| `needs-cli-action` | The entry point is recorded and a required action is absent from this discovery. |
+| `review-cli-match` | An entry point or selectable scenario is known. Check that the CLI reaches the recorded behavior. |
+| `review-runtime-path` | Start by tracing the behavior to a runtime entry point. Check all supported builds before removing unreachable code. |
+| `blocked` | The plan, a required action or all matching scenario routes have a recorded restriction. |
+
+`behaviorRanges` lists each proposed source range once with every referring
+plan ID. Stale pins remain visible. A CLI action's presence establishes a
+candidate for the recorded discovery context, and a scenario path match still
+requires source review and observed execution. Use `tracer app --` to run
+approved scenario selectors. Compare later captures with `measure gaps` and
+report each batch’s unique passing lines added, remaining gaps and wall time.
