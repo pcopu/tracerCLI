@@ -1020,14 +1020,43 @@ function nativeBatchReceipt(path) {
   const start = Date.parse(receipt.startedAt), end = Date.parse(receipt.endedAt);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) fail('Invalid native batch receipt elapsed time.');
 
+  const selections = receipt.selection.cases;
+  const multiCase = selections !== undefined;
+  if (multiCase && (receipt.selection.mode !== 'subset' || receipt.selection.group !== undefined
+      || !Array.isArray(selections) || !selections.length || selections.length !== scenarioRows.length
+      || receipt.selection.selectedScenarioCount !== selections.length || !text(coverage.invocationID))) {
+    fail('Invalid native batch case selection.');
+  }
+  const caseKey = ({ scenario, group }) => scenario + (group ? `#${group}` : '');
   const scenarioOutcome = new Map();
-  for (const row of scenarioRows) {
+  let priorEnd = start;
+  for (const [index, row] of scenarioRows.entries()) {
     if (typeof row?.scenario !== 'string' || !/^tests\/e2e\/(?:journeys\/)?[A-Za-z0-9_-]+\.mjs$/.test(row.scenario)
-        || scenarioOutcome.has(row.scenario) || row.group !== receipt.selection.group
+        || scenarioOutcome.has(caseKey(row)) || (!multiCase && row.group !== receipt.selection.group)
         || (row.group !== undefined && (typeof row.group !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(row.group)))) {
       fail('Invalid native batch scenario identity or group.');
     }
-    scenarioOutcome.set(row.scenario, row.status);
+    let elapsedSeconds = null;
+    if (multiCase) {
+      const selected = selections[index];
+      keys(selected, ['scenario', 'group'], 'native batch case selection');
+      if (row.scenario !== selected.scenario || row.group !== selected.group
+          || !['passed', 'failed', 'not-run'].includes(row.status) || (receipt.status === 'passed' && row.status !== 'passed')) {
+        fail('Native batch case selection disagrees with scenario results.');
+      }
+      if (row.status === 'not-run') {
+        if (row.startedAt || row.endedAt) fail('An unstarted native batch case has elapsed time.');
+      } else {
+        const caseStart = Date.parse(row.startedAt), caseEnd = Date.parse(row.endedAt);
+        if (!Number.isFinite(caseStart) || !Number.isFinite(caseEnd) || caseStart < priorEnd || caseEnd < caseStart || caseEnd > end) {
+          fail('Invalid native batch case elapsed time.');
+        }
+        priorEnd = caseEnd;
+        elapsedSeconds = (caseEnd - caseStart) / 1000;
+      }
+    }
+    const { scenario, group, status } = row;
+    scenarioOutcome.set(caseKey(row), { scenario, ...(group && { group }), status, elapsedSeconds, intervals: 0 });
   }
   if (realpathSync(root) !== root) fail('Native batch analysis root must be unsymlinked.');
   const store = new MeasuredStore(root), dataset = store.readMap({ withHash: true });
@@ -1037,21 +1066,38 @@ function nativeBatchReceipt(path) {
   for (const row of coverage.intervals) {
     if (typeof row?.runID !== 'string' || !/^[a-zA-Z0-9-]{1,200}$/.test(row.runID)
         || row.status !== 'imported' || row.imported !== true) fail('Invalid native batch interval import.');
-    const status = scenarioOutcome.get(row.scenario);
-    if (row.group !== receipt.selection.group || !['passed', 'failed'].includes(status) || row.scenarioStatus !== status
-        || (receipt.status === 'passed' && status !== 'passed')) fail('Native batch interval and scenario outcome disagree.');
-    const importReceipt = join(directory, 'coverage', 'sessions', row.runID, 'import.json');
-    const { id } = JSON.parse(readInput(importReceipt).content), manifest = imported.get(id)?.manifest;
+    const selected = scenarioOutcome.get(caseKey(row)), status = selected?.status;
+    if (!['passed', 'failed'].includes(status) || row.scenario !== selected.scenario || row.group !== selected.group
+        || row.scenarioStatus !== status || (receipt.status === 'passed' && status !== 'passed')) {
+      fail('Native batch interval and scenario outcome disagree.');
+    }
+    const sessionRoot = join(directory, 'coverage', 'sessions', row.runID);
+    if (multiCase) {
+      const session = JSON.parse(readInput(join(sessionRoot, 'session.json')).content);
+      if (session?.version !== 1 || session.kind !== 'scriv-session-coverage' || session.status !== 'captured'
+          || session.invocationID !== coverage.invocationID || session.runID !== row.runID
+          || session.scenario !== row.scenario || session.group !== row.group
+          || session.executableSHA256 !== receipt.app.executableSHA256 || session.executableUnchanged !== true
+          || session.probeSHA256 !== coverage.probeSHA256 || session.sourceManifestSHA256 !== coverage.sourceManifestSHA256) {
+        fail('Native batch session does not bind to the selected case.');
+      }
+    }
+    const { id } = JSON.parse(readInput(join(sessionRoot, 'import.json')).content), manifest = imported.get(id)?.manifest;
     if (!manifest || manifest.runId !== row.runID || manifest.before.buildSha256 !== receipt.app.executableSHA256
         || manifest.probeSha256 !== coverage.probeSHA256 || manifest.sourceManifestSha256 !== coverage.sourceManifestSHA256) {
       fail('Native batch import receipt does not bind to the measured run, build, probe and source.');
     }
     imported.delete(id);
-    outcomes.push({ id, journey: row.scenario + (row.group ? `#${row.group}` : ''), status, evidence: { path, sha256 } });
+    selected.intervals++;
+    outcomes.push({ id, journey: caseKey(row), status, evidence: { path, sha256 } });
+  }
+  const cases = multiCase ? [...scenarioOutcome.values()] : undefined;
+  if (cases?.some(row => row.status !== 'not-run' && row.intervals === 0)) {
+    fail('A completed native batch case has no imported sessions.');
   }
   const sourceRoots = [coverage.sourceProvenance?.buildSourceRoot, coverage.sourceProvenance?.journeySourceRoot].filter(text);
   return { root, sourceRoots, outcomes, path, sha256, status: receipt.status, elapsedSeconds: (end - start) / 1000,
-    datasetSha256: dataset.datasetSha256 };
+    datasetSha256: dataset.datasetSha256, cases };
 }
 
 export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenceRoot, baselineReferenceRoot, output }) {
@@ -1090,7 +1136,8 @@ export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenc
     report.outcomes.provenance.path = join(destination, 'outcomes.json');
     const result = { kind: 'native-measurement-batch', version: 1, output: destination, captureSet: report.captureSet.path,
       passedOnlyKnown: report.passedOnlyKnown, comparison: report.comparison,
-      receipts: receipts.map(({ path, sha256, status, elapsedSeconds, outcomes }) => ({ path, sha256, status, elapsedSeconds, intervals: outcomes.length })) };
+      receipts: receipts.map(({ path, sha256, status, elapsedSeconds, outcomes, cases }) => ({ path, sha256, status, elapsedSeconds,
+        intervals: outcomes.length, ...(cases && { cases }) })) };
     write('report.json', report);
     write('batch.json', result);
     if (existsSync(destination)) fail('Native batch output already exists.');

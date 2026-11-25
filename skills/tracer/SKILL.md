@@ -185,6 +185,14 @@ Reuse valid captures before rerunning unchanged scenarios. For unavailable instr
 
 ## Run a repeatable capture batch
 
+When several selected Scriv routes use the same signed build and capture
+options, pass each as `--case ID#GROUP` or `--case ID` to one `tracer app --
+test` invocation. Use the exact scenario IDs and named groups from
+`--list`. Cases run in argument order with separate app sessions and a
+shared pinned capture. Use a separate run for a different capture mode or
+different inputs. A grouped receipt includes the exact case and its elapsed
+time. The capture set counts overlapping observed lines once.
+
 After a Scriv run completes and imports coverage, use `tracer measure batch
 --baseline-capture-set BASELINE --receipt EVIDENCE --reference-root REFERENCE
 --output NEW_DIR`. This validates the receipt, reports passing gains and losses,

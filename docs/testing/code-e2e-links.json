@@ -165,8 +165,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1710,
-        "end": 1771,
+        "start": 1746,
+        "end": 1807,
         "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
@@ -763,8 +763,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1723,
-        "end": 1771,
+        "start": 1759,
+        "end": 1807,
         "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
@@ -1225,8 +1225,8 @@
       "source": {
         "path": "src/measured.mjs",
         "start": 1006,
-        "end": 1055,
-        "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
+        "end": 1101,
+        "sha256": "fa57e17dd619325e0d28fcd5cd3b9912cf0b488b0ea8bd552ca170c3e4262520"
       },
       "actions": [
         "import native coverage and run measure batch with its completed Scriv receipt",
@@ -2028,9 +2028,9 @@
       "id": "30bea507a9bd7019",
       "source": {
         "path": "src/measured.mjs",
-        "start": 1057,
-        "end": 1098,
-        "sha256": "4018698287834fa06ccac88bc8a8f0895b24e8f31c14611ecba392e36b231932"
+        "start": 1103,
+        "end": 1145,
+        "sha256": "d66f8429e6b39019b8b8876c69c06be4a15167c26ee60fe6d9a9a5ae338702d9"
       },
       "actions": [
         "run measure batch and replay the generated capture set through measure gaps",
@@ -3851,8 +3851,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1651,
-        "end": 1686,
+        "start": 1687,
+        "end": 1722,
         "sha256": "123b29a3a9fa39219a538ce2bb919b40ff8af861a3afd41acc39b65f46420345"
       },
       "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
@@ -9610,8 +9610,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1740,
-        "end": 1766,
+        "start": 1776,
+        "end": 1802,
         "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
@@ -10891,8 +10891,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1651,
-        "end": 1669,
+        "start": 1687,
+        "end": 1705,
         "sha256": "2cc3ad0c625d44acebfb42ff87b06cd8603382625a3262b284a1e16f2f6d9fed"
       },
       "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
@@ -11507,6 +11507,25 @@
         "sha256": "70e6db2b2fd7bd078077ce3c0ec0189900d87a42a5c5e1d666af79932a23fed2"
       },
       "why": "Source-first review identifies available semantic commands and exact completed target fingerprints from passing intervals. Reusing a returned fingerprint finds the same dispatch window, while a foreign window or failed interval supplies no focused credit."
+    },
+    {
+      "id": "da4d027b12684c7b",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 1023,
+        "end": 1083,
+        "sha256": "a46529c371438473231ec00962e301b449787e2df5f6eae9f94a53c42b6e65f9"
+      },
+      "actions": [
+        "tracer measure batch with two ordered groups in one native receipt"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1621,
+        "end": 1654,
+        "sha256": "dc9db099e0b0ed269ef8e46a635ad95891c95fbaf5c05206e584cedc4e5f3fd9"
+      },
+      "why": "The same discovered script can run separate cases. The reducer verifies the exact group for every session, reports elapsed time, rejects swapped groups and counts overlapping source observations once."
     }
   ],
   "ignoredSources": [

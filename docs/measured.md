@@ -240,4 +240,8 @@ The output contains `captures.json` and `outcomes.json` for subsequent
 worklists or batches. `report.json` has the same format and contents as the
 reference gap comparison against the baseline, including gained and lost line
 ranges. `batch.json` summarizes the comparison and records each receipt's
-elapsed time and digest. For a new destination, invalid input leaves the output absent.
+elapsed time and digest. A Scriv receipt captured with repeatable `--case
+ID[#GROUP]` selectors also records the outcome, session count and elapsed
+time of each case in execution order. Tracer binds each imported session to
+its exact case. A line observed by several cases contributes once to the
+passing union. For a new destination, invalid input leaves the output absent.

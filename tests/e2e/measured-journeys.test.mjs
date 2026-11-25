@@ -1617,6 +1617,42 @@ test('native batch builds a reusable capture set from a verified Scriv receipt',
   base.run([...args, '--output', join(run.root, analysis, 'new-batch'), '--json'], 1);
   assert.equal(existsSync(rejected), false);
   assert.equal(existsSync(join(run.root, analysis, 'new-batch')), false);
+
+  const secondID = '872cb0cb-6ad7-4da1-8ef9-03e037befdf3', secondGroup = 'missing-history';
+  run.manifest.runId = run.manifest.before.runId = run.manifest.after.runId = secondID;
+  run.refresh();
+  const secondImport = run.json(...run.args);
+  run.put(`${analysis}/${dataPath}`, readFileSync(join(run.root, dataPath)));
+  run.jsonFile(`coverage/sessions/${secondID}/import.json`, secondImport);
+  const cases = [{ scenario, group }, { scenario, group: secondGroup }];
+  receipt.status = 'passed';
+  receipt.selection = { mode: 'subset', availableScenarioCount: 1, selectedScenarioCount: 2, cases };
+  receipt.scenarios = cases.map((row, index) => ({ ...row, status: 'passed',
+    startedAt: `2026-11-25T00:00:0${index * 2}.000Z`, endedAt: `2026-11-25T00:00:0${index * 2 + 1}.000Z` }));
+  receipt.coverage.invocationID = '7d8c88ef-6fd9-435c-8568-4c1c1afa08ba';
+  receipt.coverage.imported = 2;
+  receipt.coverage.intervals = cases.map((row, index) => ({ ...row, runID: [runID, secondID][index],
+    scenarioStatus: 'passed', status: 'imported', imported: true }));
+  for (const row of receipt.coverage.intervals) run.jsonFile(`coverage/sessions/${row.runID}/session.json`, {
+    version: 1, kind: 'scriv-session-coverage', status: 'captured', invocationID: receipt.coverage.invocationID,
+    runID: row.runID, scenario: row.scenario, group: row.group, probeSHA256: receipt.coverage.probeSHA256,
+    executableSHA256: receipt.app.executableSHA256, executableUnchanged: true, sourceManifestSHA256: receipt.coverage.sourceManifestSHA256,
+  });
+  run.jsonFile('evidence.json', receipt);
+  const groupedOutput = join(run.root, 'grouped-cases');
+  const batch = base.json(...args, '--output', groupedOutput);
+  assert.equal(batch.comparison.gainedLines, 1, 'Two cases that reach the same new line count it once');
+  assert.deepEqual(batch.receipts[0].cases, cases.map(row => ({ ...row, status: 'passed', elapsedSeconds: 1, intervals: 1 })));
+  const grouped = JSON.parse(readFileSync(join(groupedOutput, 'report.json')));
+  assert.equal(grouped.outcomes.declarations.find(row => row.id === secondImport.id).journey, `${scenario}#${secondGroup}`);
+  receipt.coverage.intervals[0].group = secondGroup;
+  run.jsonFile('evidence.json', receipt);
+  assert.match(base.run([...args, '--output', rejected, '--json'], 1).stderr, /session.*case/i);
+  assert.equal(existsSync(rejected), false);
+  receipt.coverage.intervals[0].group = group;
+  receipt.selection.cases.reverse();
+  run.jsonFile('evidence.json', receipt);
+  assert.match(base.run([...args, '--output', rejected, '--json'], 1).stderr, /case selection/i);
 });
 
 test('combined worklist respects current reviewed dispositions without hiding shared or stale gaps', t => {
