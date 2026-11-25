@@ -544,7 +544,30 @@ function measurementSnapshot(maxDatasets) {
     missingDatasets: new Set(), intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }, shared = measurementSnapshot()) {
+// Matching both anchors in one interval keeps these suggestions separate from
+// any union of unrelated executions. The intervening lines stay uncovered.
+function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath) {
+  const examples = [];
+  for (const { path, passedOnlyKnown } of files) {
+    const passing = recordsByFile.get(path);
+    if (!passing?.length || !passedOnlyKnown.gapRanges.length) continue;
+    const { lines } = referenceFilesByPath.get(path).file;
+    const index = new Map(lines.map((line, i) => [line, i]));
+    for (const range of passedOnlyKnown.gapRanges) {
+      const left = index.get(range[0]) - 1, right = index.get(range[1]) + 1;
+      if (left < 0 || right >= lines.length) continue;
+      const found = new Set();
+      for (const { journey, intervalId, rows } of passing) {
+        if (found.has(journey) || rows[left][2] <= rows[left][1] || rows[right][2] <= rows[right][1]) continue;
+        found.add(journey);
+        examples.push({ path, range, observedAround: [lines[left], lines[right]], intervalId, journey });
+      }
+    }
+  }
+  return examples;
+}
+
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
@@ -556,9 +579,10 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
       observed: { passed: new Set(), failed: new Set(), unknown: new Set() }, referencePassing: new Set(), incompatible: new Map() });
   }
 
-  const outcomeCounts = { passed: 0, failed: 0, unknown: 0 }, outOfReference = new Map();
+  const outcomeCounts = { passed: 0, failed: 0, unknown: 0 }, outOfReference = new Map(), extensionRecords = new Map();
   for (const record of loaded.records.values()) {
-    const outcome = loaded.declarations.get(record.id)?.status ?? 'unknown';
+    const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
+    const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
     for (const captured of record.captureFiles) {
@@ -575,6 +599,10 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         entry.intervals++; target.incompatible.set(key, entry); continue;
       }
       if (!target.comparable) continue;
+      if (extensionJourney) {
+        if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
+        extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id, rows: captured.rows });
+      }
       for (const [line, before, after] of captured.rows) {
         if (after <= before) continue;
         target.observed[outcome].add(line);
@@ -620,6 +648,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     allObserved: totals(files.reduce((sum, file) => sum + file.observedLines, 0)),
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
+    ...(extensionJourneys?.size && { surroundingIntervals: surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath) }),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
 }
 

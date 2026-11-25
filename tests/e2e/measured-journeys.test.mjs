@@ -1026,3 +1026,48 @@ test('direct coverage worklist reuses current witnessed links without preparing 
   assert.equal(f.hash('docs/testing/code-e2e-links.json'), mapHash);
   assert.equal(existsSync(join(f.root, 'DIRECT_WORKLIST_RAN_APP')), false);
 });
+
+test('direct worklist finds scenario extension leads from one passing interval around the same gap', t => {
+  const f = project(t);
+  const capture = (runId, journey, values, status = 'passed') => {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
+    f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0\nDA:4,0'));
+    f.put('after.lcov', f.record(values.map((value, i) => `DA:${i + 1},${value}`).join('\n')));
+    f.refresh();
+    const { id } = f.json(...f.args);
+    const path = `${status}.json`;
+    f.jsonFile(path, { status });
+    return { id, journey, status, evidence: { path, sha256: f.hash(path) } };
+  };
+  const intervals = [capture('near', 'same-interval', [1, 0, 1, 0]),
+    capture('left', 'split-intervals', [1, 0, 0, 0]), capture('right', 'split-intervals', [0, 0, 1, 0]),
+    capture('failed-near', 'failed-interval', [1, 0, 1, 0], 'failed'),
+    capture('shared-near', 'second-matching-interval', [1, 0, 1, 0])];
+  f.jsonFile('outcomes.json', { version: 1, intervals });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.put('tests/cases.mjs', '// Both scenarios share one file.\n');
+  const route = (id, journey, argv = ['test', '--group', id]) => ({ id, journeys: [journey], argv, paths: ['tests/cases.mjs'] });
+  f.jsonFile('routes.json', { version: 1, routes: [route('extend', 'same-interval'), route('split', 'split-intervals'), route('failed', 'failed-interval')] });
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const report = f.json(...args);
+  assert.equal(report.coverage.passedOnlyKnown.gapLines, 2);
+  assert.equal(report.linkedGapLines, 0);
+  assert.equal(report.unassigned.gapLines, 2, 'A neighboring observation does not assign a range or cover it');
+  assert.equal(report.extensionCandidates.gapLines, 1);
+  assert.deepEqual(report.extensionCandidates.items, [{ routeIds: ['extend'], argv: ['test', '--group', 'extend'],
+    restrictions: [], gapLines: 1, exclusiveGapLines: 1, sources: [{ path: 'src/app.py', gapLines: 1, gapRanges: [[2, 2]] }],
+    examples: [{ path: 'src/app.py', range: [2, 2], observedAround: [1, 3], intervalId: intervals[0].id, journey: 'same-interval' }] }]);
+  const routes = [route('extend', 'same-interval'), route('restricted-alias', 'same-interval', ['test', '--group', 'extend'])];
+  routes[1].restriction = 'Requires an authorized device';
+  f.jsonFile('routes.json', { version: 1, routes });
+  assert.deepEqual(f.json(...args).extensionCandidates.items[0].restrictions, ['Requires an authorized device']);
+  routes.push(route('also-extend', 'second-matching-interval'));
+  f.jsonFile('routes.json', { version: 1, routes });
+  const shared = f.json(...args).extensionCandidates;
+  assert.equal(shared.gapLines, 1);
+  assert.equal(shared.exclusiveGapLines, 0);
+  assert.deepEqual(shared.items.map(row => row.exclusiveGapLines), [0, 0]);
+  routes.push(route('other', 'same-interval'));
+  f.jsonFile('routes.json', { version: 1, routes });
+  assert.match(f.run([...args, '--json'], 1).stderr, /Ambiguous.*journey/i);
+});

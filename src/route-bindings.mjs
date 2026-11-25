@@ -41,9 +41,9 @@ export function readRoutes(root, file) {
   object(catalog, ['version', 'routes'], ['actions']);
   if (catalog.version !== 1) fail('Expected version-1 route catalog.');
   list(catalog.routes, true);
-  const ids = new Map(), executions = new Map();
+  const ids = new Map(), executions = new Map(), journeys = new Map();
   for (const route of catalog.routes) {
-    object(route, ['id', 'paths', 'argv'], ['restriction']);
+    object(route, ['id', 'paths', 'argv'], ['restriction', 'journeys']);
     if (typeof route.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_/-]{0,255}$/.test(route.id)) fail('Invalid route id.');
     list(route.paths); list(route.argv);
     for (const path of route.paths) regularFile(root, path);
@@ -64,6 +64,14 @@ export function readRoutes(root, file) {
     if (!execution.routeIds.includes(route.id)) execution.routeIds.push(route.id);
     for (const path of route.paths) if (!execution.paths.includes(path)) execution.paths.push(path);
     if (route.restriction && !execution.restrictions.includes(route.restriction)) execution.restrictions.push(route.restriction);
+    if (Object.hasOwn(route, 'journeys')) {
+      list(route.journeys);
+      for (const journey of route.journeys) {
+        text(journey);
+        if (journeys.has(journey) && journeys.get(journey) !== execution) fail(`Ambiguous recorded journey: ${journey}`);
+        journeys.set(journey, execution);
+      }
+    }
   }
   let actions;
   if (Object.hasOwn(catalog, 'actions')) {
@@ -77,7 +85,7 @@ export function readRoutes(root, file) {
       actions.set(action.id, action);
     }
   }
-  return { routesSha256: hash(bytes), executions: [...executions.values()], actions };
+  return { routesSha256: hash(bytes), executions: [...executions.values()], actions, journeys };
 }
 
 function sourcePrediction({ row, current, errors }) {

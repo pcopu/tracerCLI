@@ -141,3 +141,17 @@ already reach them. A stale link or a witness without a discovered selector
 cannot supply a match. Missing mapping data leaves the full gaps visible.
 Use `proposal worklist` when you already have focused behavior plans to rank.
 Both commands are read-only and use the same measured denominator.
+
+For coverage worklists, a route can also declare `journeys`, the exact
+producer-declared journey labels from the capture set's outcome file. Use the
+label for the specific scenario group. Aliases with identical arguments can
+share a label. Tracer rejects a label tied to different argument lists.
+
+With these labels, `extensionCandidates` ranks selectors that have a passing
+interval with counter increases on both neighboring instrumented lines of an
+unassigned gap. Each example includes its interval ID, journey label and anchor
+lines. This locates an existing fixture and scenario to inspect when adding a
+condition. Treat the intervening gap as uncovered. Restrictions still apply.
+The overall total counts each shared gap once. `exclusiveGapLines` counts
+gaps with one candidate selector and sorts those selectors first. The report
+keeps the gap in `unassigned` until it has a current witness.

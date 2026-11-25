@@ -44,9 +44,41 @@ function remainingGaps(current, assigned) {
 
 const fileSummary = (rows, limit) => ({ files: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) });
 
+function extensionCandidates(surroundingIntervals, journeys, current, assigned, limit) {
+  const byGap = new Map(), byExecution = new Map();
+  for (const example of surroundingIntervals) {
+    const { path, range, journey } = example, key = JSON.stringify([path, range]);
+    if (!byGap.has(key)) byGap.set(key, { path, range, executions: new Map() });
+    const executions = byGap.get(key).executions, execution = journeys.get(journey);
+    if (!executions.has(execution)) executions.set(execution, example);
+  }
+
+  let gapLines = 0, exclusiveGapLines = 0;
+  for (const { path, range: [start, end], executions } of byGap.values()) {
+    const lines = current.get(path).lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line));
+    if (!lines.length) continue;
+    gapLines += lines.length;
+    const exclusive = executions.size === 1;
+    if (exclusive) exclusiveGapLines += lines.length;
+    for (const [execution, example] of executions) {
+      if (!byExecution.has(execution)) byExecution.set(execution, { files: new Map(), exclusiveGapLines: 0, exclusiveExamples: [], sharedExamples: [] });
+      const candidate = byExecution.get(execution);
+      addLines(candidate.files, path, lines);
+      if (exclusive) candidate.exclusiveGapLines += lines.length;
+      const examples = exclusive ? candidate.exclusiveExamples : candidate.sharedExamples;
+      if (examples.length < 3) examples.push(example);
+    }
+  }
+  const rows = [...byExecution].map(([{ routeIds, argv, restrictions }, candidate]) => ({ routeIds, argv, restrictions,
+    ...summarize(candidate.files), exclusiveGapLines: candidate.exclusiveGapLines,
+    examples: candidate.exclusiveExamples.concat(candidate.sharedExamples).slice(0, 3) }));
+  rows.sort((a, b) => b.exclusiveGapLines - a.exclusiveGapLines || b.gapLines - a.gapLines || a.routeIds[0].localeCompare(b.routeIds[0]));
+  return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
+}
+
 function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }) {
   const catalog = readRoutes(tracer.root, routesFile);
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot });
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, extensionJourneys: catalog.journeys });
   const { current, unavailable } = gapFiles(measured);
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
@@ -98,6 +130,7 @@ function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }
     limit, linkedGapLines: [...assigned.values()].reduce((sum, lines) => sum + lines.size, 0),
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
+    ...(measured.surroundingIntervals && { extensionCandidates: extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, limit) }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 

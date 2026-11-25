@@ -1267,8 +1267,8 @@
       "id": "1deecddecf1f8cc3",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 112,
-        "end": 123,
+        "start": 120,
+        "end": 131,
         "sha256": "f901448b62f73b4f107c03320d0028420722e5e94eab15ae1fcbbd1b5924b9be"
       },
       "actions": [
@@ -2332,8 +2332,8 @@
       "id": "38d9581a3f833c40",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 83,
-        "end": 86,
+        "start": 91,
+        "end": 94,
         "sha256": "7459d4dedcaaa7b37af4fdfd3c5d72bdfc05d1048b34ba64ded86c843ed8f25d"
       },
       "actions": [
@@ -10779,8 +10779,8 @@
       "id": "7b89b1b6532597ab",
       "source": {
         "path": "src/measured.mjs",
-        "start": 626,
-        "end": 636,
+        "start": 655,
+        "end": 665,
         "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
       },
       "actions": [
@@ -10836,8 +10836,8 @@
       "id": "33579cb5158f24cd",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 89,
-        "end": 105,
+        "start": 97,
+        "end": 113,
         "sha256": "a6cd5fef39183834de211b5d2d917b4b02685d45408d9370c3b131887c29646e"
       },
       "actions": [
@@ -10855,8 +10855,8 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 112,
-        "end": 158,
+        "start": 145,
+        "end": 191,
         "sha256": "0b98e22aa2d38f3d8449d70323937d7b5e7c4306ba760f7088dd7a96aa8ee28c"
       },
       "actions": [
@@ -10875,8 +10875,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 160,
-        "end": 170,
+        "start": 193,
+        "end": 203,
         "sha256": "da21ddb1d6a87fb9a30983eb159e98cdb26d5ccc6813c20751369d9b240cf390"
       },
       "actions": [
@@ -10934,9 +10934,9 @@
       "id": "b5f5d9570d1fd4d6",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 47,
-        "end": 102,
-        "sha256": "ab70e72c73befd653e5bca2fae28c3cc026da1a7ce95276a31aaf7c85cd99b55"
+        "start": 79,
+        "end": 135,
+        "sha256": "8752782f9b539ebfb4b455a0a1293f241814916592a56b0c577914fe6c41b664"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -10949,6 +10949,46 @@
         "sha256": "0249c305098613422a34856c1c8e163608812df740522cb8e3c0a3af8452a3a2"
       },
       "why": "Current witnesses lead to candidate CLI selectors while stale or ambiguous links stay out of direct route selection."
+    },
+    {
+      "id": "3367a09dd1f0bb94",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 47,
+        "end": 77,
+        "sha256": "0f3b4ed767929af2e3bb407d83b6c098a0cf1395ae1f1873df933dcff876b0fd"
+      },
+      "actions": [
+        "tracer worklist with discovered selectors and exact recorded journey labels",
+        "verify one-selector priority, deduplicated shared gaps and inherited restrictions"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1050,
+        "end": 1072,
+        "sha256": "8680991e9e181a8965aa82a36f9c892dbfb504bbf56ff51e0ef92bc4c4447711"
+      },
+      "why": "One supported prior scenario is more actionable than several candidates around the same uncovered range."
+    },
+    {
+      "id": "e4957054852e86f8",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 547,
+        "end": 569,
+        "sha256": "1b702a16031549bbe1c6eea5a8add8e004818e8b09549c8c55902e4498dd5f92"
+      },
+      "actions": [
+        "import passing and failing intervals with identical source and instrumentation",
+        "run tracer worklist and match both neighboring counters within one passing interval"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1042,
+        "end": 1059,
+        "sha256": "d7e2a8dd3ac1c313fb1bebd22f3e2c05f91cd02db1b5fc8e013fa8d8a9d030ce"
+      },
+      "why": "A capture on either side or a failing interval cannot by itself supply a passing scenario lead."
     }
   ],
   "ignoredSources": [

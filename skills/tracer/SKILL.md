@@ -38,6 +38,11 @@ source-to-CLI witnesses. Check `routes` for an existing scenario and
 `unassigned` gaps to their callers and check live CLI discovery for the
 required action. The command works without a proposal or manual links.
 
+Add exact outcome `journeys` labels to discovered routes to find existing
+scenarios worth extending. `extensionCandidates` shows passing intervals with
+observations on both sides of a gap. Start with gaps that have one candidate
+selector and use the anchors to locate and inspect the action and fixture. The gap still needs execution and measurement.
+
 Use `tracer proposal bind --file PROPOSAL --routes CATALOG --json` for the
 read-only match. Add the verified discovery IDs to `actions` in the catalog
 and record `entryPoint` and `actionIds` on the relevant proposal scenarios.
