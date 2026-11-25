@@ -614,7 +614,7 @@ function readFunctionCalls(calls, files) {
 
 function collectPassingCallers(files, passingByFile, functions) {
   const byPath = new Map(files.filter(file => file.status === 'current').map(file => [file.path, file.passedOnlyKnown]));
-  const candidates = { scenario: [], startup: [] };
+  const candidates = { scenario: [], startup: [], declarations: { scenario: [], startup: [] } };
   const targetGaps = new Map();
   for (const { caller, path, targetRange } of functions.calls) {
     const target = byPath.get(path), passing = passingByFile.get(caller.path);
@@ -634,19 +634,28 @@ function collectPassingCallers(files, passingByFile, functions) {
     const ranges = targetGaps.get(targetRange);
     if (!ranges.length) continue;
     const [start, end] = caller.functionRange;
-    const body = functions.nested.has(caller.functionRange) ? start + 1 : start;
+    const nested = functions.nested.has(caller.functionRange);
+    const body = nested ? start + 1 : start;
     const callerRanges = functions.files.get(caller.path);
-    const seen = new Set();
+    const seen = new Set(), declarations = new Map();
     for (const { journey, intervalId, rows, startup, actionIds, exactReference } of passing) {
-      const key = JSON.stringify([journey, startup]);
+      const kind = startup ? 'startup' : 'scenario';
+      const key = JSON.stringify([journey, kind]);
       if (!exactReference || seen.has(key)) continue;
       const anchor = rows.find(([line, before, after]) => line >= body && line <= end && after > before
         && innermostFunction(callerRanges, line) === caller.functionRange);
-      if (!anchor) continue;
-      seen.add(key);
-      const examples = startup ? candidates.startup : candidates.scenario;
-      for (const range of ranges) examples.push({ path, range, functionRange: targetRange, caller,
-        observedAnchor: anchor[0], intervalId, journey, ...(actionIds?.length && { actionIds }) });
+      const example = { path, functionRange: targetRange, caller, intervalId, journey, ...(actionIds?.length && { actionIds }) };
+      if (anchor) {
+        seen.add(key);
+        declarations.delete(key);
+        for (const range of ranges) candidates[kind].push({ ...example, range, observedAnchor: anchor[0] });
+      } else if (nested && !declarations.has(key) && rows.some(([line, before, after]) => line === start && after > before)) {
+        // Creating a UIAction or registering a callback can count its declaration.
+        declarations.set(key, { kind, example: { ...example, observedAnchor: start } });
+      }
+    }
+    for (const { kind, example } of declarations.values()) {
+      for (const range of ranges) candidates.declarations[kind].push({ ...example, range });
     }
   }
   return candidates;

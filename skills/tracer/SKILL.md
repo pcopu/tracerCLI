@@ -90,8 +90,11 @@ When the producer includes compiler-resolved calls in that function map, use
 an unobserved function, including across source files. Read the call-site
 condition, extend the existing fixture and verify the delta. A static edge and
 a caller observation nominate a scenario. Execution of the callee still needs
-a passing capture. Look for callback registrations, dynamic dispatch and
-supported builds when the compiler map has no matching caller.
+a passing capture. Use `functionReview.callers.declarations` when the interval
+observed a nested function’s declaration. Inspect the registered control or
+event source and use the actual CLI action that invokes it. These leads need
+review before scheduling. Check dynamic dispatch and supported builds when
+the map has no matching caller.
 Check `functionReview.entryPoints` for whole functions with no passing lines and
 trace those functions to a real CLI action or callback. For Scriv, the
 measurement-first coverage guide shows how to export a map from one retained

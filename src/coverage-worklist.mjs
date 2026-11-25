@@ -341,6 +341,12 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     session: extensionCandidates(measured.passingCallers.scenario, catalog.journeys, current, assigned, pending, limit, batches?.session),
     ...(catalog.launchActions && { startup: extensionCandidates(measured.passingCallers.startup,
       catalog.journeys, current, assigned, pending, limit, batches?.startup) }),
+    declarations: {
+      notice: 'A passing interval observed the line that declares a nested function. Inspect its control or event registration and find a real way to invoke it.',
+      session: extensionCandidates(measured.passingCallers.declarations.scenario, catalog.journeys, current, assigned, pending, limit),
+      ...(catalog.launchActions && { startup: extensionCandidates(measured.passingCallers.declarations.startup,
+        catalog.journeys, current, assigned, pending, limit) }),
+    },
   };
   const dispatchPlans = new Map();
   if (batches) for (const [label, examples] of measured.dispatchGaps ?? []) {

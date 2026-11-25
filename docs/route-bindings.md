@@ -313,7 +313,13 @@ callers may be in a different file from the requested `--source` range.
 Each example gives the call location, observed caller line, callee range and
 interval ID. Inspect the condition at the call site before extending the case.
 Native batch suggestions deduplicate these lines with the other scenario
-leads. Reported lines are candidates until measured by a new passing run.
+leads. `functionReview.callers.declarations` lists calls inside nested
+functions whose declaration line increased before a body was observed in the
+same case and capture mode. A line shared by a UIAction registration and its
+closure can count at registration time. Read that call site and find the
+control or callback event before selecting a case. Declaration leads are
+separate from the native batch. Reported lines are candidates until measured
+by a new passing run.
 
 ## Rank the routes for a source range
 

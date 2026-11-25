@@ -1534,6 +1534,20 @@ test('worklist follows compiler calls from a passing CLI caller to a cold functi
   assert.deepEqual(candidate.examples[0].caller, { ...exactCall.caller, functionRange: [1, 2] });
   assert.deepEqual(report.nativeBatches.session.argv, ['test', '--case', 'edit#recover']);
 
+  const originalRanges = map.files[0].ranges;
+  map.files[0].ranges = [[1, 4], [1, 3]];
+  f.jsonFile('functions.json', map);
+  const registration = f.json(...args, '--source', helper);
+  assert.equal(registration.functionReview.callers.session.gapLines, 0, 'A closure declaration does not observe its body');
+  const [lead] = registration.functionReview.callers.declarations.session.items;
+  assert.deepEqual(lead.argv, candidate.argv);
+  assert.equal(lead.gapLines, 2);
+  assert.equal(lead.examples[0].observedAnchor, 1);
+  assert.deepEqual(lead.examples[0].caller.functionRange, [1, 3]);
+  assert.deepEqual(registration.nativeBatches.session.argv, [], 'A declaration is a lead to inspect before scheduling a case');
+  assert.deepEqual(registration.coverage, report.coverage);
+  map.files[0].ranges = originalRanges;
+
   map.calls = [{ ...exactCall, caller: { path, line: 3 } }];
   f.jsonFile('functions.json', map);
   assert.equal(f.json(...args).functionReview.callers.session.gapLines, 0, 'Adjacent passing lines belong to other functions');
