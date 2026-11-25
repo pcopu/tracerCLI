@@ -1769,6 +1769,25 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.equal(sharedWitness.linkedGapLines, 1);
   assert.equal(sharedWitness.routes[0].gapLines, 1);
   assert.equal(sharedWitness.decisions.classifiedGapLines, 1);
+
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    scenarios: [{ id: 'edit', path, groups: ['recover', 'review'] }] });
+  prepared.scenarios.find(row => row.id === 'allowed').routeIds = ['edit/group/recover'];
+  const exact = report(['allowed']);
+  assert.deepEqual(exact.decisions.queues['needs-scenario'].items[0].routeIds, ['edit/group/recover']);
+  assert.deepEqual(exact.decisions.nativeBatch.argv, ['test', '--case', 'edit#recover']);
+  assert.equal(exact.decisions.nativeBatch.candidateGapLines, 1);
+  assert.deepEqual(exact.coverage, blocked.coverage, 'A planned selector adds no observations');
+
+  prepared.scenarios.find(row => row.id === 'allowed').routeIds = ['edit/group/missing'];
+  const missingRoute = report(['allowed']);
+  assert.deepEqual(missingRoute.decisions.queues['needs-scenario'].items[0].routeIds, []);
+  assert.deepEqual(missingRoute.decisions.queues['needs-scenario'].items[0].unmatchedRouteIds, ['edit/group/missing']);
+  assert.deepEqual(missingRoute.decisions.nativeBatch.argv, []);
+  prepared.scenarios.find(row => row.id === 'allowed').routeIds = ['edit', 'edit'];
+  f.jsonFile('proposal.json', prepared);
+  assert.match(f.run(args, 1).stderr, /duplicate.*route id/i);
 });
 
 test('worklist ranks fresh replays from retained passing evidence without crediting changed source', t => {

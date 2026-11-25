@@ -360,6 +360,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const decisionSummary = decisions && {
     proposal: decisions.report.proposal, queues: decisions.report.queues, routes: decisions.report.routes,
     assignedGapLines: decisions.report.assignedGapLines, heldGapLines: count(held), classifiedGapLines: count(assigned),
+    ...(batches && { nativeBatch: nativeCaseBatch(decisions.nativeCandidates, { limit, held, pending }) }),
   };
   return { kind: 'source-coverage-worklist', version: 1,
     notice: 'Ranks passing gaps from current source and witnessed CLI links. Exact witness-path matches are candidates. No scenario ran and no action attribution is implied.',
@@ -553,16 +554,21 @@ function proposalWorklist({ binding, measured, current, unavailable, capabilitie
     }
   }
   const queues = Object.fromEntries(nextSteps.map(step => [step, []]));
-  const selectable = new Set();
-  for (const { id, title, featureId, behavior } of binding.plans) {
+  const selectable = new Set(), nativeCandidates = [];
+  for (const { id, title, featureId, behavior, routeIds: matchedRoutes, unmatchedRouteIds } of binding.plans) {
     const files = byPlan.get(id);
     if (!files) continue;
     const { next, ...detail } = behavior;
     const candidates = candidatesByPlan.get(id) ?? [];
-    const routeIds = candidates.filter(candidate => candidate.selectable).flatMap(candidate => candidate.routeIds);
+    const ready = candidates.filter(candidate => candidate.selectable);
+    const routeIds = ready.flatMap(candidate => candidate.routeIds.filter(route => matchedRoutes.includes(route)));
     const restrictedRoutes = candidates.filter(candidate => !candidate.selectable)
       .map(({ routeIds, restrictions }) => ({ routeIds, restrictions }));
-    queues[next].push({ planId: id, title, featureId, routeIds, restrictedRoutes, ...detail, ...summarize(files) });
+    queues[next].push({ planId: id, title, featureId, routeIds, restrictedRoutes,
+      ...(unmatchedRouteIds && { unmatchedRouteIds }), ...detail, ...summarize(files) });
+    if (unmatchedRouteIds && (next === 'action-and-scenario' || next === 'needs-scenario')) {
+      for (const candidate of ready) nativeCandidates.push({ argv: candidate.argv, routeIds: candidate.routeIds, files });
+    }
     if (next === 'action-and-scenario') selectable.add(id);
   }
 
@@ -589,5 +595,5 @@ function proposalWorklist({ binding, measured, current, unavailable, capabilitie
     queues: Object.fromEntries(Object.entries(queues).map(([step, rows]) => [step, { count: rows.length,
       items: rows.sort((a, b) => b.gapLines - a.gapLines || a.planId.localeCompare(b.planId)).slice(0, limit) }])),
     unassigned: fileSummary(unassigned, limit), unavailable: fileSummary(unavailable, limit) };
-  return { report, assigned, held };
+  return { report, assigned, held, nativeCandidates };
 }

@@ -66,6 +66,13 @@ export function inspectProposal(root, value, state, { prepare = false } = {}) {
       filePath(root, entry.path); text(entry.symbol, 'runtime entry point symbol');
     }
     if (Object.hasOwn(scenario, 'actionIds')) strings(scenario.actionIds, 'action ids', true);
+    if (Object.hasOwn(scenario, 'routeIds')) {
+      strings(scenario.routeIds, 'route ids');
+      if (!scenario.existingPaths.length || scenario.routeIds.some(route => !/^[A-Za-z0-9][A-Za-z0-9_/-]{0,255}$/.test(route))) {
+        fail('Proposal route ids require valid discovered ids and existing scenario paths.');
+      }
+      if (new Set(scenario.routeIds).size !== scenario.routeIds.length) fail('Duplicate proposal route id.');
+    }
     if (Object.hasOwn(scenario, 'restriction')) text(scenario.restriction, 'restriction');
     scenarios.set(scenario.id, scenario);
   }

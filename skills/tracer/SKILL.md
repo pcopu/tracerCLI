@@ -52,6 +52,12 @@ scenario. When a source review has produced focused plans, add `--file
 PROPOSAL`. Read `decisions.queues` alongside
 scenario leads. A current reviewed blocker or missing action can hold a range
 out of the scenario queue. Shared code stays eligible through other plans.
+For a reviewed scenario group, record its actual discovery ID in the plan's
+`routeIds` as well as its witness in `existingPaths`. For example,
+`journeys/edit/group/recover` selects one case in a shared journey file.
+`decisions.nativeBatch` emits the exact selectors for eligible plans and
+deduplicates shared gaps. Inspect `unmatchedRouteIds` when a selector is
+missing from this discovery.
 Start with the largest actionable group and keep the original denominator.
 Add `worklist --source PATH[:RANGE]` to rank CLI routes for a specific
 behavior. Repeat `--source` for its controller, store and shared helpers.

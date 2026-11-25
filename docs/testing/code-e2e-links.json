@@ -165,8 +165,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1795,
-        "end": 1856,
+        "start": 1814,
+        "end": 1875,
         "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
@@ -702,8 +702,8 @@
       "id": "0d8a59120dbbc420",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 116,
-        "end": 128,
+        "start": 123,
+        "end": 135,
         "sha256": "32b26359baa9e0434bc94cf506a1614e81dd620a72bb7309bc612f1313a6be2e"
       },
       "actions": [
@@ -763,8 +763,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1808,
-        "end": 1856,
+        "start": 1827,
+        "end": 1875,
         "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
@@ -1166,8 +1166,8 @@
       "source": {
         "path": "src/proposals.mjs",
         "start": 62,
-        "end": 69,
-        "sha256": "79a1c38e7eca9d7042d76306ec17408316adea607afe3f8a8858fbe9d586f3f4"
+        "end": 76,
+        "sha256": "ff7922d9c9801a37a926eda42a5ef1b79a1e6f0cec090b166bd36dab5204d75a"
       },
       "actions": [
         "tracer proposal bind --file proposal.json --routes routes.json --json"
@@ -1345,8 +1345,8 @@
       "source": {
         "path": "src/route-bindings.mjs",
         "start": 216,
-        "end": 227,
-        "sha256": "f901448b62f73b4f107c03320d0028420722e5e94eab15ae1fcbbd1b5924b9be"
+        "end": 229,
+        "sha256": "2d412b9e60c446c3a6ec5ea773b17fcaa7e8aacc483768b9de4f8e152b5b7e39"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -1660,8 +1660,8 @@
       "id": "27c8707b00bd4664-snapshot-part2",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 146,
-        "end": 151,
+        "start": 153,
+        "end": 158,
         "sha256": "43638627e00279e3e41acac6b5c4d769d82576c51473cd072f7b34c7b80cc058"
       },
       "actions": [
@@ -1888,8 +1888,8 @@
       "id": "2db9ced53a2750e7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 335,
-        "end": 335,
+        "start": 342,
+        "end": 342,
         "sha256": "44e9d05f83fb909a9410a7d274daddbe4b6dd75789eb17174e2b1332d8d45717"
       },
       "actions": [
@@ -1910,8 +1910,8 @@
       "id": "2e04ab285086ce00",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 220,
-        "end": 223,
+        "start": 227,
+        "end": 230,
         "sha256": "11251b6fd789d2180ef8277d4b48523942bdf61f7c518f06beb9a0a80947a64e"
       },
       "actions": [
@@ -1938,8 +1938,8 @@
       "id": "2e23882fc92da6ca",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 229,
-        "end": 234,
+        "start": 236,
+        "end": 241,
         "sha256": "28a215fbfd1ecae2902f81f54ddc25e12c0dba1ed65833a489467ea9ca4d34df"
       },
       "actions": [
@@ -2003,8 +2003,8 @@
       "id": "30572bbdca043ccb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 325,
-        "end": 327,
+        "start": 332,
+        "end": 334,
         "sha256": "51f115958ee3a00aa70f7b273c5176f78cef6cfa918c3120d71d6e62aa4cde1b"
       },
       "actions": [
@@ -2127,8 +2127,8 @@
       "id": "321d4dea67dd7d96",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 280,
-        "end": 295,
+        "start": 287,
+        "end": 302,
         "sha256": "a0eaa372f97850bfa35f869479f1984af14b103dbaae329846736129a04a465b"
       },
       "actions": [
@@ -2419,8 +2419,8 @@
       "id": "34efed29f305a1be",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 175,
-        "end": 178,
+        "start": 182,
+        "end": 185,
         "sha256": "5d0d2c51190ced816d914db377d0c72a52bcbb6a7ff7a842c0105da2b2e75ab4"
       },
       "actions": [
@@ -2547,8 +2547,8 @@
       "id": "3a76375eab9c962a",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 165,
-        "end": 166,
+        "start": 172,
+        "end": 173,
         "sha256": "99e96de1f49c02133b6a849a81930be5ebcc02197d162910d7dd5fa1476b8abd"
       },
       "actions": [
@@ -2772,9 +2772,9 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 527,
-        "end": 578,
-        "sha256": "cf4463ef0b41bef4b52a7bbd0503f09fe290d76c78aafef4c5efe3ca6242da5a"
+        "start": 528,
+        "end": 584,
+        "sha256": "297343aabbf2aae20bd6ed9848d15fe15888b6cef84f53c1cd8a28b9b4839156"
       },
       "actions": [
         "tracer proposal worklist with a pinned proposal, discovered routes and a reference capture set",
@@ -2916,8 +2916,8 @@
       "id": "4046748fa46d8a92",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 319,
-        "end": 329,
+        "start": 326,
+        "end": 336,
         "sha256": "169705b5d33a6f4653ddc6725511e1ac60485eea68d3abef1492585614293934"
       },
       "actions": [
@@ -2947,8 +2947,8 @@
       "id": "40a23c0dfb46ffb1",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 174,
-        "end": 174,
+        "start": 181,
+        "end": 181,
         "sha256": "a6f8bf480444941f28afc82e5b923b72d87ef929a9c6ef906087513922e110f5"
       },
       "actions": [
@@ -3081,8 +3081,8 @@
       "id": "42bf3112c1a46158",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 179,
-        "end": 181,
+        "start": 186,
+        "end": 188,
         "sha256": "e7e7322ca0f67dfe8d07dfc9d91870d67d38fd17ddef3767b145288f49dd55d8"
       },
       "actions": [
@@ -3230,8 +3230,8 @@
       "id": "44e66c36ba838147",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 157,
-        "end": 157,
+        "start": 164,
+        "end": 164,
         "sha256": "21c27d4962f3abd3b88b03491d7d2c355fd92af67e2da6c03de4941e07c21d71"
       },
       "actions": [
@@ -3257,8 +3257,8 @@
       "id": "44e7d40cab08aaf6",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 296,
-        "end": 311,
+        "start": 303,
+        "end": 318,
         "sha256": "ef2bdc037253f6bb1b122a9931381877284f524f5d2c269ae3883f1fb61fa41d"
       },
       "actions": [
@@ -3472,8 +3472,8 @@
       "id": "49668ea6668ca5c3",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 85,
-        "end": 88,
+        "start": 92,
+        "end": 95,
         "sha256": "01b9ae1b6e108bfdd31eabacb50832ea29603f907e862d814149792c3ea085e6"
       },
       "actions": [
@@ -3532,8 +3532,8 @@
       "id": "4a7019b901140679",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 144,
-        "end": 144,
+        "start": 151,
+        "end": 151,
         "sha256": "e069512f9efad6cc6b0cb834f83333aa20052855c794b6de09f14fe0863191e0"
       },
       "actions": [
@@ -3707,8 +3707,8 @@
       "id": "50526650f1f4a665",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 216,
-        "end": 228,
+        "start": 223,
+        "end": 235,
         "sha256": "2ca552a2fbc504e599ce24321f84c9250d486cc284d80dc4dab2bc94a83b9686"
       },
       "actions": [
@@ -3843,8 +3843,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 320,
-        "end": 365,
-        "sha256": "c24b9a59de1077cdd5ea8a719b42f6868b22d88fae3c7d96e44726e5db9e8448"
+        "end": 366,
+        "sha256": "84e6924978763f9003165a6c70d7ced6836e3d862a109d5d127ee62cc781bce7"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
@@ -4023,8 +4023,8 @@
       "id": "59bf800d0d67c014",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 135,
-        "end": 143,
+        "start": 142,
+        "end": 150,
         "sha256": "f14f71fd82e9a8033f3d9c8adf6e357069eb688c85d1891c87d9a1ba298f925e"
       },
       "actions": [
@@ -4127,8 +4127,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 580,
-        "end": 591,
+        "start": 586,
+        "end": 597,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -4351,8 +4351,8 @@
       "id": "5ecf2d6b0c7241a0",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 144,
-        "end": 147,
+        "start": 151,
+        "end": 154,
         "sha256": "811d1103a55b6df02c0a47b433a9be787ce8ea89f260ee1413db48ae464e6a0f"
       },
       "actions": [
@@ -4590,8 +4590,8 @@
       "id": "64e35779e4adbfd8",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 183,
-        "end": 186,
+        "start": 190,
+        "end": 193,
         "sha256": "a5178ce07b21e52dfdf289012c10a0484dee665e8f455b9b0df7effb591e7bdb"
       },
       "actions": [
@@ -4669,8 +4669,8 @@
       "id": "671f22f0f9e680c7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 204,
-        "end": 208,
+        "start": 211,
+        "end": 215,
         "sha256": "e829cb4af884c71821db310b8b5737022d0a34f61fe6f46edca4f4dada9b9a5b"
       },
       "actions": [
@@ -4799,8 +4799,8 @@
       "id": "69641cde1213e9bc",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 92,
-        "end": 99,
+        "start": 99,
+        "end": 106,
         "sha256": "982aaae874c5afcf0287d280edf9afbac11b2fc976ec8b4a0aadaece0d1356d5"
       },
       "actions": [
@@ -4864,8 +4864,8 @@
       "id": "701e1947cfb30985",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 152,
-        "end": 156,
+        "start": 159,
+        "end": 163,
         "sha256": "e2455cb683dc44b578ad577034c54bc1b52bd2561a50c802d1bca059f186a4fa"
       },
       "actions": [
@@ -5227,8 +5227,8 @@
       "id": "76e8e09823aa7ce1",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 312,
-        "end": 318,
+        "start": 319,
+        "end": 325,
         "sha256": "6bbd9c702dfa517c2aa410e230d090f85b8e7645a5c90a63ccb68dc84465c5a0"
       },
       "actions": [
@@ -5718,8 +5718,8 @@
       "id": "840cbe75a105e59b",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 129,
-        "end": 134,
+        "start": 136,
+        "end": 141,
         "sha256": "48064c06d739481a32e37c19b2d78d7721d75a4a33c9313250042947c55aa23a"
       },
       "actions": [
@@ -6199,8 +6199,8 @@
       "id": "8fb7ea72bf576adb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 100,
-        "end": 115,
+        "start": 107,
+        "end": 122,
         "sha256": "260cbae3ebb2f47c583cd3f4c6dc4e36abab80cfc11e652f8b642186a44d3c9f"
       },
       "actions": [
@@ -6621,8 +6621,8 @@
       "id": "98e9361362045bcc",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 275,
-        "end": 279,
+        "start": 282,
+        "end": 286,
         "sha256": "c42fec5808c9823c7d31b4926b91096542329106a5846ed245fe2214ba8f93b2"
       },
       "actions": [
@@ -6713,8 +6713,8 @@
       "id": "9994a70eca10ac0f",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 336,
-        "end": 337,
+        "start": 343,
+        "end": 344,
         "sha256": "8097e857a13304b1b9c940e19d1782f62fb43be5e69bd3e54da3d2d20a457c9e"
       },
       "actions": [
@@ -6907,8 +6907,8 @@
       "id": "9d994ef243d12c1f",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 267,
-        "end": 274,
+        "start": 274,
+        "end": 281,
         "sha256": "50e1040063d193c89325c2ef7cfa3ee52391ea6f0283819c0e246478bba56f10"
       },
       "actions": [
@@ -7159,8 +7159,8 @@
       "id": "a881c2564dd884af",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 167,
-        "end": 173,
+        "start": 174,
+        "end": 180,
         "sha256": "2e89af508a534f7c6d0b626b203da8285053cfa34a5ce8b0c821a88207eba3b7"
       },
       "actions": [
@@ -7453,8 +7453,8 @@
       "id": "ad4fb23511075712",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 72,
-        "end": 84,
+        "start": 79,
+        "end": 91,
         "sha256": "ae36d167051e452ebf6fafc24acb3981b1f5f8d0bae13a806eb6b7f551d1eb71"
       },
       "actions": [
@@ -7520,8 +7520,8 @@
       "id": "addba8730cbb148c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 312,
-        "end": 318,
+        "start": 319,
+        "end": 325,
         "sha256": "6bbd9c702dfa517c2aa410e230d090f85b8e7645a5c90a63ccb68dc84465c5a0"
       },
       "actions": [
@@ -7586,8 +7586,8 @@
       "id": "b00e8ed7f07b2a38",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 320,
-        "end": 322,
+        "start": 327,
+        "end": 329,
         "sha256": "62fcb03f71515ff9d4fc247e84d7c6b924a696f3a4afcad69db6be09203048d4"
       },
       "actions": [
@@ -7666,8 +7666,8 @@
       "id": "b0dadb7226cc91df",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 393,
-        "end": 420,
+        "start": 394,
+        "end": 421,
         "sha256": "a6eb3abab8e0c7dc60f6f1fba0fcfc75548499a8c5406032d0baea2628078370"
       },
       "actions": [
@@ -7836,8 +7836,8 @@
       "id": "b5158e01cae440e7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 330,
-        "end": 334,
+        "start": 337,
+        "end": 341,
         "sha256": "d5e723d1e41cb7c9cdc0da8c62eee16e45a6285a54b3587ccc0f6a05e0796efa"
       },
       "actions": [
@@ -7886,8 +7886,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 251,
-        "end": 391,
-        "sha256": "bec00f4d66c926c22f83ffd2686fb68e25f9cb36314d587ace320d2df32248a0"
+        "end": 392,
+        "sha256": "559364b13b821fda994ace9d1b29b50b38b359aeae95d043a35c8621fa1f3a8f"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -8440,8 +8440,8 @@
       "id": "c068db6727fdd932",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 258,
-        "end": 266,
+        "start": 265,
+        "end": 273,
         "sha256": "65151c85b3016f7e28f33b893420d59aefa9e16d4c433b862224a64d3734ed36"
       },
       "actions": [
@@ -8779,8 +8779,8 @@
       "id": "c627b7512149fee7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 158,
-        "end": 164,
+        "start": 165,
+        "end": 171,
         "sha256": "0e61ff1046114a35febd41aabdaf6aa4c7be8e49b169c829874b95a87bba19eb"
       },
       "actions": [
@@ -8947,8 +8947,8 @@
       "id": "c8b388bd4c96a658",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 152,
-        "end": 155,
+        "start": 159,
+        "end": 162,
         "sha256": "8ce8c2e737db5e27bb4ab765e5982a7ee79e87ddc3af619e4eff5444698b1b56"
       },
       "actions": [
@@ -9115,8 +9115,8 @@
       "id": "cc4dbae75b408918",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 201,
-        "end": 215,
+        "start": 208,
+        "end": 222,
         "sha256": "1e5df557af0a7e26df2f29d94fca44b84a2c9600d85b3d5a16c7b60592bada23"
       },
       "actions": [
@@ -9530,8 +9530,8 @@
       "id": "d836e57c5948905c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 187,
-        "end": 200,
+        "start": 194,
+        "end": 207,
         "sha256": "a40ff5bf5ff7f3e6368284065e466a2a90e1a43f2d5af72b408fff227906d4f7"
       },
       "actions": [
@@ -9610,8 +9610,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1825,
-        "end": 1851,
+        "start": 1844,
+        "end": 1870,
         "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
@@ -9943,8 +9943,8 @@
       "id": "df7ff17f2eaf44e9",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 249,
-        "end": 253,
+        "start": 256,
+        "end": 260,
         "sha256": "3618b61a0e2b8c64bd4e32f22394f08e7819200ad48618846d6e4ae905edddde"
       },
       "actions": [
@@ -10563,8 +10563,8 @@
       "id": "f0fbbcdc7d484c8b",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 235,
-        "end": 245,
+        "start": 242,
+        "end": 252,
         "sha256": "5622005a5fd994f713bf4922ae4b3d57208ce387c02613469a2aca1fda9827ea"
       },
       "actions": [
@@ -10740,8 +10740,8 @@
       "id": "f496d2d316658766",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 254,
-        "end": 256,
+        "start": 261,
+        "end": 263,
         "sha256": "332861ffa4176d44d1bb5f339cbbfa3623ee1041d6aa9d38add0f4fd16b2bfb9"
       },
       "actions": [
@@ -10801,8 +10801,8 @@
       "id": "f6af996086163bfb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 246,
-        "end": 248,
+        "start": 253,
+        "end": 255,
         "sha256": "34b4693cde23a352a50125c44bf28c8d00d69a2580405922a02963c13d9a46be"
       },
       "actions": [
@@ -10920,8 +10920,8 @@
       "id": "f854226449b86e9c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 89,
-        "end": 92,
+        "start": 96,
+        "end": 99,
         "sha256": "cc6b97a14b09abe240bf40d10b42b702bff017a4f2a4818cfd5aa34cb4f9445b"
       },
       "actions": [
@@ -11290,8 +11290,8 @@
       "id": "ffcc75589c959179",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 187,
-        "end": 200,
+        "start": 194,
+        "end": 207,
         "sha256": "a40ff5bf5ff7f3e6368284065e466a2a90e1a43f2d5af72b408fff227906d4f7"
       },
       "actions": [
@@ -11378,8 +11378,8 @@
       "id": "efcb552be3a51996",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 487,
-        "end": 511,
+        "start": 488,
+        "end": 512,
         "sha256": "0ec44939949c723c599730a7e89404e0756cab3a30f6c547cf7cc1dac448252e"
       },
       "actions": [
@@ -11492,8 +11492,8 @@
       "id": "b6d9cb7fba60c1dd",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 427,
-        "end": 454,
+        "start": 428,
+        "end": 455,
         "sha256": "c738e29b3eea43ef600e24131eb6a4f8fb42eba6940ab363b284ea7e5263baf0"
       },
       "actions": [
@@ -11584,6 +11584,44 @@
         "sha256": "1d2020300c4d006327c03a53399e5ac4c4444e5a65f7b59b7fa9972183fa1cdd"
       },
       "why": "Returns the recorded control, its exact case and both passing window anchors when the focused instrumented line has yet to be observed."
+    },
+    {
+      "id": "ef35c03da6fa6ea2",
+      "source": {
+        "path": "src/route-bindings.mjs",
+        "start": 216,
+        "end": 220,
+        "sha256": "fc820454c607a28baebfe8cd1109ccbcf75f1cc9e294e641417af9950a7c6fa3"
+      },
+      "actions": [
+        "tracer worklist with a native scenario file containing several discovered groups and an exact route id"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1773,
+        "end": 1787,
+        "sha256": "a4d8783bfc1b8d46fab469d2d2cbdddc26177cec694f8db3119d1a148fa7ee49"
+      },
+      "why": "Binds only the reviewed group and leaves a missing group explicit while retaining the measured gap."
+    },
+    {
+      "id": "f8f4927ab298e9aa",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 360,
+        "end": 364,
+        "sha256": "89adc2e2a226b065b4e1940b6d9acf1667254e57034bed378e96674f77225898"
+      },
+      "actions": [
+        "tracer worklist with a pinned source and an exact discovered native route"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1776,
+        "end": 1787,
+        "sha256": "b9c00272d79d4aea7dc0cfc74f5ecef79a4d74f4d8f0eb19e9ed92406fd453bb"
+      },
+      "why": "Emits the exact runnable selector only when the discovered case matches the plan and applies no measured credit."
     }
   ],
   "ignoredSources": [

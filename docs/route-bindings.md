@@ -72,6 +72,11 @@ review. Keep `actionIds` ordered, including repeated actions. An empty array
 records an explicitly missing CLI route. Omit the field when the match still
 needs review. A proposal scenario may supply a `restriction` with its reason.
 
+When a journey file has multiple cases, add the exact discovered `routeIds`
+to the plan. A Scriv group has the ID `journeys/edit/group/recover`.
+Tracer requires the listed ID and an existing witness path from that
+execution. A missing selector appears in `unmatchedRouteIds`.
+
 With an `actions` catalog, each plan has a `behavior.next` result.
 
 | Result | Meaning |
@@ -89,6 +94,12 @@ candidate for the recorded discovery context, and a scenario path match still
 requires source review and observed execution. Use `tracer app --` to run
 approved scenario selectors. Compare later captures with `measure gaps` and
 report each batch’s unique passing lines added, remaining gaps and wall time.
+
+For Scriv, `worklist --file PROPOSAL` turns exact, selectable plan matches in
+`decisions.nativeBatch` into deduplicated `test --case` arguments. The batch
+includes existing cases to run and cases whose scenarios need the planned
+condition. This is a candidate score over current passing gaps. Keep blocked
+plans and missing action IDs visible in the decision queues.
 
 ## Rank the coverage work that remains
 

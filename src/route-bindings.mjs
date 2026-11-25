@@ -214,7 +214,9 @@ export function bindCatalogPlans(tracer, file, catalog) {
   const inspected = inspectProposal(tracer.root, proposal.value, tracer.inventory());
   const bindings = [], plans = [], unmatchedRouteIds = [], byPlan = new Map();
   for (const execution of catalog.executions) {
-    const matches = proposal.value.scenarios.map(plan => ({ planId: plan.id, paths: plan.existingPaths.filter(path => execution.paths.includes(path)) }))
+    const matches = proposal.value.scenarios
+      .filter(plan => !plan.routeIds || plan.routeIds.some(id => execution.routeIds.includes(id)))
+      .map(plan => ({ planId: plan.id, paths: plan.existingPaths.filter(path => execution.paths.includes(path)) }))
       .filter(match => match.paths.length);
     if (!matches.length) {
       unmatchedRouteIds.push(...execution.routeIds);
@@ -235,8 +237,10 @@ export function bindCatalogPlans(tracer, file, catalog) {
   for (const plan of proposal.value.scenarios) {
     const candidates = byPlan.get(plan.id) ?? [];
     const matched = new Set(candidates.flatMap(binding => binding.matches.find(match => match.planId === plan.id).paths));
+    const routeIds = candidates.flatMap(binding => binding.routeIds).filter(id => !plan.routeIds || plan.routeIds.includes(id));
     plans.push({ id: plan.id, state: plan.state, status: candidates.some(binding => binding.selectable) ? 'candidate' : candidates.length ? 'restricted' : 'unmatched',
-      routeIds: candidates.flatMap(binding => binding.routeIds), unmatchedPaths: plan.existingPaths.filter(path => !matched.has(path)),
+      routeIds, unmatchedPaths: plan.existingPaths.filter(path => !matched.has(path)),
+      ...(plan.routeIds && { unmatchedRouteIds: plan.routeIds.filter(id => !routeIds.includes(id)) }),
       ...(catalog.actions && { title: plan.title, featureId: plan.featureId, behavior: matchBehavior(plan, catalog.actions, candidates) }) });
   }
   return { version: 1, kind: 'provisional-plan-route-bindings', status: 'provisional', assertionMatch: 'unknown',
