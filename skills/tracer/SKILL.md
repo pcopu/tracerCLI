@@ -54,6 +54,14 @@ Prefer the largest `marginalGapLines` and confirm the production caller and
 missing condition. The shortlist skips scenarios that only duplicate candidate
 lines. Read `extensionCandidates.restricted` for unavailable alternatives.
 
+Use `runtimeReview` for pinned `dead-code` declarations. Inspect callers,
+registrations and supported builds before marking or removing code. Resolve
+observed executions and current CLI witness conflicts before removal.
+`pendingGapLines` stay in measured coverage and wait for removal review
+before they are suggested as scenario work. Rebuild and confirm the new scope
+if reviewed code is deleted.
+
+
 After a rebuild, add `--replay` and use a capture set containing both the new
 reference and retained earlier results. `replayCandidates` ranks the existing
 CLI selectors that previously observed still-missing behavior, deduplicated by

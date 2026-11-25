@@ -214,6 +214,22 @@ instrumentation are listed under `unknown`. Use `measure where` to inspect
 individual physical lines and prior witnesses. Stale and unavailable files
 retain their reference denominator under `unavailable`.
 
+## Review code without a runtime path
+
+Use `tracer dead-code PATH:START-END --why ... --evidence ...` after tracing
+callers, callback registrations and supported build targets. The worklist's
+`runtimeReview` shows current declarations alongside their measured gaps.
+`observed-execution` means the code ran in a compatible interval. A
+`witness-conflict` means a current source-to-CLI link points to a discovered
+scenario route. Resolve either finding before proceeding with removal.
+Declarations without comparable instrumentation are `unmeasured`.
+
+`review-removal` still needs a human decision. Its uncontradicted lines count
+toward `pendingGapLines` and stay out of extension and replay suggestions.
+They remain gaps in the passing totals until a verified new reference changes
+the instrumentation. Invalid or stale declarations are listed with their
+errors and never hold lines. Use `--source` to review one behavior at a time.
+
 ## Recover coverage on a rebuilt source tree
 
 ```sh

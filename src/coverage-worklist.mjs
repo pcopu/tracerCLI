@@ -92,7 +92,7 @@ function marginalCandidates(rows, limit) {
   return selected;
 }
 
-function extensionCandidates(surroundingIntervals, journeys, current, assigned, limit) {
+function extensionCandidates(surroundingIntervals, journeys, current, assigned, pending, limit) {
   const byGap = new Map(), byExecution = new Map();
   for (const example of surroundingIntervals) {
     const { path, range, journey } = example, key = JSON.stringify([path, range]);
@@ -103,7 +103,8 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
 
   let gapLines = 0, exclusiveGapLines = 0, restrictedGapLines = 0;
   for (const { path, range: [start, end], executions } of byGap.values()) {
-    const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line)) ?? [];
+    const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line)
+      && !pending?.get(path)?.has(line)) ?? [];
     if (!lines.length) continue;
     const selectableCount = [...executions.keys()].filter(execution => !execution.restrictions.length).length;
     if (selectableCount) gapLines += lines.length;
@@ -130,12 +131,12 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     restricted: { count: restricted.length, gapLines: restrictedGapLines, items: restricted.slice(0, limit).map(publicRow) } };
 }
 
-function replayCandidates(sourcesByRoute, { held, limit, failures, focus }) {
+function replayCandidates(sourcesByRoute, { held, pending, limit, failures, focus }) {
   const rows = [], union = new Map();
   for (const [execution, sources] of sourcesByRoute) {
     const available = new Map();
     for (const [path, lines] of sources) {
-      const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && (!focus || focus.intersects(path, line)));
+      const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && !pending?.get(path)?.has(line) && (!focus || focus.intersects(path, line)));
       if (eligible.length) { addLines(available, path, eligible); addLines(union, path, eligible); }
     }
     if (available.size) rows.push({ execution, files: available, ...summarize(available) });
@@ -147,6 +148,39 @@ function replayCandidates(sourcesByRoute, { held, limit, failures, focus }) {
     ...(failures && { failure: failures.get(execution) }),
   }));
   return { count, gapLines: summarize(union).gapLines, items };
+}
+
+function runtimeReview(tracer, data, state, measuredFiles, current, assigned, focus, limit) {
+  if (!data.deadCode?.length) return undefined;
+  const files = new Map(measuredFiles.map(file => [file.path, file]));
+  const items = [], invalid = [], marked = new Map(), pending = new Map(), conflicts = new Map();
+  for (const { mark, errors } of tracer.inspectDeadCode(data, state)) {
+    const { path, start, end } = mark.source ?? {};
+    if (focus && path && !focus.intersects(path, start, end)) continue;
+    if (errors.length) {
+      invalid.push({ id: mark.id, errors });
+      continue;
+    }
+    const file = files.get(path);
+    const range = line => start <= line && line <= end && (!focus || focus.intersects(path, line));
+    const comparable = file?.status === 'current' && file.currentSource.sha256 === mark.fileSha256;
+    const observed = comparable ? expandRanges(file.observedRanges).filter(range) : [];
+    const gaps = comparable ? (current.get(path)?.lines ?? []).filter(range) : [];
+    const witnessed = gaps.filter(line => assigned.get(path)?.has(line));
+    const disposition = observed.length ? 'observed-execution' : witnessed.length ? 'witness-conflict'
+      : gaps.length ? 'review-removal' : 'unmeasured';
+    if (gaps.length) {
+      addLines(marked, path, gaps);
+      addLines(disposition === 'review-removal' ? pending : conflicts, path, gaps);
+    }
+    items.push({ ...mark, disposition, gapLines: gaps.length, gapRanges: compactRanges(gaps),
+      observedRanges: compactRanges(observed), witnessedGapRanges: compactRanges(witnessed) });
+  }
+  for (const [path, lines] of conflicts) for (const line of lines) pending.get(path)?.delete(line);
+  items.sort(byImpact);
+  return { pending, report: { count: items.length, gapLines: summarize(marked).gapLines,
+    pendingGapLines: summarize(pending).gapLines, items: items.slice(0, limit),
+    invalid: { count: invalid.length, items: invalid.slice(0, limit) } } };
 }
 
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus }) {
@@ -197,8 +231,10 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
   const count = files => [...files.values()].reduce((sum, lines) => sum + lines.size, 0);
   const linkedGapLines = count(assigned);
+  const runtime = runtimeReview(tracer, data, state, measured.files, current, assigned, focus, limit);
+  const pending = runtime?.pending;
   if (held) for (const [path, lines] of held) addLines(assigned, path, lines);
-  const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, limit);
+  const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, pending, limit);
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {
     proposal: decisions.report.proposal, queues: decisions.report.queues, routes: decisions.report.routes,
@@ -211,8 +247,9 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
     ...(extensions && { extensionCandidates: extensions }),
-    ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, limit, focus }),
-      failedReplays: replayCandidates(replays.failed, { held, limit, focus, failures: replays.failures }) }),
+    ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
+      failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
+    ...(runtime && { runtimeReview: runtime.report }),
     ...(sourceFocus && { sourceFocus }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };

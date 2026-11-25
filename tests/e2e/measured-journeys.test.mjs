@@ -1098,6 +1098,33 @@ test('direct worklist finds scenario extension leads from one passing interval a
   assert.deepEqual(batch.items.map(row => [row.routeIds[0], row.marginalGapLines]), [['broad', 2], ['distinct', 1]]);
   const focused = f.json(...args, '--source', 'src/app.py:4-4').extensionCandidates;
   assert.deepEqual(focused.items.map(row => [row.routeIds[0], row.marginalGapLines]), [['broad', 1]]);
+
+  const mark = (range, why) => f.run(['dead-code', `src/app.py:${range}`, '--why', why, '--evidence', 'Reviewed production callers and target membership']);
+  mark(1, 'Candidate with an observed execution');
+  mark(4, 'Candidate with no registered caller');
+  mark(6, 'Candidate with a current CLI witness');
+  f.run(['link', 'src/app.py:6', '--step', 'tests/cases.mjs:1', '--action', 'Open through CLI', '--why', 'Checks a real result']);
+  const review = f.json(...args);
+  assert.equal(review.coverage.passedOnlyKnown.gapLines, 3);
+  assert.equal(review.runtimeReview.gapLines, 2);
+  assert.equal(review.runtimeReview.pendingGapLines, 1);
+  assert.deepEqual(review.runtimeReview.items.map(row => [row.source.start, row.disposition]).sort((a, b) => a[0] - b[0]),
+    [[1, 'observed-execution'], [4, 'review-removal'], [6, 'witness-conflict']]);
+  assert.equal(review.extensionCandidates.gapLines, 1, 'Reviewed removal no longer competes for extensions');
+  assert.equal(review.unassigned.gapLines, 2, 'Still in the measured worklist until a new reference removes it');
+  const scopedReview = f.json(...args, '--source', 'src/app.py:4-4');
+  assert.deepEqual(scopedReview.runtimeReview.items.map(row => row.source.start), [4]);
+  assert.equal(scopedReview.sourceFocus.gapLines, 1);
+  assert.equal(scopedReview.extensionCandidates.count, 0);
+  const reference = project(t);
+  reference.put('src/app.py', source + 'fifth\nsixth\nseventh\n');
+  reference.put(dataPath, readFileSync(join(f.root, dataPath)));
+  f.jsonFile('captures.json', { version: 1, inputRoots: [reference.root], outcomes: 'outcomes.json' });
+  f.put('src/app.py', source + 'fifth\nsixth\nseventh\nchanged\n');
+  const stale = f.json(...args.slice(0, -1), reference.root);
+  assert.equal(stale.runtimeReview.invalid.count, 3);
+  assert.equal(stale.runtimeReview.pendingGapLines, 0);
+  assert.equal(stale.coverage.passedOnlyKnown.instrumentedLines, 7);
 });
 
 test('worklist reads native CLI discovery and matches exact capture group labels', t => {
