@@ -755,6 +755,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
 
   const outcomeCounts = { passed: 0, failed: 0, unknown: 0 }, outOfReference = new Map(), extensionRecords = new Map();
   const actionSources = actionQuery && new Map();
+  const dispatchWindowSources = actionQuery?.windowLabel && new Map();
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
@@ -764,6 +765,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
       && [...new Set([...record.actions, ...(record.actionLabels ?? [])].map(label => actionIdsByLabel.get(label)).filter(Boolean))];
     const actionExecution = actionQuery && outcome === 'passed' && hasAction(record, actionQuery.label)
       && actionQuery.journeys.get(declaration.journey);
+    const dispatchWindow = dispatchWindowSources && actionExecution && record.actionLabels?.includes(actionQuery.windowLabel);
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
     for (const captured of record.captureFiles) {
@@ -780,8 +782,11 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         entry.intervals++; target.incompatible.set(key, entry); continue;
       }
       if (!target.comparable) continue;
-      if (actionExecution) recordActionSource(actionSources, actionExecution, captured,
-        { journey: declaration.journey, intervalId: record.id }, actionQuery.focus);
+      if (actionExecution) {
+        const example = { journey: declaration.journey, intervalId: record.id };
+        recordActionSource(actionSources, actionExecution, captured, example, actionQuery.focus);
+        if (dispatchWindow) recordActionSource(dispatchWindowSources, actionExecution, captured, example, actionQuery.focus);
+      }
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
         extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id,
@@ -833,6 +838,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(actionSources && { actionSources }),
+    ...(dispatchWindowSources && { dispatchWindowSources }),
     ...(functions && { functions }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),

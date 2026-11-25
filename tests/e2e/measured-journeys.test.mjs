@@ -1169,7 +1169,7 @@ test('worklist maps a discovered Scriv menu scope by its exact recorded label', 
 test('worklist matches an exact completed Scriv control target without falling back to generic activation', t => {
   const f = project(t);
   const fingerprint = identifier => `scriv activate --target-sha256 ${sha(identifier)}`;
-  const routes = ['captured', 'other', 'legacy'].map(name => ({ id: `journeys/${name}`, path: `tests/e2e/journeys/${name}.mjs` }));
+  const routes = ['captured', 'other', 'legacy', 'window', 'mismatched-window'].map(name => ({ id: `journeys/${name}`, path: `tests/e2e/journeys/${name}.mjs` }));
   f.jsonFile('receipt.json', {});
   const intervals = routes.map(({ path }, i) => {
     f.put(path, '// Real scenario selector witness.\n');
@@ -1177,25 +1177,35 @@ test('worklist matches an exact completed Scriv control target without falling b
     f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
     f.manifest.actions = ['scriv snapshot', 'scriv activate'];
     if (i < 2) f.manifest.actionLabels = [fingerprint(['workspace-open', 'workspace-open-recent'][i])];
-    else delete f.manifest.actionLabels;
+    else if (i >= 3) {
+      f.manifest.actionLabels = [
+        fingerprint(i === 3 ? 'workspace-open' : 'workspace-open-recent'),
+        `scriv activate --window-target-sha256 ${sha('workspace-open')}`,
+      ];
+    } else delete f.manifest.actionLabels;
     f.refresh();
     return { id: f.json(...f.args).id, journey: path, status: 'passed',
       evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } };
   });
   f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
-    selection: { mode: 'all', availableScenarioCount: 3, selectedScenarioCount: 3 }, scenarios: routes });
+    selection: { mode: 'all', availableScenarioCount: routes.length, selectedScenarioCount: routes.length }, scenarios: routes });
   f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['snapshot', 'activate'] });
   f.jsonFile('outcomes.json', { version: 1, intervals });
   f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
   const args = ['worklist', '--routes', 'discovery.json', '--capabilities', 'capabilities.json',
     '--capture-set', 'captures.json', '--reference-root', '.', '--source', 'src/app.py', '--action'];
   const broad = f.json(...args, 'activate').actionReview;
-  assert.equal(broad.routeCount, 3);
+  assert.equal(broad.routeCount, 5);
   const exact = f.json(...args, 'activate', '--target', 'workspace-open').actionReview;
   assert.equal(exact.target, 'workspace-open');
   assert.equal(exact.measurementAction, fingerprint('workspace-open'));
-  assert.deepEqual(exact.routes.map(route => route.routeIds), [['journeys/captured']]);
+  assert.deepEqual(exact.routes.map(route => route.routeIds), [['journeys/captured'], ['journeys/window']]);
+  assert.deepEqual(exact.dispatchWindows.items.map(route => route.routeIds), [['journeys/window']]);
+  assert.deepEqual(exact.dispatchWindows.items[0].sources,
+    exact.routes.find(route => route.routeIds.includes('journeys/window')).sources);
+  assert.equal(broad.dispatchWindows, undefined);
   assert.deepEqual(exact.extensionCandidates.items.map(route => route.routeIds), [['journeys/captured']]);
+  assert.equal(f.json(...args, 'activate', '--target', 'workspace-open-recent').actionReview.dispatchWindows.count, 0);
   assert.equal(f.json(...args, 'activate', '--target', 'workspace').actionReview.routeCount, 0);
   assert.match(f.run([...args, 'snapshot', '--target', 'workspace-open'], 1).stderr, /--target requires.*activate/);
   assert.match(f.run([...args, 'activate', '--target', '0.1.2'], 1).stderr, /stable control identifier/);

@@ -302,7 +302,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const startup = catalog.launchActions && measured.startupIntervals
     && extensionCandidates(measured.startupIntervals, catalog.journeys, current, assigned, pending, limit);
   const actionReview = actionId === undefined ? undefined
-    : reviewAction(actionId, catalog, actionLabel, measured.actionSources, sourceFocus, limit);
+    : reviewAction(actionId, catalog, actionLabel, measured, sourceFocus, limit);
   if (actionReview) {
     if (actionTarget !== undefined) actionReview.target = actionTarget;
     const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
@@ -333,14 +333,16 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-function reviewAction(id, catalog, label, actionSources, sourceFocus, limit) {
+function reviewAction(id, catalog, label, { actionSources, dispatchWindowSources }, sourceFocus, limit) {
   const restrictions = [catalog.actions.get(id)?.restriction].filter(Boolean);
-  const candidates = [...(actionSources ?? [])].map(([execution, { files, example }]) => ({
+  const actionRows = sources => [...(sources ?? [])].map(([execution, { files, example }]) => ({
     routeIds: execution.routeIds, argv: execution.argv, restrictions: [...new Set([...restrictions, ...execution.restrictions])], example,
     observedLines: [...files.values()].reduce((sum, lines) => sum + lines.size, 0),
     sources: [...files].sort(([a], [b]) => a.localeCompare(b)).map(([path, lines]) =>
       ({ path, observedRanges: compactRanges([...lines].sort((a, b) => a - b)) })),
   })).sort((a, b) => b.observedLines - a.observedLines || a.routeIds[0].localeCompare(b.routeIds[0]));
+  const candidates = actionRows(actionSources);
+  const windows = actionRows(dispatchWindowSources).filter(row => !row.restrictions.length);
   const routes = candidates.filter(row => !row.restrictions.length), restricted = candidates.filter(row => row.restrictions.length);
   const hasObservedSource = routes[0]?.observedLines > 0;
   const allFocusedLinesPassed = sourceFocus.gapLines === 0 && !sourceFocus.unknown.length;
@@ -352,6 +354,8 @@ function reviewAction(id, catalog, label, actionSources, sourceFocus, limit) {
   return { id, next, measurementAction: label ?? null, restrictions,
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
     routeCount: routes.length, routes: routes.slice(0, limit),
+    ...(dispatchWindowSources && { dispatchWindows: { count: windows.length, items: windows.slice(0, limit),
+      notice: 'Passing intervals declared by the capture producer around the completed activation. Background work may overlap and later work falls outside the window.' } }),
     restrictedRoutes: { count: restricted.length, items: restricted.slice(0, limit) },
   };
 }
@@ -370,15 +374,16 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   }
   if (actionId !== undefined && !focus) throw new Error('--action requires --source.');
   if (actionId !== undefined && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
-  let actionLabel;
+  let actionLabel, windowLabel;
   if (actionId !== undefined) {
     actionLabel = catalog.measurementActions ? catalog.measurementActions.get(actionId) : catalog.actions.get(actionId)?.id;
   }
   if (actionTarget !== undefined) {
     const digest = createHash('sha256').update(actionTarget).digest('hex');
     actionLabel += ` --target-sha256 ${digest}`;
+    windowLabel = `scriv activate --window-target-sha256 ${digest}`;
   }
-  const actionQuery = actionLabel && { label: actionLabel, focus, journeys: catalog.journeys };
+  const actionQuery = actionLabel && { label: actionLabel, windowLabel, focus, journeys: catalog.journeys };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;

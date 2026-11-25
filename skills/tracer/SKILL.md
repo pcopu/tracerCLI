@@ -135,7 +135,15 @@ interval recorded the action and both anchors around the missing condition.
 Use `actionReview.routes` for other scenarios that reached the caller. Select
 the whole caller range to find a scenario that ran it. Read its scenario
 and actual control before extending it. Counts describe the interval containing
-the action. When no selector has a passing match, inspect the discovered
+the action. If it includes too much surrounding work, run the same Scriv
+scenario with the normal pinned coverage options plus
+`--coverage-activate CONTROL_ID`. It measures around the first matching
+dispatch in one app session while the full scenario still runs. Add the
+capture and rerun the same query. Read `actionReview.dispatchWindows` first
+for the bounded observation. Background work may overlap. Use the full
+scenario interval for outcomes that finish after the dispatch.
+
+When no selector has a passing match, inspect the discovered
 scenarios before writing one. When the action is absent from discovery, verify
 the intended build and production entry point before adding an action.
 
