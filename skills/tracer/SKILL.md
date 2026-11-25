@@ -95,6 +95,13 @@ large gaps have stale or missing source links. `unavailable` flags reference
 lines whose current source is unavailable or changed. Size is a priority signal.
 Verify the route, then measure gains with a retained baseline.
 
+When a native scenario keeps assertions in group-specific support files,
+use its discovered `groupWitnessPaths`. `worklist --source` shows exact
+unrestricted `focusedWitnessRoutes` for current witnesses inside the caller
+range, including on previously observed lines. Use those selectors to find
+the relevant assertions and fixtures. Shared support files can leave more
+than one group for review.
+
 When you know the caller and discovered CLI action, use `worklist --action ID
 --source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
 also supply the app's saved `--capabilities` output. Use the advertised scope

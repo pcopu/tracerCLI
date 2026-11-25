@@ -154,6 +154,19 @@ tracer worklist --routes /external/scriv-discovery.json \
   --capture-set /external/captures.json --reference-root /external/reference/source
 ```
 
+For a native catalog scenario with groups, optional `groupWitnessPaths`
+maps a listed group ID to its actual assertion support paths. Use checked-in
+files under `tests/e2e/support/` or `tests/e2e/journeys/support/`. Each
+declared path belongs to its group selector. If two groups declare the same
+file, Tracer keeps both as candidates. The scenario entrypoint and recorded
+interval journey labels still work as before.
+
+A focused `worklist --source PATH:START-END` includes `focusedWitnessRoutes`
+for current manual witnesses inside the selected source with one unrestricted
+selector. This includes established witnesses on already observed lines.
+Use these routes to inspect related assertions before extending a focused
+caller. Only actual counter evidence affects the coverage totals.
+
 Tracer accepts the version-1 `native-cli-scenario-catalog`, validates the
 scenario paths and selection, preserves each blocker, and constructs the exact
 `test --scenario ID` and `--group NAME` selectors. It matches Scriv's recorded

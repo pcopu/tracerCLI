@@ -1269,6 +1269,52 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   }
 });
 
+test('focused worklist uses declared native group support witnesses beside uncovered lines', t => {
+  const f = project(t);
+  const { id } = f.json(...f.args);
+  f.jsonFile('evidence.json', { status: 'passed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: 'seed', status: 'passed',
+    evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const entry = 'tests/e2e/journeys/picture.mjs', unique = 'tests/e2e/journeys/support/follow.mjs';
+  const shared = 'tests/e2e/journeys/support/shared.mjs';
+  for (const path of [entry, unique, shared]) f.put(path, '// Reviewed fixture assertions.\n');
+  const link = (line, file) => f.run(['link', `src/app.py:${line}`, '--step', `${file}:1`,
+    '--action', 'Use the visible control', '--why', 'Verify captured fixture result']);
+  link(1, unique);
+  link(2, shared);
+  const discovery = { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    scenarios: [{ id: 'journeys/picture', path: entry, groups: ['follow', 'move'] }] };
+  f.jsonFile('routes.json', discovery);
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.',
+    '--source', 'src/app.py:1-2'];
+  const baseline = f.json(...args);
+  assert.equal(baseline.links.witnessWithoutRoute, 2);
+  const row = discovery.scenarios[0];
+  row.groupWitnessPaths = { follow: [unique, shared], move: [shared] };
+  f.jsonFile('routes.json', discovery);
+  const report = f.json(...args);
+  assert.deepEqual(report.coverage, baseline.coverage);
+  assert.equal(report.links.witnessWithoutRoute, 0);
+  assert.equal(report.focusedWitnessRoutes.count, 1);
+  assert.deepEqual(report.focusedWitnessRoutes.items.map(({ argv, witnessPaths }) => ({ argv, witnessPaths })), [
+    { argv: ['test', '--scenario', 'journeys/picture', '--group', 'follow'], witnessPaths: [unique] },
+  ]);
+  assert.deepEqual(report.routes, [], 'Covered witnesses gain no uncovered-line score');
+  assert.deepEqual(report.selectorReview.items[0].candidates.map(candidate => candidate.argv.at(-1)), ['follow', 'move']);
+  f.put(unique, '// Changed assertions need review.\n');
+  assert.equal(f.json(...args).focusedWitnessRoutes.count, 0);
+  const alias = 'tests/e2e/journeys/support/alias.mjs';
+  symlinkSync(join(f.root, shared), join(f.root, alias));
+  for (const bad of [{ unknown: [unique] }, { follow: [entry] }, { follow: [unique, unique] },
+    { follow: ['tests/e2e/../outside.mjs'] }, { follow: [alias] }]) {
+    row.groupWitnessPaths = bad;
+    f.jsonFile('routes.json', discovery);
+    assert.equal(f.run([...args, '--json'], 1).stdout, '');
+  }
+});
+
 test('native batch builds a reusable capture set from a verified Scriv receipt', t => {
   const base = project(t), run = project(t);
   const { id: baselineID } = base.json(...base.args);

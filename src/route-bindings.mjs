@@ -43,7 +43,7 @@ function nativeScenarioRoutes(discovery) {
 
   const ids = new Set(), routes = [];
   for (const scenario of discovery.scenarios) {
-    object(scenario, ['id', 'path'], ['groups', 'restriction']);
+    object(scenario, ['id', 'path'], ['groups', 'restriction', 'groupWitnessPaths']);
     const { id, path } = scenario;
     if (typeof id !== 'string' || !/^(?:journeys\/)?[A-Za-z0-9_-]+$/.test(id)
         || ids.has(id) || path !== `tests/e2e/${id}.mjs`) fail('Invalid or duplicate native scenario identity.');
@@ -58,12 +58,25 @@ function nativeScenarioRoutes(discovery) {
       route.restriction = `${restriction.reason} (${restriction.detail})`;
     }
     routes.push(route);
+    const { groupWitnessPaths } = scenario;
+    if (Object.hasOwn(scenario, 'groupWitnessPaths')) {
+      if (!Array.isArray(scenario.groups)) fail('Native group witnesses require listed groups.');
+      object(groupWitnessPaths, [], scenario.groups);
+      for (const paths of Object.values(groupWitnessPaths)) {
+        list(paths);
+        if (new Set(paths).size !== paths.length || paths.some(path => typeof path !== 'string'
+          || !/^tests\/e2e\/(?:journeys\/)?support\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.mjs$/.test(path))) {
+          fail('Invalid or duplicate native group witness path.');
+        }
+      }
+    }
     if (Object.hasOwn(scenario, 'groups')) {
       list(scenario.groups);
       if (new Set(scenario.groups).size !== scenario.groups.length) fail('Duplicate native scenario group.');
       for (const group of scenario.groups) {
         if (typeof group !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(group)) fail('Invalid native scenario group.');
-        routes.push({ id: `${id}/group/${group}`, paths: [path], argv: [...argv, '--group', group], journeys: [`${path}#${group}`] });
+        const witnesses = groupWitnessPaths && Object.hasOwn(groupWitnessPaths, group) ? groupWitnessPaths[group] : [];
+        routes.push({ id: `${id}/group/${group}`, paths: [path, ...witnesses], argv: [...argv, '--group', group], journeys: [`${path}#${group}`] });
       }
     }
   }

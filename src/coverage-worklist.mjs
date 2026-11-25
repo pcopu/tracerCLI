@@ -209,22 +209,30 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   }
 
   const links = { mapSha256, staleOrInvalid: 0, actionOnly: 0, witnessWithoutRoute: 0 };
-  const fileHashes = new Map();
+  const fileHashes = new Map(), focusedWitnesses = new Map();
   for (const { link, errors } of tracer.inspect(data, state)) {
     if (errors.length) { links.staleOrInvalid++; continue; }
     if (!link.step) { links.actionOnly++; continue; }
     const candidates = executionsByPath.get(link.step.path);
     if (!candidates) { links.witnessWithoutRoute++; continue; }
     const { path, start, end } = link.source, measuredFile = current.get(path);
-    if (!measuredFile?.lines.length) continue;
+    const focusedWitness = focus && candidates.length === 1 && !candidates[0].restrictions.length
+      && focus.intersects(path, start, end);
+    if (!measuredFile || (!measuredFile.lines.length && !focusedWitness)) continue;
     if (!fileHashes.has(path)) {
       const source = tracer.snapshot({ path, start: 1, end: state.files.get(path).length }, state);
       fileHashes.set(path, source.sha256);
     }
     if (fileHashes.get(path) !== measuredFile.sha256) throw new Error(`Current source changed during worklist analysis: ${path}`);
+    const [execution] = candidates;
+    if (focusedWitness) {
+      if (!focusedWitnesses.has(execution)) focusedWitnesses.set(execution, { paths: new Set(), ids: new Set() });
+      const witness = focusedWitnesses.get(execution);
+      witness.paths.add(link.step.path);
+      witness.ids.add(link.id);
+    }
     const lines = measuredFile.lines.filter(line => start <= line && line <= end && !held?.get(path)?.has(line));
     if (!lines.length) continue;
-    const [execution] = candidates;
     const needsReview = candidates.length !== 1 || execution.restrictions.length > 0;
     const bucket = needsReview ? reviewByPath : workByRoute;
     const key = needsReview ? link.step.path : execution;
@@ -254,6 +262,9 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       return { routeIds, argv, restrictions, ...(evidence && { neighboringEvidence: evidence }) };
     }),
     ...details(work) })).sort((a, b) => b.gapLines - a.gapLines || a.witnessPath.localeCompare(b.witnessPath));
+  const witnessRows = [...focusedWitnesses].map(([{ routeIds, argv }, { paths, ids }]) =>
+    ({ routeIds, argv, witnessPaths: [...paths].sort(), linkIds: [...ids].sort() }))
+    .sort((a, b) => b.linkIds.length - a.linkIds.length || a.routeIds[0].localeCompare(b.routeIds[0]));
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
   const count = files => [...files.values()].reduce((sum, lines) => sum + lines.size, 0);
   const linkedGapLines = count(assigned);
@@ -272,6 +283,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     limit, linkedGapLines,
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
+    ...(focus && { focusedWitnessRoutes: { count: witnessRows.length, items: witnessRows.slice(0, limit) } }),
     ...(extensions && { extensionCandidates: extensions }),
     ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
