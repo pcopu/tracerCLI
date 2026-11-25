@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { bindCatalogPlans, readRoutes } from './route-bindings.mjs';
 import { gapsMeasured } from './measured.mjs';
 import { compactRanges, parseRange } from './tracer.mjs';
@@ -197,7 +198,7 @@ function neighboringEvidence(files, examples) {
   return { gapLines: [...supported.values()].reduce((sum, lines) => sum + lines.size, 0), example };
 }
 
-function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel }) {
+function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel, actionTarget }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
@@ -277,6 +278,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const actionReview = actionId === undefined ? undefined
     : reviewAction(actionId, catalog, actionLabel, measured.actionSources, sourceFocus, limit);
   if (actionReview) {
+    if (actionTarget !== undefined) actionReview.target = actionTarget;
     const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
     actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit);
   }
@@ -327,15 +329,27 @@ function reviewAction(id, catalog, label, actionSources, sourceFocus, limit) {
   };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, limit = 15 }) {
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
+  if (actionTarget !== undefined) {
+    if (actionId !== 'activate' || catalog.measurementActions?.get(actionId) !== 'scriv activate') {
+      throw new Error('--target requires --action activate and UIKit --capabilities advertising activate.');
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9._-]{0,127}$/.test(actionTarget) || /\s/.test(actionTarget)) {
+      throw new Error('--target requires a stable control identifier, e.g. workspace-project.');
+    }
+  }
   if (actionId !== undefined && !focus) throw new Error('--action requires --source.');
   if (actionId !== undefined && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
   let actionLabel;
   if (actionId !== undefined) {
     actionLabel = catalog.measurementActions ? catalog.measurementActions.get(actionId) : catalog.actions.get(actionId)?.id;
+  }
+  if (actionTarget !== undefined) {
+    const digest = createHash('sha256').update(actionTarget).digest('hex');
+    actionLabel += ` --target-sha256 ${digest}`;
   }
   const actionQuery = actionLabel && { label: actionLabel, focus, journeys: catalog.journeys };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
@@ -348,7 +362,7 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;
-  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel });
+  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel, actionTarget });
 }
 
 function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit, focus }) {

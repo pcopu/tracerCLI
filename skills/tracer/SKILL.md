@@ -109,8 +109,12 @@ than one group for review.
 When you know the caller and discovered CLI action, use `worklist --action ID
 --source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
 also supply the app's saved `--capabilities` output. Use the advertised scope
-ID for a menu behavior, such as `--action script-entries`. Older captures can
-still match the broad `menu-action` command. Start with the exact
+ID for a menu behavior, such as `--action script-entries`. For a button, get
+its stable identifier from Scriv’s live CLI snapshot and use
+`--action activate --target CONTROL_ID`. Extend the returned scenario through
+that same control. Captures from completed identifier dispatches can match the
+target exactly. The broad `--action activate` also finds legacy captures and
+dispatches that used numerical view paths. Start with the exact
 scenario group in `actionReview.extensionCandidates` when the same passing
 interval recorded the action and both anchors around the missing condition.
 Use `actionReview.routes` for other scenarios that reached the caller. Select

@@ -224,7 +224,14 @@ Scriv command evidence uses the exact `scriv COMMAND` capture label. Menu
 scope IDs in Scriv capabilities, such as `script-entries`, match exact
 `scriv menu-action --scope script-entries` labels in new captures. Use the
 scope ID as `--action`. The broad `--action menu-action` still uses the
-original command records from both newer and older captures. For version-1
+original command records from both newer and older captures. For a button,
+use `--action activate --target CONTROL_ID` with its stable identifier from a
+real Scriv snapshot. For example, the Codex cancel button is
+`--action activate --target codex-cancel-check`. Scriv captures from direct,
+completed identifier dispatches supply an exact identifier fingerprint.
+The filter keeps other buttons, numerical view paths and earlier unscoped
+activations out of the action shortlist. Use the broad `--action activate` to
+inspect those historical captures. For version-1
 route catalogs, use the exact measured action string as `actions[].id`. A passing interval containing an action and source counters
 establishes co-occurrence. Review the caller and scenario before assigning
 causality, and measure the new condition to establish its gain.
