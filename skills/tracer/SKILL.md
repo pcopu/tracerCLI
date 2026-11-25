@@ -159,6 +159,10 @@ actions and recorded control fingerprints. The result includes the exact
 scenario selectors. Start with a recorded action's `dispatchBatch` when
 present. It offers exact cases and the observed anchors from a passing
 window around that control, even when the selected gap contains no hits.
+With compiler-resolved calls in the function map, an example with `caller`
+ties an unobserved helper to a caller body seen in that same control window.
+Read the call site's condition and reuse the listed action and scenario to
+exercise it, then measure the helper in a passing run.
 With a pinned function map, a hit on a nested callback declaration still
 leaves its unobserved body in entry-point review. Find the invoking action.
 Pass its `actionArgs` with the same source selection to inspect that action.

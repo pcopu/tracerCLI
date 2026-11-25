@@ -218,6 +218,11 @@ A whole-scope worklist with UIKit capabilities lists exact passing control
 windows in `recordedActions.items`. A matched window can nominate source gaps
 and exact CLI cases without a preselected source range. Add `--source` to
 include whole-session action hints for a caller you are investigating.
+With a pinned function map containing compiler calls, `dispatchBatch` can
+also nominate an unobserved callee when the same exact control window observed
+its caller's body. The example gives the call site, observed caller line and
+unobserved callee range, including across files. Review the condition at the
+call site before extending the case.
 
 Once you know the production caller and its CLI action, use the action ID and
 the caller's source range to find a scenario to extend.

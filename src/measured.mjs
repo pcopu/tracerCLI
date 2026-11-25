@@ -612,7 +612,7 @@ function readFunctionCalls(calls, files) {
   return [...unique.values()];
 }
 
-function collectPassingCallers(files, passingByFile, functions) {
+function collectPassingCallers(files, passingByFile, functions, dispatchGaps) {
   const byPath = new Map(files.filter(file => file.status === 'current').map(file => [file.path, file.passedOnlyKnown]));
   const candidates = { scenario: [], startup: [], declarations: { scenario: [], startup: [] } };
   const targetGaps = new Map();
@@ -637,19 +637,27 @@ function collectPassingCallers(files, passingByFile, functions) {
     const nested = functions.nested.has(caller.functionRange);
     const body = nested ? start + 1 : start;
     const callerRanges = functions.files.get(caller.path);
-    const seen = new Set(), declarations = new Map();
-    for (const { journey, intervalId, rows, startup, actionIds, exactReference } of passing) {
+    const seen = new Set(), seenWindows = new Set(), declarations = new Map();
+    for (const { journey, intervalId, rows, startup, actionIds, exactReference, windowAction } of passing) {
       const kind = startup ? 'startup' : 'scenario';
       const key = JSON.stringify([journey, kind]);
-      if (!exactReference || seen.has(key)) continue;
+      const windowKey = windowAction && JSON.stringify([journey, windowAction]);
+      const needsWindow = windowKey && !seenWindows.has(windowKey);
+      if (!exactReference || (seen.has(key) && !needsWindow)) continue;
       const anchor = rows.find(([line, before, after]) => line >= body && line <= end && after > before
         && innermostFunction(callerRanges, line) === caller.functionRange);
       const example = { path, functionRange: targetRange, caller, intervalId, journey, ...(actionIds?.length && { actionIds }) };
       if (anchor) {
+        const needsScenario = !seen.has(key);
+        for (const range of ranges) {
+          const match = { ...example, range, observedAnchor: anchor[0] };
+          if (needsWindow) addDispatchGap(dispatchGaps, windowAction, match);
+          if (needsScenario) candidates[kind].push(match);
+        }
+        if (needsWindow) seenWindows.add(windowKey);
         seen.add(key);
         declarations.delete(key);
-        for (const range of ranges) candidates[kind].push({ ...example, range, observedAnchor: anchor[0] });
-      } else if (nested && !declarations.has(key) && rows.some(([line, before, after]) => line === start && after > before)) {
+      } else if (!seen.has(key) && nested && !declarations.has(key) && rows.some(([line, before, after]) => line === start && after > before)) {
         // Creating a UIAction or registering a callback can count its declaration.
         declarations.set(key, { kind, example: { ...example, observedAnchor: start } });
       }
@@ -711,9 +719,8 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
 
 // Both anchors must increase in the same interval. Lines without counters
 // can split the physical ranges of a single gap in the instrumented sequence.
-function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions) {
+function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions, dispatchGaps) {
   const surroundingIntervals = [], startupIntervals = [], actionIntervals = [], crossFunctionGaps = [];
-  const dispatchGaps = new Map();
   const edges = functions && { scenario: [], startup: [], action: [] };
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
@@ -984,6 +991,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   const instrumentedLines = referenceFiles.reduce((sum, file) => sum + file.lines.length, 0);
   const totals = observedLines => ({ files: files.length, instrumentedLines, observedLines,
     gapLines: instrumentedLines - observedLines, percent: observedLines / instrumentedLines * 100 });
+  const dispatchGaps = new Map();
+  const passingCallers = functions?.calls && collectPassingCallers(files, extensionRecords, functions, dispatchGaps);
   return { kind: 'lcov-reference-source-gaps', notice: MEASURED_NOTICE, limitations: [...fixedLimitations,
     'The denominator is the explicit reference instrumentation only. Unavailable current files retain their reference denominator without current observation credit.',
     'Cross-build reuse requires exact current source bytes, a valid snapshot and the same per-file DA line set. Reuse describes source-line evidence across provenances.',
@@ -1000,8 +1009,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     ...(dispatchWindowSources && { dispatchWindowSources }),
     ...(recordedActions && { recordedActions }),
     ...(functions && { functions }),
-    ...(functions?.calls && { passingCallers: collectPassingCallers(files, extensionRecords, functions) }),
-    ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
+    ...(passingCallers && { passingCallers }),
+    ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions, dispatchGaps)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline && { comparison: {
       ...comparePassingEvidence(loaded, baseline, referenceFilesByPath, files),

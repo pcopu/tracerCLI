@@ -365,8 +365,11 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       actionReview.functionEdgeCandidates = extensionCandidates(exactEdges, catalog.journeys, current, held, pending, limit, exactBatch);
     }
     if (exactBatch) actionReview.nativeBatch = nativeCaseBatch(exactBatch, { limit, held, pending });
-    if (batches && actionReview.dispatchWindows) actionReview.dispatchBatch = (!actionReview.restrictions.length && dispatchPlans.get(actionLabel))
-      || nativeCaseBatch([], { limit });
+    if (batches && actionReview.dispatchWindows) {
+      actionReview.dispatchBatch = (!actionReview.restrictions.length && dispatchPlans.get(actionLabel))
+        || nativeCaseBatch([], { limit });
+      if (actionReview.dispatchBatch.cases.length) actionReview.next = 'extend-scenario';
+    }
   }
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {

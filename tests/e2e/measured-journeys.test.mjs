@@ -1273,6 +1273,70 @@ test('worklist matches an exact completed Scriv control target without falling b
   assert.match(f.run([...args, 'activate', '--target', '0.1.2'], 1).stderr, /stable control identifier/);
 });
 
+test('worklist matches an unobserved helper to a passing caller inside an exact control window', t => {
+  const f = project(t), caller = 'src/app.py', helper = 'src/helper.py';
+  f.put(helper, 'def recover():\n    restore()\n');
+  const files = [caller, helper].map(path => ({ path, sha256: f.hash(path) }));
+  f.jsonFile('sources.json', { files });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 =
+    f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const path = 'tests/e2e/journeys/workspace.mjs', scenario = 'journeys/workspace';
+  const target = sha('workspace-open'), other = sha('workspace-retry');
+  f.put(path, '// Open and recover a workspace through its real controls.\n');
+  f.jsonFile('receipt.json', {});
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0') +
+    f.record('DA:1,0\nDA:2,0').replace(caller, helper));
+  const capture = (runId, rows, actionLabels, status = 'passed') => {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
+    f.manifest.actions = ['scriv activate'];
+    f.manifest.actionLabels = actionLabels;
+    f.put('after.lcov', f.record(rows) + f.record('DA:1,0\nDA:2,0').replace(caller, helper));
+    f.refresh();
+    return { id: f.json(...f.args).id, journey: `${path}#recover`, status,
+      evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } };
+  };
+  const anchor = 'DA:1,0\nDA:2,1\nDA:3,0';
+  const matching = [`scriv activate --target-sha256 ${target}`, `scriv activate --window-target-sha256 ${target}`];
+  const intervals = [
+    capture('ordinary-session', anchor, [matching[0]]),
+    capture('exact-window', anchor, matching),
+    capture('mismatched-window', anchor, [matching[0], `scriv activate --window-target-sha256 ${other}`]),
+    capture('declaration-only', 'DA:1,1\nDA:2,0\nDA:3,0',
+      [`scriv activate --target-sha256 ${other}`, `scriv activate --window-target-sha256 ${other}`]),
+    capture('failed-window', anchor, [`scriv activate --target-sha256 ${other}`, `scriv activate --window-target-sha256 ${other}`], 'failed'),
+  ];
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    scenarios: [{ id: scenario, path, groups: ['recover'] }] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['activate'] });
+  f.jsonFile('outcomes.json', { version: 1, intervals });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.jsonFile('functions.json', { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256,
+    files: [{ ...files[0], ranges: [[1, 4], [1, 3]] }, { ...files[1], ranges: [[1, 2]] }],
+    calls: [{ caller: { path: caller, line: 3 }, callee: { path: helper, start: 1, end: 2 } }] });
+  const args = ['worklist', '--routes', 'discovery.json', '--capabilities', 'capabilities.json',
+    '--capture-set', 'captures.json', '--reference-root', '.', '--function-map', 'functions.json',
+    '--source', helper, '--action', 'activate'];
+  const result = f.json(...args, '--target-sha256', target);
+  assert.equal(result.sourceFocus.observedPassingLines, 0);
+  assert.equal(result.actionReview.next, 'extend-scenario');
+  const batch = result.actionReview.dispatchBatch;
+  assert.deepEqual(batch.argv, ['test', '--case', `${scenario}#recover`]);
+  assert.equal(batch.candidateGapLines, 2);
+  assert.deepEqual(batch.cases[0].examples, [{
+    path: helper, range: [1, 2], functionRange: [1, 2],
+    caller: { path: caller, line: 3, functionRange: [1, 3] }, observedAnchor: 2,
+    intervalId: intervals[1].id, journey: `${path}#recover`, actionIds: ['activate'],
+  }]);
+  assert.deepEqual(result.recordedActions.items[0].dispatchBatch, batch);
+  assert.deepEqual(f.json(...args, '--target-sha256', other).actionReview.dispatchBatch.argv, []);
+  const global = f.json(...args.slice(0, -4));
+  const globalMatch = global.recordedActions.items.find(row => row.targetSha256 === target);
+  assert.ok(globalMatch.dispatchBatch.cases[0].sources.some(source => source.path === helper));
+  assert.deepEqual(global.coverage, result.coverage);
+});
+
 test('direct worklist finds scenario extension leads from one passing interval around the same gap', t => {
   const f = project(t);
   f.put('src/app.py', source + 'fifth\nsixth\nseventh\n');
