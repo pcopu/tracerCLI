@@ -73,6 +73,25 @@ function remainingGaps(current, assigned) {
 
 const fileSummary = (rows, limit) => ({ files: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) });
 
+// A later selector earns credit only for source lines earlier selections do not nominate.
+function marginalCandidates(rows, limit) {
+  const selected = [], nominated = new Map();
+  const score = ({ files }) => [...files].reduce((sum, [path, lines]) =>
+    sum + [...lines].filter(line => !nominated.get(path)?.has(line)).length, 0);
+  while (rows.length && selected.length < limit) {
+    let index = -1, marginalGapLines = 0;
+    for (const [i, row] of rows.entries()) {
+      const additional = score(row);
+      if (additional > marginalGapLines) { index = i; marginalGapLines = additional; }
+    }
+    if (index < 0) break;
+    const [row] = rows.splice(index, 1);
+    for (const [path, lines] of row.files) addLines(nominated, path, lines);
+    selected.push({ ...row, marginalGapLines });
+  }
+  return selected;
+}
+
 function extensionCandidates(surroundingIntervals, journeys, current, assigned, limit) {
   const byGap = new Map(), byExecution = new Map();
   for (const example of surroundingIntervals) {
@@ -82,16 +101,18 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     if (!executions.has(execution)) executions.set(execution, example);
   }
 
-  let gapLines = 0, exclusiveGapLines = 0;
+  let gapLines = 0, exclusiveGapLines = 0, restrictedGapLines = 0;
   for (const { path, range: [start, end], executions } of byGap.values()) {
     const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line)) ?? [];
     if (!lines.length) continue;
-    gapLines += lines.length;
-    const exclusive = executions.size === 1;
-    if (exclusive) exclusiveGapLines += lines.length;
+    const selectableCount = [...executions.keys()].filter(execution => !execution.restrictions.length).length;
+    if (selectableCount) gapLines += lines.length;
+    if (selectableCount === 1) exclusiveGapLines += lines.length;
+    if (selectableCount < executions.size) restrictedGapLines += lines.length;
     for (const [execution, example] of executions) {
       if (!byExecution.has(execution)) byExecution.set(execution, { files: new Map(), exclusiveGapLines: 0, exclusiveExamples: [], sharedExamples: [] });
       const candidate = byExecution.get(execution);
+      const exclusive = selectableCount === 1 && !execution.restrictions.length;
       addLines(candidate.files, path, lines);
       if (exclusive) candidate.exclusiveGapLines += lines.length;
       const examples = exclusive ? candidate.exclusiveExamples : candidate.sharedExamples;
@@ -99,10 +120,14 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     }
   }
   const rows = [...byExecution].map(([{ routeIds, argv, restrictions }, candidate]) => ({ routeIds, argv, restrictions,
-    ...summarize(candidate.files), exclusiveGapLines: candidate.exclusiveGapLines,
+    files: candidate.files, ...summarize(candidate.files), exclusiveGapLines: candidate.exclusiveGapLines,
     examples: candidate.exclusiveExamples.concat(candidate.sharedExamples).slice(0, 3) }));
   rows.sort((a, b) => b.exclusiveGapLines - a.exclusiveGapLines || b.gapLines - a.gapLines || a.routeIds[0].localeCompare(b.routeIds[0]));
-  return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
+  const ready = rows.filter(row => !row.restrictions.length), restricted = rows.filter(row => row.restrictions.length);
+  const count = ready.length;
+  const publicRow = ({ files, ...row }) => row;
+  return { count, gapLines, exclusiveGapLines, items: marginalCandidates(ready, limit).map(publicRow),
+    restricted: { count: restricted.length, gapLines: restrictedGapLines, items: restricted.slice(0, limit).map(publicRow) } };
 }
 
 function replayCandidates(sourcesByRoute, { held, limit, failures, focus }) {
@@ -113,26 +138,14 @@ function replayCandidates(sourcesByRoute, { held, limit, failures, focus }) {
       const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && (!focus || focus.intersects(path, line)));
       if (eligible.length) { addLines(available, path, eligible); addLines(union, path, eligible); }
     }
-    if (available.size) rows.push({ execution, available, ...summarize(available) });
+    if (available.size) rows.push({ execution, files: available, ...summarize(available) });
   }
-  const covered = new Map(), items = [];
-  const score = ({ available }) => [...available].reduce((sum, [path, lines]) =>
-    sum + [...lines].filter(line => !covered.get(path)?.has(line)).length, 0);
   const count = rows.length;
   rows.sort((a, b) => a.execution.routeIds[0].localeCompare(b.execution.routeIds[0]));
-  while (rows.length && items.length < limit) {
-    let index = -1, marginal = 0;
-    for (const [i, row] of rows.entries()) {
-      const additional = score(row);
-      if (additional > marginal) { index = i; marginal = additional; }
-    }
-    if (index < 0) break;
-    const [row] = rows.splice(index, 1);
-    for (const [path, lines] of row.available) addLines(covered, path, lines);
-    const { execution: { routeIds, argv }, sources, gapLines } = row;
-    items.push({ routeIds, argv, sources, gapLines, marginalGapLines: marginal,
-      ...(failures && { failure: failures.get(row.execution) }) });
-  }
+  const items = marginalCandidates(rows, limit).map(({ execution, sources, gapLines, marginalGapLines }) => ({
+    routeIds: execution.routeIds, argv: execution.argv, sources, gapLines, marginalGapLines,
+    ...(failures && { failure: failures.get(execution) }),
+  }));
   return { count, gapLines: summarize(union).gapLines, items };
 }
 

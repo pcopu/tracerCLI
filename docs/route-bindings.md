@@ -184,12 +184,17 @@ With these labels, `extensionCandidates` ranks selectors that have a passing
 interval with counter increases on both neighboring instrumented lines of an
 unassigned gap. Each example includes its interval ID, journey label and anchor
 lines. This locates an existing fixture and scenario to inspect when adding a
-condition. Treat the intervening gap as uncovered. Restrictions still apply.
-The overall total counts each shared gap once. `exclusiveGapLines` counts
-gaps with one candidate selector and sorts those selectors first. The report
-keeps the gap in `unassigned` until it has a current witness or a scored plan.
-The anchor examples retain their full surrounding gap for context. Candidate
-`sources` contain the exact lines still suggested for extension.
+condition. Treat the intervening gap as uncovered.
+`extensionCandidates.items` is a batch shortlist. Each selector is picked for
+the largest number of candidate gap lines still absent from earlier items.
+`marginalGapLines` counts that contribution. For ties, Tracer prefers more
+`exclusiveGapLines` nominated by just one unrestricted selector. Selectors
+that would add zero candidate lines remain counted in `count`. Recently
+selected lines may still appear in an item's full `sources` for context.
+Restricted selectors and their reasons stay under `extensionCandidates.restricted`
+and cannot use up the shortlist limit. Neither list changes passing totals or
+assigns an uncovered line. Review the anchor examples and trace the required
+condition before extending a journey.
 
 ## Rank the routes for a source range
 

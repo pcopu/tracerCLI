@@ -49,6 +49,10 @@ Start with the largest actionable group and keep the original denominator.
 Add `worklist --source PATH[:RANGE]` to rank CLI routes for a specific
 behavior. Repeat `--source` for its controller, store and shared helpers.
 Read `sourceFocus` for the selected counts and `coverage` for the full scope.
+Use `extensionCandidates.items` as the shortlist of existing scenarios to inspect.
+Prefer the largest `marginalGapLines` and confirm the production caller and
+missing condition. The shortlist skips scenarios that only duplicate candidate
+lines. Read `extensionCandidates.restricted` for unavailable alternatives.
 
 After a rebuild, add `--replay` and use a capture set containing both the new
 reference and retained earlier results. `replayCandidates` ranks the existing
