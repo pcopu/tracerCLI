@@ -185,11 +185,12 @@ losses. Preserve the previous reference and its raw captures.
 After a rebuild, add `--replay` and use a capture set containing both the new
 reference and retained earlier results. `replayCandidates` ranks the existing
 CLI selectors that previously observed still-missing behavior, deduplicated by
-marginal candidate lines. Run the leading selectors on the verified build and
-use `measure batch` to record fresh gains. Earlier observations only guide
-selection when source or instrumentation changed.
-Keep `--coverage-startup` on replay commands that include it. Startup
-and session attempts have independent outcomes for the same selector.
+marginal candidate lines. For Scriv, use `replayCandidates.batches.session.argv`
+and `replayCandidates.batches.startup.argv` as separate invocations. Review the
+selected cases, append the verified build and capture inputs, and use
+`measure batch` to record fresh gains. Each batch counts its candidate lines
+once. Earlier observations only guide selection when source or instrumentation
+changed. Startup and session attempts have independent outcomes.
 Inspect `failedReplays` for selectors already tried on the reference build.
 Use the bound receipt and any typed `failure.diagnostic` to fix the failed
 scenario. For an ambiguous native selector, use the reported source location

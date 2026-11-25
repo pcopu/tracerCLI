@@ -460,7 +460,12 @@ Current reviewed holds supplied through `--file` also apply to replay leads.
 
 The total counts candidate lines once. Each item gives exact `argv`, candidate
 source ranges and `marginalGapLines` beyond earlier selections. A selector that
-would add no further candidate lines is omitted from the ranked list. The
-reported denominator and passing counts still come from exact compatible
-observations. Run the selected groups against the current build and import
-fresh receipts before measuring gains.
+would add no further candidate lines is omitted from the ranked list.
+For native Scriv discovery, `replayCandidates.batches.session.argv` and
+`replayCandidates.batches.startup.argv` group the ready selectors as repeatable
+`--case` arguments. Each batch deduplicates its own candidate lines and favors
+a scoped group when its marginal score ties an entire scenario. Empty batches
+have empty `argv`. Review the selected cases, append the verified build and
+capture options, and run each mode separately. Read `failedReplays` while the
+independent ready cases proceed. The reported denominator and passing counts
+come from exact compatible observations and fresh receipts.

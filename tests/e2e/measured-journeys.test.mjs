@@ -2264,7 +2264,7 @@ test('native worklist keeps startup replays separate from regular case outcomes'
       = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
     const lines = text.trimEnd().split('\n').map((_, index) => index + 1);
     f.put('before.lcov', f.record(lines.map(line => `DA:${line},0`).join('\n')));
-    return (runId, actions, hits, status = 'passed') => {
+    return (runId, actions, hits, status = 'passed', caseJourney = journey) => {
       Object.assign(f.manifest, { runId, actions });
       f.manifest.before.runId = f.manifest.after.runId = runId;
       f.put('after.lcov', f.record(lines.map(line => `DA:${line},${Number(hits.includes(line))}`).join('\n')));
@@ -2272,16 +2272,19 @@ test('native worklist keeps startup replays separate from regular case outcomes'
       const { id } = f.json(...f.args);
       const evidence = runId + '.json';
       f.jsonFile(evidence, { status });
-      return { id, journey, status, evidence: { path: join(f.root, evidence), sha256: f.hash(evidence) } };
+      return { id, journey: caseJourney, status, evidence: { path: join(f.root, evidence), sha256: f.hash(evidence) } };
     };
   }
   const captureEarlier = prepare(earlier, previous), captureCurrent = prepare(current, updated);
   current.put(witness, '// Reviewed native case.\n');
   current.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
     selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
-    launchModes: ['--startup-trace'], scenarios: [{ id, path: witness, groups: [group] }] });
+    launchModes: ['--startup-trace'], scenarios: [{ id, path: witness, groups: [group, 'underway'] }] });
   current.jsonFile('captures.json', { version: 1, inputRoots: [earlier.root, '.'], outcomes: 'outcomes.json' });
+  const underway = witness + '#underway';
   const outcomes = [captureEarlier('earlier-startup', startup, [2]), captureEarlier('earlier-session', session, [4]),
+    captureEarlier('earlier-full', session, [4], 'passed', witness),
+    captureEarlier('earlier-underway', session, [4], 'passed', underway),
     captureCurrent('current-session', session, [7]), captureCurrent('failed-session', session, [6], 'failed')];
   function report() {
     current.jsonFile('outcomes.json', { version: 1, intervals: outcomes });
@@ -2289,21 +2292,33 @@ test('native worklist keeps startup replays separate from regular case outcomes'
   }
   const initial = report();
   const startupArgv = ['test', '--scenario', id, '--group', group, '--coverage-startup'];
-  assert.deepEqual(initial.replayCandidates.items.map(row => [row.argv, row.sources[0].gapRanges]), [[startupArgv, [[3, 3]]]]);
+  const sessionArgv = ['test', '--scenario', id];
+  assert.deepEqual(initial.replayCandidates.items.map(row => [row.argv, row.sources[0].gapRanges]),
+    [[sessionArgv, [[5, 5]]], [startupArgv, [[3, 3]]]]);
+  const ready = initial.replayCandidates.batches;
+  assert.deepEqual(ready.session.argv, ['test', '--case', id + '#underway']);
+  assert.deepEqual(ready.startup.argv, ['test', '--coverage-startup', '--case', id + '#' + group]);
+  assert.equal(ready.session.candidateGapLines, 1);
+  assert.equal(ready.startup.candidateGapLines, 1);
+  assert.equal(initial.nextStep.from, 'replayCandidates.batches.session');
   assert.equal(initial.failedReplays.count, 0, 'A regular failure cannot block startup');
   assert.equal(initial.coverage.passedOnlyKnown.observedLines, 1);
 
   outcomes.push(captureCurrent('failed-startup', startup, [], 'failed'));
   const failed = report();
-  assert.equal(failed.replayCandidates.count, 0);
+  assert.equal(failed.replayCandidates.count, 2);
+  assert.deepEqual(failed.replayCandidates.batches.session.argv, ready.session.argv);
+  assert.deepEqual(failed.replayCandidates.batches.startup.argv, []);
+  assert.equal(failed.nextStep.from, 'replayCandidates.batches.session', 'A failed startup cannot displace independent runnable work');
   assert.deepEqual(failed.failedReplays.items.map(row => row.argv), [startupArgv]);
   assert.equal(failed.coverage.passedOnlyKnown.observedLines, 1);
 
   outcomes.push(captureCurrent('current-startup', startup, [3]));
+  outcomes.push(captureCurrent('current-underway', session, [5], 'passed', underway));
   const recovered = report();
   assert.equal(recovered.replayCandidates.count, 0);
   assert.equal(recovered.failedReplays.count, 0);
-  assert.equal(recovered.coverage.passedOnlyKnown.observedLines, 2);
+  assert.equal(recovered.coverage.passedOnlyKnown.observedLines, 3);
 });
 
 test('worklist guides branch-state case reuse, extension and repair without executing the app', t => {

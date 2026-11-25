@@ -31,12 +31,17 @@ export function guideCoverageWorklist(report) {
     items: report.actionCases.items.map(action => ({ ...action,
       cases: action.cases.map(row => ({ ...row, next: allHeld ? heldNext.kind : caseNext(action, row, focus, unavailable) })) })) };
   const complete = measured?.gapLines === 0 && !unavailable && !focus?.unknown.length;
+  const replayBatches = report.replayCandidates?.batches;
+  const readyReplay = ['session', 'startup'].find(mode => replayBatches?.[mode].cases.length);
   let kind, from, instruction;
   if (allHeld) {
     ({ kind, from, instruction } = heldNext);
   } else if (complete) {
     kind = 'reuse-passing-evidence'; from = focus ? 'sourceFocus' : 'coverage.passedOnlyKnown';
     instruction = 'Reuse the compatible passing observations for this measured scope. Choose another remaining gap; do not rerun an unchanged case solely to add the same lines.';
+  } else if (readyReplay) {
+    kind = 'run-existing-case'; from = `replayCandidates.batches.${readyReplay}`;
+    instruction = 'Review the selected cases, append the pinned capture options to the batch argv, and run it on the verified reference build. Retained older observations guide selection without filling current gaps.';
   } else if (actionCases?.count && (report.kind === 'action-case-worklist'
       || actionCases.items.some(action => action.cases.some(row => row.conditionGapLines !== 0)))) {
     kind = 'use-action-cases'; from = 'actionCases.items';

@@ -134,7 +134,7 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     restricted: { count: restricted.length, gapLines: restrictedGapLines, items: restricted.slice(0, limit).map(publicRow) } };
 }
 
-function nativeCaseBatch(candidates, { limit, held, pending, startup = false, includeExamples = false }) {
+function nativeCaseBatch(candidates, { limit, held, pending, startup = false, includeExamples = false, preferGroups = false }) {
   const bySelector = new Map();
   for (const { argv, routeIds, files, examples } of candidates) {
     // Only use argv from the validated native discovery catalog.
@@ -148,14 +148,15 @@ function nativeCaseBatch(candidates, { limit, held, pending, startup = false, in
       if (eligible.length) addLines(target, path, eligible);
     }
   }
-  const rows = [...bySelector.values()].sort((a, b) => a.selector.localeCompare(b.selector));
+  const rows = [...bySelector.values()].sort((a, b) => (preferGroups && Number(b.selector.includes('#')) - Number(a.selector.includes('#')))
+    || a.selector.localeCompare(b.selector));
   const cases = marginalCandidates(rows, limit).map(({ files, ...row }) => ({ ...row, ...summarize(files) }));
   return { argv: cases.length ? ['test', ...(startup ? ['--coverage-startup'] : []),
     ...cases.flatMap(({ selector }) => ['--case', selector])] : [],
     candidateGapLines: cases.reduce((count, row) => count + row.marginalGapLines, 0), cases };
 }
 
-function replayCandidates(sourcesByRoute, { held, pending, limit, failures, focus }) {
+function replayCandidates(sourcesByRoute, { held, pending, limit, failures, focus, native }) {
   const rows = [], union = new Map();
   for (const [execution, sources] of sourcesByRoute) {
     const available = new Map();
@@ -167,11 +168,19 @@ function replayCandidates(sourcesByRoute, { held, pending, limit, failures, focu
   }
   const count = rows.length;
   rows.sort((a, b) => a.execution.routeIds[0].localeCompare(b.execution.routeIds[0]));
+  const batches = native && { session: [], startup: [] };
+  if (batches) for (const { execution, files } of rows) {
+    const mode = execution.argv.at(-1) === '--coverage-startup' ? 'startup' : 'session';
+    batches[mode].push({ argv: execution.argv, routeIds: execution.routeIds, files });
+  }
   const items = marginalCandidates(rows, limit).map(({ execution, sources, gapLines, marginalGapLines }) => ({
     routeIds: execution.routeIds, argv: execution.argv, sources, gapLines, marginalGapLines,
     ...(failures && { failure: failures.get(execution) }),
   }));
-  return { count, gapLines: summarize(union).gapLines, items };
+  return { count, gapLines: summarize(union).gapLines, items, ...(batches && { batches: {
+    session: nativeCaseBatch(batches.session, { limit, preferGroups: true }),
+    startup: nativeCaseBatch(batches.startup, { limit, startup: true, preferGroups: true }),
+  } }) };
 }
 
 function runtimeReview(tracer, data, state, measuredFiles, current, assigned, focus, limit) {
@@ -511,7 +520,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     ...(measured.recordedActions && (focus || measured.recordedActions.size)
       && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit, dispatchPlans) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
-    ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
+    ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus, native: catalog.launchActions }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
     ...(runtime && { runtimeReview: runtime.report }),
     ...(sourceFocus && { sourceFocus }),
