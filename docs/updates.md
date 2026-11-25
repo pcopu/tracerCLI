@@ -91,7 +91,12 @@ For an installation it:
 1. Resolves the selected release tag, official `main`, or exact commit pin to a full immutable commit ID.
 2. Verifies package name, version, repository identity and the dependency-free runtime layout.
 3. Reads the pinned Git tree and recomputes each tree object's Git SHA-1 checksum, including directory structure. Truncated trees, unexpected runtime symlinks, unsafe paths and case-colliding files fail closed.
-4. Fetches individual allowlisted blobs by object ID. It verifies each blob's declared size and Git SHA-1 object checksum. No archive extraction occurs.
+4. Reuses files from the verified active installation when the pinned tree has
+   the same path and Git blob ID. It checks the local SHA-256 inventory, the
+   expected length, and the actual Git SHA-1 object checksum before reuse.
+   Remaining allowlisted blobs are downloaded by object ID and verified
+   against the pinned tree. The JSON result reports the counts in
+   `releaseFiles.reused` and `releaseFiles.downloaded`.
 5. Computes SHA-256 hashes for the installed file inventory and verifies the staged installation before activation.
 
 These checks provide official GitHub HTTPS provenance, immutable source selection and integrity checks. **They are not an independent publisher signature, a GitHub artifact attestation, a malware review or protection from a compromised official repository/GitHub account.** Git's existing object identity is SHA-1; the separate SHA-256 inventory detects later local edits but is not a detached upstream signature. No signing key or attestation infrastructure is claimed or required.

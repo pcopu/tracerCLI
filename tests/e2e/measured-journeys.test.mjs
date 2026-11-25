@@ -1780,6 +1780,22 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.equal(exact.decisions.nativeBatch.candidateGapLines, 1);
   assert.deepEqual(exact.coverage, blocked.coverage, 'A planned selector adds no observations');
 
+  const allowed = prepared.scenarios.find(row => row.id === 'allowed');
+  allowed.captureMode = 'startup';
+  allowed.actionIds = ['--startup-trace'];
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    launchModes: ['--startup-trace'], scenarios: [{ id: 'edit', path, groups: ['recover', 'review'] }] });
+  const startup = report(['allowed']);
+  assert.deepEqual(startup.decisions.nativeBatch.argv, []);
+  assert.deepEqual(startup.decisions.nativeStartupBatch.argv, ['test', '--coverage-startup', '--case', 'edit#recover']);
+  assert.equal(startup.decisions.queues['needs-scenario'].items[0].captureMode, 'startup');
+  assert.deepEqual(startup.coverage, exact.coverage);
+  allowed.captureMode = 'unknown';
+  f.jsonFile('proposal.json', prepared);
+  assert.match(f.run(args, 1).stderr, /invalid.*capture mode/i);
+  delete allowed.captureMode;
+
   prepared.scenarios.find(row => row.id === 'allowed').routeIds = ['edit/group/missing'];
   const missingRoute = report(['allowed']);
   assert.deepEqual(missingRoute.decisions.queues['needs-scenario'].items[0].routeIds, []);

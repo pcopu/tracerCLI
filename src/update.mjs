@@ -240,7 +240,7 @@ function verifyTree(tree) {
   }
 }
 
-async function fetchRelease(candidate, options) {
+async function fetchRelease(candidate, options, installedPath, installed) {
   const request = client(options), commit = await request(`/git/commits/${candidate.commit}`);
   if (commit?.sha !== candidate.commit || !SHA.test(commit.tree?.sha)) fail('GitHub commit identity mismatch.');
   const tree = await request(`/git/trees/${commit.tree.sha}?recursive=1`);
@@ -255,13 +255,21 @@ async function fetchRelease(candidate, options) {
     seen.add(entry.path.toLowerCase()); total += entry.size;
   }
   if (total > MAX_TOTAL || !['package.json', 'bin/tracer.mjs', 'src/tracer.mjs', 'skills/tracer/SKILL.md'].every(path => entries.some(entry => entry.path === path))) fail('Release runtime is incomplete or too large.');
+  const previous = new Map(installed?.files.map(file => [file.path, file]));
   const files = [];
+  let reused = 0;
   for (const entry of entries) {
-    const bytes = decodeBlob(await request(`/git/blobs/${entry.sha}`), entry);
+    const local = previous.get(entry.path);
+    let bytes;
+    if (local?.gitBlob === entry.sha) {
+      bytes = readVerifiedManagedFile(installedPath, local);
+      if (bytes.length !== entry.size || gitBlobHash(bytes) !== entry.sha) fail('Local file disagrees with the verified Git source tree.');
+      reused++;
+    } else bytes = decodeBlob(await request(`/git/blobs/${entry.sha}`), entry);
     files.push({ path: entry.path, bytes, sha256: sha256(bytes), gitBlob: entry.sha });
   }
   validatePackage(json(files.find(file => file.path === 'package.json').bytes), candidate.version);
-  return files;
+  return { files, releaseFiles: { reused, downloaded: files.length - reused } };
 }
 function manifestAt(path) {
   const manifest = readJSON(join(path, '.tracer-release.json'), null);
@@ -274,6 +282,14 @@ function manifestAt(path) {
   }
   if (!['package.json', 'bin/tracer.mjs', 'src/tracer.mjs', 'skills/tracer/SKILL.md'].every(file => manifest.files.some(entry => entry.path === file))) fail('Managed release manifest is incomplete.');
   return manifest;
+}
+function readVerifiedManagedFile(path, file) {
+  const full = guard(join(path, file.path), 'file');
+  const changed = `Managed file changed or is missing; preserved without updating: ${file.path}`;
+  if (!existsSync(full) || lstatSync(full).size > MAX_FILE) fail(changed);
+  const bytes = readFileSync(full);
+  if (bytes.length > MAX_FILE || sha256(bytes) !== file.sha256) fail(changed);
+  return bytes;
 }
 function verifyRelease(path, expectedId) {
   guard(path);
@@ -289,10 +305,7 @@ function verifyRelease(path, expectedId) {
     }
   };
   walk(path);
-  for (const file of manifest.files) {
-    const full = guard(join(path, file.path), 'file');
-    if (!existsSync(full) || lstatSync(full).size > MAX_FILE || sha256(readFileSync(full)) !== file.sha256) fail(`Managed file changed or is missing; preserved without updating: ${file.path}`);
-  }
+  for (const file of manifest.files) readVerifiedManagedFile(path, file);
   return manifest;
 }
 // This stable launcher executes only on the user's NEXT invocation, never during update.
@@ -342,7 +355,8 @@ export async function updateCLI(options = {}) {
   const releaseLock = lock(options); let staging;
   try {
     const active = activeState(options), home = updateHome(options);
-    const installed = active ? verifyRelease(join(home, 'releases', active.current), active.current) : null;
+    const installedPath = active && join(home, 'releases', active.current);
+    const installed = active ? verifyRelease(installedPath, active.current) : null;
     const candidate = await checkForUpdate({ ...options, currentVersion: installed?.version ?? currentVersion(options) });
     if (!candidate.commit) return candidate;
     if (candidate.status === 'older') fail('Downgrades are refused. Use the local --rollback command to select a previously installed version.');
@@ -360,7 +374,7 @@ export async function updateCLI(options = {}) {
         fail('Automatic update requires the new official commit to descend from the installed commit. Review divergent history and use an explicit update.');
       }
     }
-    const files = await fetchRelease(candidate, options);
+    const { files, releaseFiles } = await fetchRelease(candidate, options, installedPath, installed);
     const releases = guard(join(home, 'releases')); mkdirSync(releases, { recursive: true, mode: 0o700 });
     const destination = join(releases, id);
     if (existsSync(destination)) verifyRelease(destination, id);
@@ -380,7 +394,7 @@ export async function updateCLI(options = {}) {
     let skills;
     try { skills = refreshSkillsUnlocked({ ...options, source: join(destination, 'skills/tracer/SKILL.md'), version: candidate.version }); }
     catch (error) { skills = [{ status: 'preserved', message: cleanError(error) }]; }
-    return { ...candidate, status: 'updated', launcher, previous: active?.current ?? null, skills, message: 'Managed installation is ready. The new CLI runs on the next managed-launcher invocation; no downloaded code was executed during installation.' };
+    return { ...candidate, status: 'updated', launcher, previous: active?.current ?? null, skills, releaseFiles, message: 'Managed installation is ready. The new CLI runs on the next managed-launcher invocation; no downloaded code was executed during installation.' };
   } finally { if (staging && existsSync(staging)) rmSync(staging, { recursive: true }); releaseLock(); }
 }
 /** Local pointer rollback; leaves all versions and registered skills intact. */

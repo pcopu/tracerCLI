@@ -7,6 +7,10 @@ description: Measure real CLI scenario execution, provisionally bind existing pl
 
 Documentation paths in this skill are relative to the selected trusted Tracer package root, the parent of its `bin` directory. They are not relative to the application being tested or the installed skill directory, which contains only this file. Resolve the selected CLI entrypoint and read that package's matching documentation; do not assume a different globally installed version supports the same commands.
 
+Use `tracer update --status --json` to check the active managed commit.
+Explicit managed upgrades reuse verified files that match the new Git tree.
+The JSON result shows downloaded and reused file counts.
+
 ## Match the behavior to a CLI action
 
 Start with what the application does. Trace it from the relevant source range
@@ -58,6 +62,8 @@ For a reviewed scenario group, record its actual discovery ID in the plan's
 `decisions.nativeBatch` emits the exact selectors for eligible plans and
 deduplicates shared gaps. Inspect `unmatchedRouteIds` when a selector is
 missing from this discovery.
+A startup plan with `captureMode: "startup"` goes in
+`decisions.nativeStartupBatch` with the startup capture flag.
 Start with the largest actionable group and keep the original denominator.
 Add `worklist --source PATH[:RANGE]` to rank CLI routes for a specific
 behavior. Repeat `--source` for its controller, store and shared helpers.

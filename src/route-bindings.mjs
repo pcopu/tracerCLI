@@ -31,9 +31,15 @@ function regularFile(root, file) {
   return path;
 }
 function nativeScenarioRoutes(discovery) {
-  object(discovery, ['schemaVersion', 'kind', 'selection', 'scenarios']);
+  object(discovery, ['schemaVersion', 'kind', 'selection', 'scenarios'], ['launchModes']);
   if (discovery.schemaVersion !== 1) fail('Expected version-1 native CLI scenario discovery.');
   list(discovery.scenarios, true);
+  const { launchModes } = discovery;
+  if (launchModes !== undefined) {
+    list(launchModes, true);
+    if (new Set(launchModes).size !== launchModes.length || launchModes.some(mode =>
+      typeof mode !== 'string' || !/^--[a-z][a-z0-9-]{0,63}$/.test(mode))) fail('Invalid or duplicate native launch mode.');
+  }
   const { selection } = discovery;
   object(selection, ['mode', 'availableScenarioCount', 'selectedScenarioCount']);
   const { mode, availableScenarioCount, selectedScenarioCount } = selection;
@@ -80,7 +86,7 @@ function nativeScenarioRoutes(discovery) {
       }
     }
   }
-  return { version: 1, routes };
+  return { version: 1, routes, ...(launchModes && { actions: launchModes.map(id => ({ id })) }) };
 }
 
 function readCatalogDocument(root, file) {
@@ -171,10 +177,10 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
   }
   let capabilitiesSha256, measurementActions, semanticActionIds;
   if (capabilitiesFile !== undefined) {
-    const { input, sha256 } = readCatalogDocument(root, capabilitiesFile);
+    const { input: capabilities, sha256 } = readCatalogDocument(root, capabilitiesFile);
     capabilitiesSha256 = sha256;
-    const discovered = nativeActionIds(input);
-    actions = new Map([...discovered.ids].map(id => [id, actions?.get(id) ?? { id }]));
+    const discovered = nativeActionIds(capabilities);
+    actions = new Map([...discovered.ids, ...(native ? input.launchModes ?? [] : [])].map(id => [id, actions?.get(id) ?? { id }]));
     ({ measurementActions, semanticActionIds } = discovered);
   }
   return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions, semanticActionIds,
@@ -202,7 +208,8 @@ function matchBehavior(plan, actions, candidates) {
   else if (!actionIds.length || missingActionIds.length) next = 'needs-cli-action';
   else if (!hasRoute || plan.state !== 'existing') next = 'needs-scenario';
   else next = 'action-and-scenario';
-  return { entryPoint: plan.entryPoint ?? null, actionIds: plan.actionIds ?? null, missingActionIds, restrictions, next };
+  return { entryPoint: plan.entryPoint ?? null, actionIds: plan.actionIds ?? null, missingActionIds, restrictions, next,
+    ...(plan.captureMode && { captureMode: plan.captureMode }) };
 }
 
 export function bindProposalRoutes(tracer, file, routesFile) {

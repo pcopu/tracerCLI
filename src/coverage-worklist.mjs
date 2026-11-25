@@ -360,7 +360,10 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const decisionSummary = decisions && {
     proposal: decisions.report.proposal, queues: decisions.report.queues, routes: decisions.report.routes,
     assignedGapLines: decisions.report.assignedGapLines, heldGapLines: count(held), classifiedGapLines: count(assigned),
-    ...(batches && { nativeBatch: nativeCaseBatch(decisions.nativeCandidates, { limit, held, pending }) }),
+    ...(batches && {
+      nativeBatch: nativeCaseBatch(decisions.nativeCandidates.session, { limit, held, pending }),
+      nativeStartupBatch: nativeCaseBatch(decisions.nativeCandidates.startup, { limit, held, pending, startup: true }),
+    }),
   };
   return { kind: 'source-coverage-worklist', version: 1,
     notice: 'Ranks passing gaps from current source and witnessed CLI links. Exact witness-path matches are candidates. No scenario ran and no action attribution is implied.',
@@ -554,7 +557,7 @@ function proposalWorklist({ binding, measured, current, unavailable, capabilitie
     }
   }
   const queues = Object.fromEntries(nextSteps.map(step => [step, []]));
-  const selectable = new Set(), nativeCandidates = [];
+  const selectable = new Set(), nativeCandidates = { session: [], startup: [] };
   for (const { id, title, featureId, behavior, routeIds: matchedRoutes, unmatchedRouteIds } of binding.plans) {
     const files = byPlan.get(id);
     if (!files) continue;
@@ -567,7 +570,8 @@ function proposalWorklist({ binding, measured, current, unavailable, capabilitie
     queues[next].push({ planId: id, title, featureId, routeIds, restrictedRoutes,
       ...(unmatchedRouteIds && { unmatchedRouteIds }), ...detail, ...summarize(files) });
     if (unmatchedRouteIds && (next === 'action-and-scenario' || next === 'needs-scenario')) {
-      for (const candidate of ready) nativeCandidates.push({ argv: candidate.argv, routeIds: candidate.routeIds, files });
+      const batch = nativeCandidates[detail.captureMode ?? 'session'];
+      for (const candidate of ready) batch.push({ argv: candidate.argv, routeIds: candidate.routeIds, files });
     }
     if (next === 'action-and-scenario') selectable.add(id);
   }

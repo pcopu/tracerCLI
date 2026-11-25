@@ -165,8 +165,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1814,
-        "end": 1875,
+        "start": 1830,
+        "end": 1891,
         "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
@@ -194,8 +194,8 @@
       "id": "03a9d476c0b0a8ea",
       "source": {
         "path": "src/update.mjs",
-        "start": 399,
-        "end": 440,
+        "start": 413,
+        "end": 454,
         "sha256": "8569c41828d01fa0279df89f952a707ca26e2f6890c6e6fc93b3577957fd2202"
       },
       "actions": [
@@ -205,8 +205,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 220,
-        "end": 235,
+        "start": 256,
+        "end": 271,
         "sha256": "d325e3f7233cef31cb029cd1cc9e4e6223b31e67638bf9a811a5d92a87645514"
       },
       "why": "Only pristine registered skills refresh; edited and unregistered skills plus both project instruction files remain unchanged. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -517,8 +517,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 146,
-        "end": 151,
+        "start": 182,
+        "end": 187,
         "sha256": "8f143aab667b8a9366341d2cf041d75ffcb0f646683c53e3c401f44d2d6aaf3f"
       },
       "why": "Compare a newer managed target with an older invoking source CLI, refuse a downgrade, and retain the managed version instead of treating the source version as the installed target. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -661,8 +661,8 @@
       "id": "0d1074f82ab5207c",
       "source": {
         "path": "src/update.mjs",
-        "start": 446,
-        "end": 482,
+        "start": 460,
+        "end": 496,
         "sha256": "ebef09a970881704a390d76df65a1d7393dbc8f42c6d63c1d39b4d780cbb9622"
       },
       "actions": [
@@ -673,8 +673,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 175,
-        "end": 188,
+        "start": 211,
+        "end": 224,
         "sha256": "5afc49ecab290db87ea785b286d44eacd2901e91b0637557f797ea04b1485d9a"
       },
       "why": "Automatic checks are throttled to one daily opportunity and synthetic offline failures do not change successful app output. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -702,8 +702,8 @@
       "id": "0d8a59120dbbc420",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 123,
-        "end": 135,
+        "start": 124,
+        "end": 136,
         "sha256": "32b26359baa9e0434bc94cf506a1614e81dd620a72bb7309bc612f1313a6be2e"
       },
       "actions": [
@@ -763,8 +763,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1827,
-        "end": 1875,
+        "start": 1843,
+        "end": 1891,
         "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
@@ -939,8 +939,8 @@
       "id": "1310ec3cdf83fbfd",
       "source": {
         "path": "src/update.mjs",
-        "start": 314,
-        "end": 333,
+        "start": 327,
+        "end": 346,
         "sha256": "57293f746e6b2cd4c726eb728cf7676438e7ca06c414ab9eb2609aed651f609c"
       },
       "actions": [
@@ -951,8 +951,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 162,
-        "end": 172,
+        "start": 198,
+        "end": 208,
         "sha256": "c19dbe5e662d69b07608b6db38d861e572c67bbef04e3b5fadd6233ec64fa6ee"
       },
       "why": "User opt-in persists while read-only commands, CI and per-process opt-out make no update requests. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -1166,8 +1166,8 @@
       "source": {
         "path": "src/proposals.mjs",
         "start": 62,
-        "end": 76,
-        "sha256": "ff7922d9c9801a37a926eda42a5ef1b79a1e6f0cec090b166bd36dab5204d75a"
+        "end": 77,
+        "sha256": "4d7cb5024f7decf56fa154df4c6ab5783783b8350c53e7bcd45fc12b9ac969b8"
       },
       "actions": [
         "tracer proposal bind --file proposal.json --routes routes.json --json"
@@ -1344,8 +1344,8 @@
       "id": "1deecddecf1f8cc3",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 216,
-        "end": 229,
+        "start": 223,
+        "end": 236,
         "sha256": "2d412b9e60c446c3a6ec5ea773b17fcaa7e8aacc483768b9de4f8e152b5b7e39"
       },
       "actions": [
@@ -1391,9 +1391,9 @@
       "id": "1f78ccd1c99c9a74",
       "source": {
         "path": "src/update.mjs",
-        "start": 266,
-        "end": 297,
-        "sha256": "9f18f050d2140416e41f2821f777994ebe689026bfc19902009e92eb44c199f4"
+        "start": 274,
+        "end": 310,
+        "sha256": "812fb9a2bd927fe5f4ed72c6b803c99c3b90c282c384fd93bea7e10c5e52cff7"
       },
       "actions": [
         "tracer update --install-managed",
@@ -1401,8 +1401,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 136,
-        "end": 143,
+        "start": 172,
+        "end": 179,
         "sha256": "85eee677c2efa3dca1802cb0c2030c0a3feb360eef92c7533e410601f3d1571a"
       },
       "why": "Edited managed runtime files and launcher are preserved by refusing replacement."
@@ -1600,8 +1600,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 481,
-        "end": 493,
+        "start": 517,
+        "end": 529,
         "sha256": "f30a8f8ba9640acf81fa8ae9dac9ba51d59e702dbfee2ff6543f5766a0324b23"
       },
       "why": "A registered destination replaced by a symlink is preserved; JSON and text routes report partial status, detailed reason and a nonzero exit without changing the target or leaving a lock."
@@ -1660,8 +1660,8 @@
       "id": "27c8707b00bd4664-snapshot-part2",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 153,
-        "end": 158,
+        "start": 154,
+        "end": 159,
         "sha256": "43638627e00279e3e41acac6b5c4d769d82576c51473cd072f7b34c7b80cc058"
       },
       "actions": [
@@ -1888,8 +1888,8 @@
       "id": "2db9ced53a2750e7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 342,
-        "end": 342,
+        "start": 343,
+        "end": 343,
         "sha256": "44e9d05f83fb909a9410a7d274daddbe4b6dd75789eb17174e2b1332d8d45717"
       },
       "actions": [
@@ -1910,8 +1910,8 @@
       "id": "2e04ab285086ce00",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 227,
-        "end": 230,
+        "start": 228,
+        "end": 231,
         "sha256": "11251b6fd789d2180ef8277d4b48523942bdf61f7c518f06beb9a0a80947a64e"
       },
       "actions": [
@@ -1938,8 +1938,8 @@
       "id": "2e23882fc92da6ca",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 236,
-        "end": 241,
+        "start": 237,
+        "end": 242,
         "sha256": "28a215fbfd1ecae2902f81f54ddc25e12c0dba1ed65833a489467ea9ca4d34df"
       },
       "actions": [
@@ -2003,8 +2003,8 @@
       "id": "30572bbdca043ccb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 332,
-        "end": 334,
+        "start": 333,
+        "end": 335,
         "sha256": "51f115958ee3a00aa70f7b273c5176f78cef6cfa918c3120d71d6e62aa4cde1b"
       },
       "actions": [
@@ -2127,8 +2127,8 @@
       "id": "321d4dea67dd7d96",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 287,
-        "end": 302,
+        "start": 288,
+        "end": 303,
         "sha256": "a0eaa372f97850bfa35f869479f1984af14b103dbaae329846736129a04a465b"
       },
       "actions": [
@@ -2203,9 +2203,9 @@
       "id": "33579cb5158f24cd",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 190,
-        "end": 206,
-        "sha256": "a6cd5fef39183834de211b5d2d917b4b02685d45408d9370c3b131887c29646e"
+        "start": 196,
+        "end": 213,
+        "sha256": "b31043dde61e40344b43bc8c148c1f94ad3caa19e967719e55d12ebfdf3d4b76"
       },
       "actions": [
         "tracer proposal bind --file proposal.json --routes routes.json --json"
@@ -2419,8 +2419,8 @@
       "id": "34efed29f305a1be",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 182,
-        "end": 185,
+        "start": 183,
+        "end": 186,
         "sha256": "5d0d2c51190ced816d914db377d0c72a52bcbb6a7ff7a842c0105da2b2e75ab4"
       },
       "actions": [
@@ -2458,8 +2458,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 452,
-        "end": 466,
+        "start": 488,
+        "end": 502,
         "sha256": "e97671f46df272d12fdaa12583d34fe79914c7bbc5276e87b2244b867d1c40f0"
       },
       "why": "Oversized settings metadata is rejected and preserved by real status/refresh requests; restoring original bytes recovers read-only status with no network. The parameterized witness also checks an oversized active pointer via rollback."
@@ -2468,8 +2468,8 @@
       "id": "38d9581a3f833c40",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 184,
-        "end": 187,
+        "start": 190,
+        "end": 193,
         "sha256": "7459d4dedcaaa7b37af4fdfd3c5d72bdfc05d1048b34ba64ded86c843ed8f25d"
       },
       "actions": [
@@ -2527,9 +2527,9 @@
       "id": "3a54646d827a892d",
       "source": {
         "path": "src/update.mjs",
-        "start": 334,
-        "end": 365,
-        "sha256": "7cfb6920762ba55a773e1ff8333aa3174683a580c99c5f9e8d4814825fb407ae"
+        "start": 347,
+        "end": 379,
+        "sha256": "fc2710154ba20aa78bc62de2a49cb86ecd7dd3e9c1e1ef932b9bbc3fa5ff36df"
       },
       "actions": [
         "tracer update --install-managed",
@@ -2537,8 +2537,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 146,
-        "end": 159,
+        "start": 182,
+        "end": 195,
         "sha256": "ea10255ef1b74ce28553b21697ed6d3e5240ae4ee1600a35615ec4223039c1fc"
       },
       "why": "An older invoking CLI cannot downgrade the managed target; same-version retags need an explicit reviewed commit. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -2547,8 +2547,8 @@
       "id": "3a76375eab9c962a",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 172,
-        "end": 173,
+        "start": 173,
+        "end": 174,
         "sha256": "99e96de1f49c02133b6a849a81930be5ebcc02197d162910d7dd5fa1476b8abd"
       },
       "actions": [
@@ -2708,8 +2708,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 356,
-        "end": 360,
+        "start": 392,
+        "end": 396,
         "sha256": "851408da220c0deaa469ea100944fe611027a73161149cb8ac4c295f41ea61ed"
       },
       "why": "When malformed existing skill settings prevent refresh after runtime activation, the human message falls back to the preservation explanation rather than printing an absent path; original settings bytes remain untouched."
@@ -2772,9 +2772,9 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 528,
-        "end": 584,
-        "sha256": "297343aabbf2aae20bd6ed9848d15fe15888b6cef84f53c1cd8a28b9b4839156"
+        "start": 531,
+        "end": 588,
+        "sha256": "25609abdb513b2252bcc1a07b859136d74e16063b4b51687413bb22955416f2f"
       },
       "actions": [
         "tracer proposal worklist with a pinned proposal, discovered routes and a reference capture set",
@@ -2916,8 +2916,8 @@
       "id": "4046748fa46d8a92",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 326,
-        "end": 336,
+        "start": 327,
+        "end": 337,
         "sha256": "169705b5d33a6f4653ddc6725511e1ac60485eea68d3abef1492585614293934"
       },
       "actions": [
@@ -2947,8 +2947,8 @@
       "id": "40a23c0dfb46ffb1",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 181,
-        "end": 181,
+        "start": 182,
+        "end": 182,
         "sha256": "a6f8bf480444941f28afc82e5b923b72d87ef929a9c6ef906087513922e110f5"
       },
       "actions": [
@@ -3081,8 +3081,8 @@
       "id": "42bf3112c1a46158",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 186,
-        "end": 188,
+        "start": 187,
+        "end": 189,
         "sha256": "e7e7322ca0f67dfe8d07dfc9d91870d67d38fd17ddef3767b145288f49dd55d8"
       },
       "actions": [
@@ -3105,8 +3105,8 @@
       "id": "42f7a264311b7006",
       "source": {
         "path": "src/update.mjs",
-        "start": 419,
-        "end": 439,
+        "start": 433,
+        "end": 453,
         "sha256": "00a77b5274714a4777566d0899f7bcb2611d889f6ae8fbfcbc00799b76ea1afd"
       },
       "actions": [
@@ -3117,8 +3117,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 296,
-        "end": 316,
+        "start": 332,
+        "end": 352,
         "sha256": "fa7ae45e19d91327d5a492ee6f9b9d236c01b1a1ccadfb6cd40839afd32bafeb"
       },
       "why": "An authorized same-version main-descendant automatic update delivers the checked-in skill while preserving customized skill bytes and project instructions."
@@ -3230,8 +3230,8 @@
       "id": "44e66c36ba838147",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 164,
-        "end": 164,
+        "start": 165,
+        "end": 165,
         "sha256": "21c27d4962f3abd3b88b03491d7d2c355fd92af67e2da6c03de4941e07c21d71"
       },
       "actions": [
@@ -3257,8 +3257,8 @@
       "id": "44e7d40cab08aaf6",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 303,
-        "end": 318,
+        "start": 304,
+        "end": 319,
         "sha256": "ef2bdc037253f6bb1b122a9931381877284f524f5d2c269ae3883f1fb61fa41d"
       },
       "actions": [
@@ -3295,8 +3295,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 364,
-        "end": 380,
+        "start": 400,
+        "end": 416,
         "sha256": "5f46918a0d5c95002d64e1aa20a26488bfbf267f74e92aa950a126650006cf0a"
       },
       "why": "Automatic available, unavailable and sanitized error notices go only to stderr while app stdout remains valid JSON; throttled repeats produce neither another request nor another notice."
@@ -3472,8 +3472,8 @@
       "id": "49668ea6668ca5c3",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 92,
-        "end": 95,
+        "start": 93,
+        "end": 96,
         "sha256": "01b9ae1b6e108bfdd31eabacb50832ea29603f907e862d814149792c3ea085e6"
       },
       "actions": [
@@ -3532,8 +3532,8 @@
       "id": "4a7019b901140679",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 151,
-        "end": 151,
+        "start": 152,
+        "end": 152,
         "sha256": "e069512f9efad6cc6b0cb834f83333aa20052855c794b6de09f14fe0863191e0"
       },
       "actions": [
@@ -3707,8 +3707,8 @@
       "id": "50526650f1f4a665",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 223,
-        "end": 235,
+        "start": 224,
+        "end": 236,
         "sha256": "2ca552a2fbc504e599ce24321f84c9250d486cc284d80dc4dab2bc94a83b9686"
       },
       "actions": [
@@ -3744,8 +3744,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 155,
-        "end": 159,
+        "start": 191,
+        "end": 195,
         "sha256": "ec00d524b11206a0a293695f11844f705ad70d637cefc1d588f2dc7e2f3fc957"
       },
       "why": "Equal versions remain current for a release retag while an explicitly reviewed immutable commit can replace that same-version target."
@@ -3843,8 +3843,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 320,
-        "end": 366,
-        "sha256": "84e6924978763f9003165a6c70d7ced6836e3d862a109d5d127ee62cc781bce7"
+        "end": 369,
+        "sha256": "d48532bbb1425dcb77525d1528d8e004ae06b5169404d12a29df572a7d4b6f80"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
@@ -4023,8 +4023,8 @@
       "id": "59bf800d0d67c014",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 142,
-        "end": 150,
+        "start": 143,
+        "end": 151,
         "sha256": "f14f71fd82e9a8033f3d9c8adf6e357069eb688c85d1891c87d9a1ba298f925e"
       },
       "actions": [
@@ -4127,8 +4127,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 586,
-        "end": 597,
+        "start": 590,
+        "end": 601,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -4351,8 +4351,8 @@
       "id": "5ecf2d6b0c7241a0",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 151,
-        "end": 154,
+        "start": 152,
+        "end": 155,
         "sha256": "811d1103a55b6df02c0a47b433a9be787ce8ea89f260ee1413db48ae464e6a0f"
       },
       "actions": [
@@ -4424,8 +4424,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 364,
-        "end": 380,
+        "start": 400,
+        "end": 416,
         "sha256": "5f46918a0d5c95002d64e1aa20a26488bfbf267f74e92aa950a126650006cf0a"
       },
       "why": "Replace newline/tab controls in a simulated offline error with spaces before publishing a single-line automatic notice, without changing app success or stdout."
@@ -4590,8 +4590,8 @@
       "id": "64e35779e4adbfd8",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 190,
-        "end": 193,
+        "start": 191,
+        "end": 194,
         "sha256": "a5178ce07b21e52dfdf289012c10a0484dee665e8f455b9b0df7effb591e7bdb"
       },
       "actions": [
@@ -4669,8 +4669,8 @@
       "id": "671f22f0f9e680c7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 211,
-        "end": 215,
+        "start": 212,
+        "end": 216,
         "sha256": "e829cb4af884c71821db310b8b5737022d0a34f61fe6f46edca4f4dada9b9a5b"
       },
       "actions": [
@@ -4799,8 +4799,8 @@
       "id": "69641cde1213e9bc",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 99,
-        "end": 106,
+        "start": 100,
+        "end": 107,
         "sha256": "982aaae874c5afcf0287d280edf9afbac11b2fc976ec8b4a0aadaece0d1356d5"
       },
       "actions": [
@@ -4823,8 +4823,8 @@
       "id": "6b47c710e5514a58",
       "source": {
         "path": "src/update.mjs",
-        "start": 386,
-        "end": 397,
+        "start": 400,
+        "end": 411,
         "sha256": "81274c3441f9a1ae31d54ce6091695ad8fc7e9da081b898d2ecd12527977124c"
       },
       "actions": [
@@ -4864,8 +4864,8 @@
       "id": "701e1947cfb30985",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 159,
-        "end": 163,
+        "start": 160,
+        "end": 164,
         "sha256": "e2455cb683dc44b578ad577034c54bc1b52bd2561a50c802d1bca059f186a4fa"
       },
       "actions": [
@@ -5227,8 +5227,8 @@
       "id": "76e8e09823aa7ce1",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 319,
-        "end": 325,
+        "start": 320,
+        "end": 326,
         "sha256": "6bbd9c702dfa517c2aa410e230d090f85b8e7645a5c90a63ccb68dc84465c5a0"
       },
       "actions": [
@@ -5718,8 +5718,8 @@
       "id": "840cbe75a105e59b",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 136,
-        "end": 141,
+        "start": 137,
+        "end": 142,
         "sha256": "48064c06d739481a32e37c19b2d78d7721d75a4a33c9313250042947c55aa23a"
       },
       "actions": [
@@ -6121,8 +6121,8 @@
       "id": "8c08779ac3ac1539",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 61,
-        "end": 79,
+        "start": 67,
+        "end": 85,
         "sha256": "f37afcbb5e01d656971d5f064c84518c172fd5bdf75ef74b551e250f774f7335"
       },
       "actions": [
@@ -6199,8 +6199,8 @@
       "id": "8fb7ea72bf576adb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 107,
-        "end": 122,
+        "start": 108,
+        "end": 123,
         "sha256": "260cbae3ebb2f47c583cd3f4c6dc4e36abab80cfc11e652f8b642186a44d3c9f"
       },
       "actions": [
@@ -6260,8 +6260,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 175,
-        "end": 188,
+        "start": 211,
+        "end": 224,
         "sha256": "5afc49ecab290db87ea785b286d44eacd2901e91b0637557f797ea04b1485d9a"
       },
       "why": "After successful app dispatch, explicitly enabled automatic checks are throttled by persisted time and tolerate synthetic offline errors without changing application stdout or success. Diagnostic wording is not asserted here."
@@ -6621,8 +6621,8 @@
       "id": "98e9361362045bcc",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 282,
-        "end": 286,
+        "start": 283,
+        "end": 287,
         "sha256": "c42fec5808c9823c7d31b4926b91096542329106a5846ed245fe2214ba8f93b2"
       },
       "actions": [
@@ -6713,8 +6713,8 @@
       "id": "9994a70eca10ac0f",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 343,
-        "end": 344,
+        "start": 344,
+        "end": 345,
         "sha256": "8097e857a13304b1b9c940e19d1782f62fb43be5e69bd3e54da3d2d20a457c9e"
       },
       "actions": [
@@ -6750,8 +6750,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 146,
-        "end": 151,
+        "start": 182,
+        "end": 187,
         "sha256": "8f143aab667b8a9366341d2cf041d75ffcb0f646683c53e3c401f44d2d6aaf3f"
       },
       "why": "Numeric stable-version ordering recognizes an older candidate and preserves the newer managed CLI after refusing a downgrade."
@@ -6907,8 +6907,8 @@
       "id": "9d994ef243d12c1f",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 274,
-        "end": 281,
+        "start": 275,
+        "end": 282,
         "sha256": "50e1040063d193c89325c2ef7cfa3ee52391ea6f0283819c0e246478bba56f10"
       },
       "actions": [
@@ -7021,8 +7021,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 124,
-        "end": 133,
+        "start": 160,
+        "end": 169,
         "sha256": "d6f5f69d6b784773a7692646ac4a8ea19f1151e2e15776a45173140d657b18d7"
       },
       "why": "A failed later download leaves active pointer, installed skill and prior version unchanged; staging does not become active. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -7159,8 +7159,8 @@
       "id": "a881c2564dd884af",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 174,
-        "end": 180,
+        "start": 175,
+        "end": 181,
         "sha256": "2e89af508a534f7c6d0b626b203da8285053cfa34a5ce8b0c821a88207eba3b7"
       },
       "actions": [
@@ -7453,8 +7453,8 @@
       "id": "ad4fb23511075712",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 79,
-        "end": 91,
+        "start": 80,
+        "end": 92,
         "sha256": "ae36d167051e452ebf6fafc24acb3981b1f5f8d0bae13a806eb6b7f551d1eb71"
       },
       "actions": [
@@ -7520,8 +7520,8 @@
       "id": "addba8730cbb148c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 319,
-        "end": 325,
+        "start": 320,
+        "end": 326,
         "sha256": "6bbd9c702dfa517c2aa410e230d090f85b8e7645a5c90a63ccb68dc84465c5a0"
       },
       "actions": [
@@ -7586,8 +7586,8 @@
       "id": "b00e8ed7f07b2a38",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 327,
-        "end": 329,
+        "start": 328,
+        "end": 330,
         "sha256": "62fcb03f71515ff9d4fc247e84d7c6b924a696f3a4afcad69db6be09203048d4"
       },
       "actions": [
@@ -7644,8 +7644,8 @@
       "id": "b0724aa6fb9eb761",
       "source": {
         "path": "src/update.mjs",
-        "start": 451,
-        "end": 482,
+        "start": 465,
+        "end": 496,
         "sha256": "798aba81b16fc428237c114c6cff572af5039335b0ed9b117a5d8e1fb3ee8b33"
       },
       "actions": [
@@ -7656,8 +7656,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 200,
-        "end": 217,
+        "start": 236,
+        "end": 253,
         "sha256": "ea96f3758a66302841df0023cc7cd0137d5b5e2cb88eae09170e90606a4642da"
       },
       "why": "Managed automatic updates require descendant history, preserve the triggering command, and execute new code only on the next invocation."
@@ -7666,8 +7666,8 @@
       "id": "b0dadb7226cc91df",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 394,
-        "end": 421,
+        "start": 397,
+        "end": 424,
         "sha256": "a6eb3abab8e0c7dc60f6f1fba0fcfc75548499a8c5406032d0baea2628078370"
       },
       "actions": [
@@ -7836,8 +7836,8 @@
       "id": "b5158e01cae440e7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 337,
-        "end": 341,
+        "start": 338,
+        "end": 342,
         "sha256": "d5e723d1e41cb7c9cdc0da8c62eee16e45a6285a54b3587ccc0f6a05e0796efa"
       },
       "actions": [
@@ -7886,8 +7886,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 251,
-        "end": 392,
-        "sha256": "559364b13b821fda994ace9d1b29b50b38b359aeae95d043a35c8621fa1f3a8f"
+        "end": 395,
+        "sha256": "0e679a7cdd795edefbcef4a24cd719029950afa8956cf5bdc79f5eeeaf6402d8"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -8037,8 +8037,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 255,
-        "end": 263,
+        "start": 291,
+        "end": 299,
         "sha256": "5dfa31cd98a1ad6694c4a19c1dc5ef3f127daf965a782d507ad89067ea05e846"
       },
       "why": "A symlinked managed-state directory and existing writer lock do not redirect or overwrite updates. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -8180,8 +8180,8 @@
       "id": "bb79a682723fd19e",
       "source": {
         "path": "src/update.mjs",
-        "start": 441,
-        "end": 444,
+        "start": 455,
+        "end": 458,
         "sha256": "b4bc836894f530b8d8ce3e0aa6f52449e092be85a52957cf45bb4c86881fe433"
       },
       "actions": [
@@ -8194,8 +8194,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 411,
-        "end": 450,
+        "start": 447,
+        "end": 486,
         "sha256": "c36d0c069ddce3c644a28c21894403ce1ba193f5b450d713235055fec18e2326"
       },
       "why": "The explicit CLI now reaches the registered-skill refresh wrapper: default source/version, exclusive locking, pristine refresh, customized preservation, lock refusal and cleanup are asserted with no refresh network traffic."
@@ -8311,8 +8311,8 @@
       "id": "bcb0bc8d8ba69434",
       "source": {
         "path": "src/update.mjs",
-        "start": 298,
-        "end": 313,
+        "start": 311,
+        "end": 326,
         "sha256": "8b1c8598dcd4195b10c8f258ce50b720bd39ba82e6b6e18b5eef86700dba1ee0"
       },
       "actions": [
@@ -8378,8 +8378,8 @@
       "id": "bf203ac42028bb03",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 110,
-        "end": 118,
+        "start": 116,
+        "end": 124,
         "sha256": "397089acd0135d1b2999f6b8f0b3d88b948c65f3f063e52fd5411c9112c4778e"
       },
       "actions": [
@@ -8440,8 +8440,8 @@
       "id": "c068db6727fdd932",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 265,
-        "end": 273,
+        "start": 266,
+        "end": 274,
         "sha256": "65151c85b3016f7e28f33b893420d59aefa9e16d4c433b862224a64d3734ed36"
       },
       "actions": [
@@ -8654,8 +8654,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 323,
-        "end": 349,
+        "start": 359,
+        "end": 385,
         "sha256": "b7f7acbf6c299521830ee7548f020aaefe85268b8b50f859e3e6473cf9c07b12"
       },
       "why": "Human update output explicitly reports unmanaged/default and selected modes, availability, verified commit, managed launcher, skill updates or preserved edits and provenance limits; assertions keep state reads nonmutating and require successful activation. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -8779,8 +8779,8 @@
       "id": "c627b7512149fee7",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 165,
-        "end": 171,
+        "start": 166,
+        "end": 172,
         "sha256": "0e61ff1046114a35febd41aabdaf6aa4c7be8e49b169c829874b95a87bba19eb"
       },
       "actions": [
@@ -8947,8 +8947,8 @@
       "id": "c8b388bd4c96a658",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 159,
-        "end": 162,
+        "start": 160,
+        "end": 163,
         "sha256": "8ce8c2e737db5e27bb4ab765e5982a7ee79e87ddc3af619e4eff5444698b1b56"
       },
       "actions": [
@@ -9115,8 +9115,8 @@
       "id": "cc4dbae75b408918",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 208,
-        "end": 222,
+        "start": 209,
+        "end": 223,
         "sha256": "1e5df557af0a7e26df2f29d94fca44b84a2c9600d85b3d5a16c7b60592bada23"
       },
       "actions": [
@@ -9154,8 +9154,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 162,
-        "end": 188,
+        "start": 198,
+        "end": 224,
         "sha256": "637dbf0a72653682cacc4d92c7a905f3c315b9804bbb9becd73b2fb4c78cdbe6"
       },
       "why": "Allowed automatic modes and the daily default feed actual opt-in, no-network deterministic commands, throttling and safe errors; fixture assertions inspect state and request counts."
@@ -9318,8 +9318,8 @@
       "source": {
         "path": "src/update.mjs",
         "start": 220,
-        "end": 265,
-        "sha256": "6ac669cfb793f509d712f252d028b9440d86719dffd0bd036e62ed3b30a76115"
+        "end": 273,
+        "sha256": "e56baaa585a0368f4c3244a39752ef59db300011146a26c66274e41ea3ad640a"
       },
       "actions": [
         "tracer update --install-managed"
@@ -9471,8 +9471,8 @@
       "id": "d78b3c4b054e0661",
       "source": {
         "path": "src/update.mjs",
-        "start": 419,
-        "end": 439,
+        "start": 433,
+        "end": 453,
         "sha256": "00a77b5274714a4777566d0899f7bcb2611d889f6ae8fbfcbc00799b76ea1afd"
       },
       "actions": [
@@ -9481,8 +9481,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 238,
-        "end": 252,
+        "start": 274,
+        "end": 288,
         "sha256": "95464cf692b921444f1052a469efffce171477e84e2c41e3b20bd647165d9b60"
       },
       "why": "Missing or symlinked skills and forged instruction targets remain untouched; reinstallation cannot bless edited hashes."
@@ -9530,8 +9530,8 @@
       "id": "d836e57c5948905c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 194,
-        "end": 207,
+        "start": 195,
+        "end": 208,
         "sha256": "a40ff5bf5ff7f3e6368284065e466a2a90e1a43f2d5af72b408fff227906d4f7"
       },
       "actions": [
@@ -9559,9 +9559,9 @@
       "id": "d857ce383851ae75",
       "source": {
         "path": "src/update.mjs",
-        "start": 366,
-        "end": 385,
-        "sha256": "9e9e87cc816dbf2d38ff7ae6a7a6ab0a6da73268860874cc64061f508be043ab"
+        "start": 380,
+        "end": 399,
+        "sha256": "b816ff188863701ce0795cc7edaf225b77a9758082affe87c4bb946a2cf660fe"
       },
       "actions": [
         "tracer update --install-managed",
@@ -9610,8 +9610,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1844,
-        "end": 1870,
+        "start": 1860,
+        "end": 1886,
         "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
@@ -9658,8 +9658,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 441,
-        "end": 449,
+        "start": 477,
+        "end": 485,
         "sha256": "1465185e2132a52192de4f01246d9363ecc954b47d0a3c3749fa0fd67d33003d"
       },
       "why": "Conflicting refresh modes, pins and duplicate flags fail before mutation/network. The fixture supplies a full synthetic lowercase commit SHA, not a live release."
@@ -9842,8 +9842,8 @@
       "id": "de6fd36422f6ab65",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 87,
-        "end": 93,
+        "start": 93,
+        "end": 99,
         "sha256": "ea3f1ebc3dcef1eda14a643bf0e10ef5dbc04a72321f8092e29bf8c8f3d495d8"
       },
       "actions": [
@@ -9943,8 +9943,8 @@
       "id": "df7ff17f2eaf44e9",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 256,
-        "end": 260,
+        "start": 257,
+        "end": 261,
         "sha256": "3618b61a0e2b8c64bd4e32f22394f08e7819200ad48618846d6e4ae905edddde"
       },
       "actions": [
@@ -10034,17 +10034,17 @@
       "id": "e3a029720cccbdbe",
       "source": {
         "path": "src/update.mjs",
-        "start": 381,
-        "end": 383,
-        "sha256": "1dfc0b0749e769b3467bcae8ac781ca14fd62580e55093d884d2ac11b4f47a9d"
+        "start": 395,
+        "end": 397,
+        "sha256": "b458e0843ace2d2a8aea77fe63cdc29ccb1c1dbf7ad504b6c15787103f4b9d83"
       },
       "actions": [
         "tracer update --install-managed"
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 353,
-        "end": 360,
+        "start": 389,
+        "end": 396,
         "sha256": "8e35ddf05f419ff37c2f964ce860d979f1f42b545f9016bd6f284aac313b81e1"
       },
       "why": "A skill-settings read failure after verified runtime activation is reported as preserved skill metadata, not as a failed runtime install; assertions check the active release and unchanged malformed settings bytes."
@@ -10183,8 +10183,8 @@
       "source": {
         "path": "src/route-bindings.mjs",
         "start": 33,
-        "end": 84,
-        "sha256": "a180a9d0f56869ebba9ee99eed4db1ea8c1ddada2ee269679cf343b4349cb171"
+        "end": 90,
+        "sha256": "e66dc06aac4b8b25afb8a07a87fbd84d6bdb47b545c46e3c70209990a0d071a2"
       },
       "actions": [
         "tracer worklist with unmodified native scenario discovery and group-specific captures",
@@ -10254,8 +10254,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 265,
-        "end": 273,
+        "start": 301,
+        "end": 309,
         "sha256": "5d45a8db5ba1a52c1b2a533e5c4454e87953395b074c88e1ae983d26279f0441"
       },
       "why": "Offline fixture transport exercises real CLI HTTP reading, HTTP errors and foreign-origin rejection; no live remote service is modified. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -10563,8 +10563,8 @@
       "id": "f0fbbcdc7d484c8b",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 242,
-        "end": 252,
+        "start": 243,
+        "end": 253,
         "sha256": "5622005a5fd994f713bf4922ae4b3d57208ce387c02613469a2aca1fda9827ea"
       },
       "actions": [
@@ -10671,8 +10671,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 397,
-        "end": 408,
+        "start": 433,
+        "end": 444,
         "sha256": "5760b1fd36dca9a8148007412df08547813e0872cfe08075748e9afa1d057f74"
       },
       "why": "A real managed auto update reports activation and exactly one preserved local-skill warning on stderr, suppresses successful skill rows, and preserves app JSON plus edited skill and instruction bytes. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
@@ -10740,8 +10740,8 @@
       "id": "f496d2d316658766",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 261,
-        "end": 263,
+        "start": 262,
+        "end": 264,
         "sha256": "332861ffa4176d44d1bb5f339cbbfa3623ee1041d6aa9d38add0f4fd16b2bfb9"
       },
       "actions": [
@@ -10801,8 +10801,8 @@
       "id": "f6af996086163bfb",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 253,
-        "end": 255,
+        "start": 254,
+        "end": 256,
         "sha256": "34b4693cde23a352a50125c44bf28c8d00d69a2580405922a02963c13d9a46be"
       },
       "actions": [
@@ -10882,8 +10882,8 @@
       "id": "f83939734ffcfc43",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 96,
-        "end": 119,
+        "start": 102,
+        "end": 125,
         "sha256": "6021df2fbef4d367e57395583a022e82e5f152e4b8517dc8572700f91fb9a401"
       },
       "actions": [
@@ -10920,8 +10920,8 @@
       "id": "f854226449b86e9c",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 96,
-        "end": 99,
+        "start": 97,
+        "end": 100,
         "sha256": "cc6b97a14b09abe240bf40d10b42b702bff017a4f2a4818cfd5aa34cb4f9445b"
       },
       "actions": [
@@ -11184,8 +11184,8 @@
       "id": "ff0315e5b1972920",
       "source": {
         "path": "src/update.mjs",
-        "start": 428,
-        "end": 428,
+        "start": 442,
+        "end": 442,
         "sha256": "089a8206e655ff14f433aa934cb52c086881ed9c7582b451dbd514c8f7ae9b57"
       },
       "actions": [
@@ -11196,8 +11196,8 @@
       ],
       "step": {
         "path": "tests/e2e/update-journeys.test.mjs",
-        "start": 469,
-        "end": 479,
+        "start": 505,
+        "end": 515,
         "sha256": "5b9a152fa6927b80647e549fc9c26881e26e52b80f4e9b087a60d1714cafdb93"
       },
       "why": "Invoking an older checkout preserves a newer registered skill and its metadata, reports the reason, and makes no refresh network request."
@@ -11290,8 +11290,8 @@
       "id": "ffcc75589c959179",
       "source": {
         "path": "src/proposals.mjs",
-        "start": 194,
-        "end": 207,
+        "start": 195,
+        "end": 208,
         "sha256": "a40ff5bf5ff7f3e6368284065e466a2a90e1a43f2d5af72b408fff227906d4f7"
       },
       "actions": [
@@ -11317,8 +11317,8 @@
       "id": "ffdde2da93e4bbdc",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 143,
-        "end": 150,
+        "start": 149,
+        "end": 156,
         "sha256": "3e2b3ec565245790677634ab67c40b1dc29a8d102b5d0e7a0e2bdea94cd0b456"
       },
       "actions": [
@@ -11378,8 +11378,8 @@
       "id": "efcb552be3a51996",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 488,
-        "end": 512,
+        "start": 491,
+        "end": 515,
         "sha256": "0ec44939949c723c599730a7e89404e0756cab3a30f6c547cf7cc1dac448252e"
       },
       "actions": [
@@ -11492,8 +11492,8 @@
       "id": "b6d9cb7fba60c1dd",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 428,
-        "end": 455,
+        "start": 431,
+        "end": 458,
         "sha256": "c738e29b3eea43ef600e24131eb6a4f8fb42eba6940ab363b284ea7e5263baf0"
       },
       "actions": [
@@ -11589,8 +11589,8 @@
       "id": "ef35c03da6fa6ea2",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 216,
-        "end": 220,
+        "start": 223,
+        "end": 227,
         "sha256": "fc820454c607a28baebfe8cd1109ccbcf75f1cc9e294e641417af9950a7c6fa3"
       },
       "actions": [
@@ -11599,8 +11599,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1773,
-        "end": 1787,
-        "sha256": "a4d8783bfc1b8d46fab469d2d2cbdddc26177cec694f8db3119d1a148fa7ee49"
+        "end": 1803,
+        "sha256": "92a95778d1ac4c5a813714c728893cb1244c1626803a236b3d080bc15a1ba105"
       },
       "why": "Binds only the reviewed group and leaves a missing group explicit while retaining the measured gap."
     },
@@ -11609,8 +11609,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 360,
-        "end": 364,
-        "sha256": "89adc2e2a226b065b4e1940b6d9acf1667254e57034bed378e96674f77225898"
+        "end": 367,
+        "sha256": "1b2e3844fb82d3e48efe6a902c98a76a4b847511954e6c67c03160ed2aa0edb6"
       },
       "actions": [
         "tracer worklist with a pinned source and an exact discovered native route"
@@ -11618,10 +11618,48 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1776,
-        "end": 1787,
-        "sha256": "b9c00272d79d4aea7dc0cfc74f5ecef79a4d74f4d8f0eb19e9ed92406fd453bb"
+        "end": 1803,
+        "sha256": "94d46ab308d3df42e3a052a66803ca6730cb4fa77cfdb63fa884b3cf6815358b"
       },
       "why": "Emits the exact runnable selector only when the discovered case matches the plan and applies no measured credit."
+    },
+    {
+      "id": "096b0dd4e9f4df4d",
+      "source": {
+        "path": "src/update.mjs",
+        "start": 258,
+        "end": 270,
+        "sha256": "a57262f798c966faa397691ba10fe140f16d2cb191bf722cc366d70c50e54023"
+      },
+      "actions": [
+        "tracer update --json from an installed verified runtime"
+      ],
+      "step": {
+        "path": "tests/e2e/update-journeys.test.mjs",
+        "start": 124,
+        "end": 157,
+        "sha256": "5bd91fdfad94ce7f226e875faf1f8890a6bf443ee976bc2743f8d1bcea8829c5"
+      },
+      "why": "Reuses exact unchanged Git blobs, fetches changed blobs, and rejects local bytes that disagree with the official Git tree."
+    },
+    {
+      "id": "aad48d2a64b4dae5",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 363,
+        "end": 366,
+        "sha256": "a36fc96892ca37734d5b0a8d9ba5056998ad5814780ff76aebdcc142c498a39b"
+      },
+      "actions": [
+        "tracer worklist for a discovered startup action and exact scenario group"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1783,
+        "end": 1798,
+        "sha256": "6cbf8256deadcf6681c509b9e70cf673c410e3ddeb1a3c03b7ef0a17342412d2"
+      },
+      "why": "Keeps the reviewed startup case in its own executable batch with the startup capture flag and no measured credit."
     }
   ],
   "ignoredSources": [

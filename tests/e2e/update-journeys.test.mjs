@@ -121,6 +121,42 @@ test('updates.rollback: update real managed CLI, run it, then roll back without 
   assert.equal(existsSync(join(f.managedHome, 'releases', `${next.version}-${next.commit}`)), true);
 });
 
+test('updates.reuse: download only runtime blobs absent from the verified local release', t => {
+  const original = releaseFixture(), f = journey(t, original);
+  f.install();
+  const next = releaseFixture('9.8.0');
+  const previousBlobs = new Map(original.tree.map(entry => [entry.path, entry.sha]));
+  const reusable = next.tree.filter(entry => entry.type === 'blob' && previousBlobs.get(entry.path) === entry.sha);
+  assert.ok(reusable.length >= 2);
+  const reusablePaths = new Set(reusable.map(entry => entry.path));
+  const novel = next.tree.filter(entry => entry.type === 'blob' && !reusablePaths.has(entry.path));
+  assert.ok(novel.length >= 1);
+  for (const entry of reusable) delete next.routes[`/git/blobs/${entry.sha}`];
+  const before = f.requests().length;
+  f.use(next);
+  const { status, releaseFiles } = f.output(['update', '--json'], { managed: true });
+  assert.equal(status, 'updated');
+  assert.deepEqual(releaseFiles, { reused: reusable.length, downloaded: novel.length });
+  const requested = f.requests().slice(before).filter(row => row.url.includes('/git/blobs/')).map(row => row.url.split('/').at(-1));
+  assert.deepEqual(requested.sort(), novel.map(entry => entry.sha).sort());
+  assert.equal(f.ok(['--version'], { managed: true }).stdout, `${next.version}\n`);
+  assertOfficialRequests(f);
+
+  const active = f.active().current, root = join(f.managedHome, 'releases', active);
+  const manifestPath = join(root, '.tracer-release.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const unchanged = manifest.files.find(file => file.path === reusable[0].path);
+  const modified = Buffer.from('Locally modified bytes');
+  writeFileSync(join(root, unchanged.path), modified);
+  unchanged.sha256 = sha256(modified);
+  writeFileSync(manifestPath, JSON.stringify(manifest));
+  const later = releaseFixture('9.8.1');
+  assert.equal(later.tree.find(entry => entry.path === unchanged.path).sha, unchanged.gitBlob);
+  f.use(later);
+  f.bad(['update'], /verified Git source tree/, { managed: true });
+  assert.equal(f.active().current, active);
+});
+
 test('updates.atomic: failed next download leaves active CLI, skill and prior source bytes unchanged', t => {
   const f = journey(t); f.init(['--agent', 'codex', '--install-skill']); f.install();
   const pointer = readFileSync(join(f.managedHome, 'active.json'), 'utf8'), skill = readFileSync(f.skill('codex'));

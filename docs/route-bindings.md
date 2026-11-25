@@ -101,6 +101,12 @@ includes existing cases to run and cases whose scenarios need the planned
 condition. This is a candidate score over current passing gaps. Keep blocked
 plans and missing action IDs visible in the decision queues.
 
+Set `captureMode` to `startup` when the behavior occurs before the CLI
+handshake. These cases appear in `decisions.nativeStartupBatch` with
+`--coverage-startup`. The default capture mode is `session`. Native discovery
+may advertise host flags in `launchModes`; use those exact IDs in plans for
+launch behaviors. In-app actions still come from the capabilities report.
+
 ## Rank the coverage work that remains
 
 ```sh
