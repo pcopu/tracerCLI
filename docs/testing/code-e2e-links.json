@@ -10779,8 +10779,8 @@
       "id": "7b89b1b6532597ab",
       "source": {
         "path": "src/measured.mjs",
-        "start": 731,
-        "end": 741,
+        "start": 757,
+        "end": 767,
         "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
       },
       "actions": [
@@ -11014,8 +11014,8 @@
       "id": "1ab3a6285d69c2ea",
       "source": {
         "path": "src/measured.mjs",
-        "start": 794,
-        "end": 843,
+        "start": 820,
+        "end": 869,
         "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
       },
       "actions": [
@@ -11034,8 +11034,8 @@
       "id": "30bea507a9bd7019",
       "source": {
         "path": "src/measured.mjs",
-        "start": 845,
-        "end": 886,
+        "start": 871,
+        "end": 912,
         "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
       },
       "actions": [
@@ -11093,8 +11093,8 @@
       "source": {
         "path": "src/measured.mjs",
         "start": 570,
-        "end": 643,
-        "sha256": "b6ab89423f36c426281d36f7de06bbec6a5fb8a2d5fabb98b314dedb488ee821"
+        "end": 669,
+        "sha256": "5e31a9f637b518464e12d61247b7f6e97584900b64dc60606053555be35264d7"
       },
       "actions": [
         "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
@@ -11102,8 +11102,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1257,
-        "end": 1298,
-        "sha256": "e0619faf741d3911e917d63a8d3f334220f6cf300dd61a6a385b22079692b00c"
+        "end": 1315,
+        "sha256": "0a81561bb25eba7d840d55b6e03c0a1213048e610be298a9e33dcd6ed729bd75"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
     },
@@ -11121,10 +11121,29 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1270,
-        "end": 1298,
-        "sha256": "9902c5da71a56faa5238bf05765df1e1a454ce4b8a381b95f62d47475a87580f"
+        "end": 1315,
+        "sha256": "dc21c5670e55804c69d235842b0eee8711c0eba5f0f63add6c061e2e42b84f23"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
+    },
+    {
+      "id": "d8d411cb313c61f0",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 582,
+        "end": 603,
+        "sha256": "52e9ff1964e8d2a00ad6f5e62c4e16a584d2bff52f01cb565b9c6fa588c17fc5"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1284,
+        "end": 1310,
+        "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
+      },
+      "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
     }
   ],
   "ignoredSources": [

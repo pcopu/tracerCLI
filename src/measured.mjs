@@ -576,6 +576,32 @@ function uniqueLineContexts(lines) {
   return contexts;
 }
 
+const replayDiagnosticCodes = new Set(['ui-target-ambiguous', 'ui-target-missing', 'ui-wait-timeout',
+  'fixture-dependency-missing', 'scenario-assertion', 'scenario-error']);
+
+function replayFailure(record, declaration) {
+  const { journey, evidence } = declaration;
+  const failure = { intervalId: record.id, journey, evidence };
+  const input = readInput(evidence.path);
+  if (input.sha256 !== evidence.sha256) fail('Outcome evidence changed during replay planning.');
+  let receipt;
+  try { receipt = JSON.parse(input.content); } catch { return failure; }
+  if (receipt?.schemaVersion !== 1 || receipt.kind !== 'actual-app-cli-scenarios' || receipt.status !== 'failed'
+      || !Array.isArray(receipt.scenarios)) return failure;
+  const scenario = receipt.scenarios.find(row => row?.status === 'failed' && typeof row.scenario === 'string'
+    && (row.group === undefined || typeof row.group === 'string')
+    && (row.scenario + (row.group ? `#${row.group}` : '')) === journey);
+  const raw = scenario?.diagnostic;
+  if (!replayDiagnosticCodes.has(raw?.code)) return failure;
+  const diagnostic = { code: raw.code };
+  const { path, line } = raw.location ?? {};
+  if (typeof path === 'string' && path.length <= 512 && /^tests\/e2e\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.mjs$/.test(path)
+      && Number.isSafeInteger(line) && line > 0) diagnostic.location = { path, line };
+  if (raw.code === 'ui-target-missing' && raw.matches === 0
+      || raw.code === 'ui-target-ambiguous' && Number.isSafeInteger(raw.matches) && raw.matches > 1) diagnostic.matches = raw.matches;
+  return { ...failure, diagnostic };
+}
+
 function replayPassingSources(store, files, referenceFilesByPath, loaded, journeys, shared) {
   const targets = new Map(files.filter(file => file.status === 'current' && file.passedOnlyKnown.gapLines)
     .map(({ path, passedOnlyKnown }) => [path, { reference: referenceFilesByPath.get(path).file,
@@ -587,7 +613,7 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
     if (!execution || execution.restrictions.length) continue;
     if (declaration.status === 'failed') {
       if (record.provenanceId === loaded.scopeId && record.validFiles.size && !failures.has(execution)) {
-        failures.set(execution, { intervalId: record.id, journey: declaration.journey, evidence: declaration.evidence });
+        failures.set(execution, replayFailure(record, declaration));
       }
       continue;
     }

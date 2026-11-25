@@ -209,6 +209,10 @@ A selector with a passing compatible capture for the same file is skipped.
 If a selector already failed in the exact reference scope, its remaining
 candidate ranges appear in `failedReplays` with the failed interval and
 receipt. Inspect the failure before running that selector again.
+A Scriv receipt may also provide a typed `failure.diagnostic` with a relative
+scenario source location and the number of matching controls. Tracer validates
+the diagnostic against the receipt's exact scenario and group. Older receipts
+still supply the failed interval and receipt path.
 Current reviewed holds supplied through `--file` also apply to replay leads.
 
 The total counts candidate lines once. Each item gives exact `argv`, candidate

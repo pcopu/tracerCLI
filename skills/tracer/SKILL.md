@@ -54,8 +54,10 @@ marginal candidate lines. Run the leading selectors on the verified build and
 use `measure batch` to record fresh gains. Earlier observations only guide
 selection when source or instrumentation changed.
 Inspect `failedReplays` for selectors already tried on the reference build.
-Use the bound receipt to diagnose the failed scenario and continue with other
-ranked selectors while it is unresolved.
+Use the bound receipt and any typed `failure.diagnostic` to fix the failed
+scenario. For an ambiguous native selector, use the reported source location
+to identify the actual control and retain the original assertion. Continue
+with other ranked selectors while a failure is unresolved.
 
 Add exact outcome `journeys` labels to discovered routes to find existing
 scenarios worth extending. `extensionCandidates` shows passing intervals with

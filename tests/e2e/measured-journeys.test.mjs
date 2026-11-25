@@ -1282,14 +1282,31 @@ test('worklist ranks fresh replays from retained passing evidence without credit
   assert.equal(limited.replayCandidates.items.length, 1);
 
   const currentFailure = capture('alpha', [3], 'failed');
+  const journey = 'tests/e2e/journeys/alpha.mjs';
+  const diagnostic = { code: 'ui-target-ambiguous', location: { path: journey, line: 23 }, matches: 2 };
+  f.jsonFile('scriv-failed.json', { schemaVersion: 1, kind: 'actual-app-cli-scenarios', status: 'failed',
+    scenarios: [{ scenario: journey, status: 'failed', diagnostic: { ...diagnostic, privateNote: 'not exported' } }] });
+  currentFailure.evidence = { path: join(f.root, 'scriv-failed.json'), sha256: f.hash('scriv-failed.json') };
+  currentFailure.journey = journey;
+  const catalog = JSON.parse(readFileSync(join(f.root, 'routes.json')));
+  catalog.routes[0].journeys.push(journey);
+  f.jsonFile('routes.json', catalog);
   f.jsonFile('outcomes.json', { version: 1, intervals: [...outcomes, currentFailure] });
   const reviewed = f.json(...args, '--replay');
   assert.deepEqual(reviewed.coverage.passedOnlyKnown, report.coverage.passedOnlyKnown);
   assert.deepEqual(reviewed.replayCandidates.items.map(row => row.argv), [['test', 'beta'], ['test', 'table']]);
   assert.equal(reviewed.failedReplays.gapLines, 2);
   assert.deepEqual(reviewed.failedReplays.items[0].routeIds, ['alpha', 'alpha-alias']);
-  assert.equal(reviewed.failedReplays.items[0].failure.journey, 'alpha');
+  assert.equal(reviewed.failedReplays.items[0].failure.journey, journey);
+  assert.deepEqual(reviewed.failedReplays.items[0].failure.diagnostic, diagnostic);
   assert.equal(reviewed.failedReplays.items[0].failure.evidence.sha256, currentFailure.evidence.sha256);
+  f.jsonFile('scriv-failed.json', { schemaVersion: 1, kind: 'actual-app-cli-scenarios', status: 'failed',
+    scenarios: [{ scenario: journey, status: 'failed', diagnostic: {
+      code: 'ui-target-ambiguous', location: { path: '../private-output.mjs', line: 23 }, matches: 'invalid',
+    } }] });
+  currentFailure.evidence.sha256 = f.hash('scriv-failed.json');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [...outcomes, currentFailure] });
+  assert.deepEqual(f.json(...args, '--replay').failedReplays.items[0].failure.diagnostic, { code: 'ui-target-ambiguous' });
   const recovered = capture('alpha', [4, 12]);
   f.jsonFile('outcomes.json', { version: 1, intervals: [...outcomes, currentFailure, recovered] });
   assert.equal(f.json(...args, '--replay').failedReplays.count, 0);
