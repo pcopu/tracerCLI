@@ -37,6 +37,9 @@ source-to-CLI witnesses. Check `routes` for an existing scenario and
 `selectorReview` for alternatives or restrictions. Trace the biggest
 `unassigned` gaps to their callers and check live CLI discovery for the
 required action. The command works without a proposal or manual links.
+When several CLI selectors share one witness file, inspect each candidate's
+`neighboringEvidence` for an exact group that ran code on both sides of the
+gap. Check the assertions and add the missing condition before counting it.
 
 For Scriv, save `tracer app -- test --list` output and pass that file directly
 as `--routes`. Tracer derives exact scenario groups and recorded journey labels

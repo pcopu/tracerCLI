@@ -183,6 +183,20 @@ function runtimeReview(tracer, data, state, measuredFiles, current, assigned, fo
     invalid: { count: invalid.length, items: invalid.slice(0, limit) } } };
 }
 
+function neighboringEvidence(files, examples) {
+  const supported = new Map();
+  let example;
+  for (const candidate of examples ?? []) {
+    const { path, range: [start, end] } = candidate;
+    const matched = [...(files.get(path) ?? [])].filter(line => line >= start && line <= end);
+    if (!matched.length) continue;
+    addLines(supported, path, matched);
+    example ??= candidate;
+  }
+  if (!example) return undefined;
+  return { gapLines: [...supported.values()].reduce((sum, lines) => sum + lines.size, 0), example };
+}
+
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
@@ -225,8 +239,20 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const details = work => ({ linkIds: [...work.linkIds].sort(), ...summarize(work.files) });
   const routes = [...workByRoute].map(([execution, work]) => ({ id: execution.routeIds[0],
     routeIds: execution.routeIds, argv: execution.argv, witnessPaths: [...work.witnessPaths].sort(), ...details(work) })).sort(byImpact);
+  const examplesByExecution = new Map();
+  if (reviewByPath.size) {
+    for (const example of measured.surroundingIntervals ?? []) {
+      const execution = catalog.journeys.get(example.journey);
+      if (!examplesByExecution.has(execution)) examplesByExecution.set(execution, []);
+      examplesByExecution.get(execution).push(example);
+    }
+  }
   const selectorReview = [...reviewByPath].map(([witnessPath, work]) => ({ witnessPath,
-    candidates: executionsByPath.get(witnessPath).map(({ routeIds, argv, restrictions }) => ({ routeIds, argv, restrictions })),
+    candidates: executionsByPath.get(witnessPath).map(execution => {
+      const { routeIds, argv, restrictions } = execution;
+      const evidence = neighboringEvidence(work.files, examplesByExecution.get(execution));
+      return { routeIds, argv, restrictions, ...(evidence && { neighboringEvidence: evidence }) };
+    }),
     ...details(work) })).sort((a, b) => b.gapLines - a.gapLines || a.witnessPath.localeCompare(b.witnessPath));
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
   const count = files => [...files.values()].reduce((sum, lines) => sum + lines.size, 0);

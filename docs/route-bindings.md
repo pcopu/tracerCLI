@@ -132,6 +132,10 @@ selectors. A single unrestricted selector appears under `routes` with its
 ordered arguments and the contributing link IDs. Identical argument lists
 share one entry. A witness with multiple selectors or a restricted selector
 appears under `selectorReview` with each alternative and its restrictions.
+A candidate can include `neighboringEvidence` from an exact journey or
+scenario group that observed both anchors around a disputed source gap.
+Use its selector and example interval to review the existing scenario.
+The gap remains in selector review and the restrictions still apply.
 Inspect the witness assertions before choosing a scenario group or adding a
 missing condition.
 

@@ -1149,6 +1149,16 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   assert.equal(result.extensionCandidates.count, 1);
   assert.deepEqual(result.extensionCandidates.items[0].argv, ['test', '--scenario', 'journeys/review', '--group', 'alternate']);
   assert.equal(result.extensionCandidates.items[0].examples[0].journey, path + '#alternate');
+  f.run(['link', 'src/app.py:2', '--step', `${path}:1`, '--action', 'Review selected item', '--why', 'Checks the visible result']);
+  const grouped = f.json(...args);
+  const groupReview = grouped.selectorReview.items.find(row => row.witnessPath === path);
+  assert.equal(groupReview.gapLines, 1);
+  assert.equal(groupReview.candidates.length, 3);
+  const selected = groupReview.candidates.find(row => row.argv.at(-1) === 'alternate');
+  assert.deepEqual(selected.neighboringEvidence, { gapLines: 1, example: result.extensionCandidates.items[0].examples[0] });
+  assert.equal(groupReview.candidates.filter(row => row.neighboringEvidence).length, 1);
+  assert.equal(grouped.extensionCandidates.count, 0, 'The same gap remains assigned for selector review');
+  assert.deepEqual(grouped.coverage, result.coverage);
   f.run(['link', 'src/app.py:2', '--step', `${blocked}:1`, '--action', 'Open the blocked control', '--why', 'Check the control']);
   const restricted = f.json(...args).selectorReview.items[0];
   assert.equal(restricted.witnessPath, blocked);
