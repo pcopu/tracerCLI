@@ -150,7 +150,6 @@ async function main(args) {
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
     const tracer = new Tracer(settings);
     if (mode === 'worklist') {
-      if (options['--capabilities'] && !options['--file'] && !options['--action']) fail('--capabilities requires --file or --action.');
       const result = coverageWorklist(tracer, { file: options['--file'], routesFile: options['--routes'],
         capabilitiesFile: options['--capabilities'], sourceFirst: command === 'worklist', replay: options['--replay'],
         sources: options['--source'], actionId: options['--action'],

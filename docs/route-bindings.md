@@ -210,6 +210,9 @@ tracer worklist --routes /external/scriv-discovery.json \
 `actionReview` compares the exact action with retained passing intervals and
 their discovered selectors. It ranks scenarios that observed lines in the
 selected source first and includes an example interval ID and observed ranges.
+`actionReview.extensionCandidates` ranks missing conditions whose two anchors
+occurred in a post-launch interval recording that exact action. This shortlist
+also considers gaps with existing source witnesses.
 Scenarios that recorded the action elsewhere remain candidates for review.
 A fully observed focus with a matching scenario reports `no-passing-gaps`.
 When there is no retained passing match, look for an existing unmeasured
@@ -228,9 +231,21 @@ causality, and measure the new condition to establish its gain.
 
 With these labels, `extensionCandidates` ranks selectors that have a passing
 interval with counter increases on both neighboring instrumented lines of an
-unassigned gap. Each example includes its interval ID, journey label and anchor
-lines. This locates an existing fixture and scenario to inspect when adding a
-condition. Treat the intervening gap as uncovered.
+unassigned gap. Uninstrumented lines can split a physical gap into several
+ranges. Tracer uses instrumented neighbors and reports the actual gap lines in
+`sources`. Each example includes its interval ID, journey label and anchor
+lines. With `--capabilities`, `actionIds` lists the discovered CLI actions
+recorded in that interval, including specifically recorded menu scopes. You can
+supply capabilities without a proposal or an action filter. Use those IDs and
+the exact selector to find the existing fixture and inspect the production
+caller. Multiple recorded actions in an interval each remain possible leads.
+
+For native Scriv discovery, `startupCandidates` contains gaps whose two
+anchors only increased together in isolated launch intervals. Use the listed
+scenario to inspect the launch fixture and choose a first-launch or reopen
+scenario for the missing initial state. An interval recorded after launch gets
+precedence if it reaches the same two anchors. Both lists leave their gap
+lines uncovered.
 `extensionCandidates.items` is a batch shortlist. Each selector is picked for
 the largest number of candidate gap lines still absent from earlier items.
 `marginalGapLines` counts that contribution. For ties, Tracer prefers more

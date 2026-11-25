@@ -43,9 +43,13 @@ gap. Check the assertions and add the missing condition before counting it.
 
 For Scriv, save `tracer app -- test --list` output and pass that file directly
 as `--routes`. Tracer derives exact scenario groups and recorded journey labels
-from the discovery output while preserving its restrictions. When a source
-review has produced focused plans, add `--file PROPOSAL --capabilities FILE`
-using Scriv’s UIKit capability response. Read `decisions.queues` alongside
+from the discovery output while preserving its restrictions. Supply Scriv’s
+UIKit `--capabilities FILE` to see discovered action IDs on the recorded
+interval examples. Start with the exact selector and inspect which action
+reaches the production caller. Use `startupCandidates` to find launch-only
+evidence and choose the missing initial state for a first-launch or reopen
+scenario. When a source review has produced focused plans, add `--file
+PROPOSAL`. Read `decisions.queues` alongside
 scenario leads. A current reviewed blocker or missing action can hold a range
 out of the scenario queue. Shared code stays eligible through other plans.
 Start with the largest actionable group and keep the original denominator.
@@ -107,8 +111,10 @@ When you know the caller and discovered CLI action, use `worklist --action ID
 also supply the app's saved `--capabilities` output. Use the advertised scope
 ID for a menu behavior, such as `--action script-entries`. Older captures can
 still match the broad `menu-action` command. Start with the exact
-scenario group in `actionReview.routes` that has observed lines in that caller.
-Use the whole caller range to find a scenario that ran it. Read its scenario
+scenario group in `actionReview.extensionCandidates` when the same passing
+interval recorded the action and both anchors around the missing condition.
+Use `actionReview.routes` for other scenarios that reached the caller. Select
+the whole caller range to find a scenario that ran it. Read its scenario
 and actual control before extending it. Counts describe the interval containing
 the action. When no selector has a passing match, inspect the discovered
 scenarios before writing one. When the action is absent from discovery, verify

@@ -551,27 +551,41 @@ function measurementSnapshot(maxDatasets) {
     missingDatasets: new Set(), intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
 }
 
-// Matching both anchors in one interval keeps these suggestions separate from
-// any union of unrelated executions. The intervening lines stay uncovered.
+// Both anchors must increase in the same interval. Lines without counters
+// can split the physical ranges of a single gap in the instrumented sequence.
 function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath) {
-  const examples = [];
+  const surroundingIntervals = [], startupIntervals = [], actionIntervals = [];
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
     if (!passing?.length || !passedOnlyKnown.gapRanges.length) continue;
     const { lines } = referenceFilesByPath.get(path).file;
     const index = new Map(lines.map((line, i) => [line, i]));
-    for (const range of passedOnlyKnown.gapRanges) {
-      const left = index.get(range[0]) - 1, right = index.get(range[1]) + 1;
+    const gaps = passedOnlyKnown.gapRanges.map(([start, end]) => [index.get(start), index.get(end)]);
+    for (let cursor = 0; cursor < gaps.length;) {
+      const [first, initialLast] = gaps[cursor++];
+      let last = initialLast;
+      while (gaps[cursor]?.[0] === last + 1) last = gaps[cursor++][1];
+      const left = first - 1, right = last + 1;
       if (left < 0 || right >= lines.length) continue;
-      const found = new Set();
-      for (const { journey, intervalId, rows } of passing) {
-        if (found.has(journey) || rows[left][2] <= rows[left][1] || rows[right][2] <= rows[right][1]) continue;
-        found.add(journey);
-        examples.push({ path, range, observedAround: [lines[left], lines[right]], intervalId, journey });
+      const range = [lines[first], lines[last]];
+      const gapRanges = last - first === range[1] - range[0] ? undefined : compactRanges(lines.slice(first, right));
+      const found = new Map(), atStartup = new Map(), exactAction = new Map();
+      for (const { journey, intervalId, rows, startup, actionIds, matchesAction } of passing) {
+        const group = startup ? atStartup : found;
+        if (group.has(journey) && (!matchesAction || exactAction.has(journey))) continue;
+        if (rows[left][2] <= rows[left][1] || rows[right][2] <= rows[right][1]) continue;
+        const example = { path, range, ...(gapRanges && { gapRanges }),
+          observedAround: [lines[left], lines[right]], intervalId, journey,
+          ...(actionIds?.length && { actionIds }) };
+        if (!group.has(journey)) group.set(journey, example);
+        if (matchesAction && !exactAction.has(journey)) exactAction.set(journey, example);
       }
+      for (const example of exactAction.values()) actionIntervals.push(example);
+      if (found.size) for (const example of found.values()) surroundingIntervals.push(example);
+      else for (const example of atStartup.values()) startupIntervals.push(example);
     }
   }
-  return examples;
+  return { surroundingIntervals, startupIntervals, actionIntervals };
 }
 
 function uniqueLineContexts(lines) {
@@ -686,7 +700,7 @@ function recordActionSource(sources, execution, { path, rows }, example, focus) 
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
@@ -703,6 +717,10 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
+    const startup = extensionJourney && launchActions?.length === record.actions.length
+      && launchActions.every((action, index) => action === record.actions[index]);
+    const actionIds = extensionJourney && !startup && actionIdsByLabel
+      && [...new Set([...record.actions, ...(record.actionLabels ?? [])].map(label => actionIdsByLabel.get(label)).filter(Boolean))];
     const actionExecution = actionQuery && outcome === 'passed' && hasAction(record, actionQuery.label)
       && actionQuery.journeys.get(declaration.journey);
     outcomeCounts[outcome]++;
@@ -725,7 +743,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         { journey: declaration.journey, intervalId: record.id }, actionQuery.focus);
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
-        extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id, rows: captured.rows });
+        extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id,
+          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution) });
       }
       for (const [line, before, after] of captured.rows) {
         if (after <= before) continue;
@@ -773,7 +792,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(actionSources && { actionSources }),
-    ...(extensionJourneys?.size && { surroundingIntervals: surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath) }),
+    ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
 }

@@ -103,7 +103,7 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
 
   let gapLines = 0, exclusiveGapLines = 0, restrictedGapLines = 0;
   for (const { path, range: [start, end], executions } of byGap.values()) {
-    const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line)
+    const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned?.get(path)?.has(line)
       && !pending?.get(path)?.has(line)) ?? [];
     if (!lines.length) continue;
     const selectableCount = [...executions.keys()].filter(execution => !execution.restrictions.length).length;
@@ -197,7 +197,7 @@ function neighboringEvidence(files, examples) {
   return { gapLines: [...supported.values()].reduce((sum, lines) => sum + lines.size, 0), example };
 }
 
-function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus }) {
+function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
@@ -272,6 +272,14 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const pending = runtime?.pending;
   if (held) for (const [path, lines] of held) addLines(assigned, path, lines);
   const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, pending, limit);
+  const startup = catalog.launchActions && measured.startupIntervals
+    && extensionCandidates(measured.startupIntervals, catalog.journeys, current, assigned, pending, limit);
+  const actionReview = actionId === undefined ? undefined
+    : reviewAction(actionId, catalog, actionLabel, measured.actionSources, sourceFocus, limit);
+  if (actionReview) {
+    const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
+    actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit);
+  }
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {
     proposal: decisions.report.proposal, queues: decisions.report.queues, routes: decisions.report.routes,
@@ -285,6 +293,9 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
     ...(focus && { focusedWitnessRoutes: { count: witnessRows.length, items: witnessRows.slice(0, limit) } }),
     ...(extensions && { extensionCandidates: extensions }),
+    ...(startup && { startupCandidates: startup }),
+    ...(actionReview && { actionReview }),
+    ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
     ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
     ...(runtime && { runtimeReview: runtime.report }),
@@ -330,14 +341,14 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery,
+  const labels = catalog.measurementActions ?? (catalog.actions && [...catalog.actions.keys()].map(id => [id, id]));
+  const actionIdsByLabel = direct && labels && new Map([...labels].map(([id, label]) => [label, id]));
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, launchActions: catalog.launchActions, actionIdsByLabel,
     extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;
-  const report = directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus });
-  if (actionId !== undefined) report.actionReview = reviewAction(actionId, catalog, actionLabel, measured.actionSources, scope.sourceFocus, limit);
-  return report;
+  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel });
 }
 
 function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit, focus }) {

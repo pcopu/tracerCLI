@@ -1064,8 +1064,9 @@ test('worklist finds discovered actions and the exact existing scenarios that re
     status: i === 2 ? 'failed' : 'passed', evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } })) });
   f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
   const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.', '--source', 'src/app.py:1-2'];
-  const baseline = f.json(...args);
-  const actionArgs = [...args, '--capabilities', 'capabilities.json', '--action'];
+  const withCapabilities = [...args, '--capabilities', 'capabilities.json'];
+  const baseline = f.json(...withCapabilities);
+  const actionArgs = [...withCapabilities, '--action'];
   const { actionReview, ...report } = f.json(...actionArgs, 'open');
   assert.deepEqual(report, baseline, 'Action planning leaves every other queue and coverage total unchanged');
   assert.equal(report.sourceFocus.gapLines, 1, 'An actual failed run earns no passing credit');
@@ -1267,6 +1268,58 @@ test('worklist reads native CLI discovery and matches exact capture group labels
     const input = structuredClone(discovery); edit(input); f.jsonFile('discovery.json', input);
     assert.equal(f.run([...args, '--json'], 1).stdout, '');
   }
+});
+
+test('native worklist separates launch evidence from recorded CLI actions and joins sparse instrumented gap lines', t => {
+  const f = project(t);
+  const scenario = id => ({ id: `journeys/${id}`, path: `tests/e2e/journeys/${id}.mjs` });
+  const launch = scenario('unrelated-generation'), edit = scenario('editor'), failed = scenario('failed-edit');
+  for (const route of [launch, edit, failed]) f.put(route.path, '// Scenario assertions.\n');
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 3, selectedScenarioCount: 3 }, scenarios: [launch, edit, failed] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['capabilities', 'menu-action', 'export-project'],
+    semanticMenuActionScopes: ['script-entries'] });
+  const code = Array.from({ length: 12 }, (_, i) => `line ${i + 1}\n`).join('');
+  f.put('src/app.py', code);
+  f.jsonFile('sources.json', { files: [{ path: 'src/app.py', sha256: sha(code) }] });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const lines = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const capture = (journey, runId, actions, hits, { scopes = [], status = 'passed' } = {}) => {
+    Object.assign(f.manifest, { runId, actions });
+    if (scopes.length) f.manifest.actionLabels = scopes;
+    else delete f.manifest.actionLabels;
+    f.manifest.before.runId = f.manifest.after.runId = runId;
+    f.put('before.lcov', f.record(lines.map(line => `DA:${line},0`).join('\n')));
+    f.put('after.lcov', f.record(lines.map(line => `DA:${line},${Number(hits.includes(line))}`).join('\n')));
+    f.refresh();
+    const { id } = f.json(...f.args);
+    const path = `${status}.json`;
+    f.jsonFile(path, { status });
+    return { id, journey: journey.path, status, evidence: { path, sha256: f.hash(path) } };
+  };
+  const startup = capture(launch, 'startup', ['launch isolated Scriv through the CLI', 'scriv capabilities'], [1, 5, 6, 8, 10, 12]);
+  const action = capture(edit, 'action', ['scriv menu-action', 'scriv undocumented'], [1, 5, 10, 12],
+    { scopes: ['scriv menu-action --scope script-entries'] });
+  const failedAction = capture(failed, 'failed', ['scriv menu-action'], [6, 8], { status: 'failed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [startup, action, failedAction] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const args = ['worklist', '--routes', 'discovery.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const report = f.json(...args);
+  assert.equal(report.coverage.passedOnlyKnown.gapLines, 5);
+  assert.deepEqual(report.extensionCandidates.items.map(({ routeIds, gapLines }) => [routeIds, gapLines]), [[[edit.id], 3]]);
+  assert.deepEqual(report.extensionCandidates.items[0].sources[0].gapRanges, [[2, 2], [4, 4], [11, 11]]);
+  assert.equal(report.startupCandidates.gapLines, 2);
+  assert.deepEqual(report.startupCandidates.items[0].sources[0].gapRanges, [[7, 7], [9, 9]]);
+  assert.equal(report.startupCandidates.items[0].examples[0].intervalId, startup.id);
+  assert.equal(report.unassigned.gapLines, 5, 'Planning does not give coverage credit');
+  const actions = f.json(...args, '--capabilities', 'capabilities.json').extensionCandidates.items[0].examples;
+  assert.deepEqual(actions[0].actionIds, ['menu-action', 'script-entries']);
+  const actionArgs = [...args, '--source', 'src/app.py:2-11', '--capabilities', 'capabilities.json', '--action'];
+  assert.equal(f.json(...actionArgs, 'script-entries').actionReview.extensionCandidates.gapLines, 3);
+  assert.equal(f.json(...actionArgs, 'export-project').actionReview.extensionCandidates.gapLines, 0);
+  const focused = f.json(...args, '--source', 'src/app.py:4');
+  assert.equal(focused.extensionCandidates.gapLines, 1);
+  assert.equal(focused.startupCandidates.gapLines, 0);
 });
 
 test('focused worklist uses declared native group support witnesses beside uncovered lines', t => {

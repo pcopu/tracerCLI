@@ -176,7 +176,8 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
     actions = new Map([...discovered.ids].map(id => [id, actions?.get(id) ?? { id }]));
     measurementActions = discovered.measurementActions;
   }
-  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions };
+  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions,
+    ...(native && { launchActions: ['launch isolated Scriv through the CLI', 'scriv capabilities'] }) };
 }
 
 function sourcePrediction({ row, current, errors }) {
