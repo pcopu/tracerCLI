@@ -63,8 +63,17 @@ lines. Read `extensionCandidates.restricted` for unavailable alternatives.
 
 If the adapter exports an exact compiler function map, pass
 `worklist --function-map FILE` with the same reference build and capture set.
-Use the narrowed extension shortlist first. Check
-`functionReview.entryPoints` for whole functions with no passing lines and
+Use the narrowed extension shortlist first. For an opening or terminal block
+with a passing counter on only its in-function side, use
+`functionReview.edgeCandidates` or `functionReview.startupEdgeCandidates`.
+The example records the function range, observed line, exact scenario argv
+and any discovered actions recorded in its interval. Check the production
+condition that would reach the block before extending the scenario. With an
+explicit `--action` or exact control target, use
+`actionReview.functionEdgeCandidates` for the corresponding action-specific
+evidence. The shortlists can overlap and their counts are candidate lines.
+
+Check `functionReview.entryPoints` for whole functions with no passing lines and
 trace those functions to a real CLI action or callback. For Scriv, the
 measurement-first coverage guide shows how to export a map from one retained
 native session. Reuse it across capture batches on the same signed build.

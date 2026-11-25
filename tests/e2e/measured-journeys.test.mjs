@@ -1348,6 +1348,58 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   }
 });
 
+test('worklist reuses a recorded CLI scenario at the end of a reached function', t => {
+  const f = project(t), path = 'src/app.py';
+  f.put(path, source + 'fifth\nsixth\nseventh\n');
+  f.jsonFile('sources.json', { files: [{ path, sha256: f.hash(path) }] });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const capture = (runId, action, values, status) => {
+    const journey = `tests/${runId}.mjs`;
+    f.put(journey, '// Scenario checks the public control.\n');
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
+    f.manifest.actions = [action];
+    f.put('before.lcov', f.record(values.map((_, i) => `DA:${i + 1},0`).join('\n')));
+    f.put('after.lcov', f.record(values.map((value, i) => `DA:${i + 1},${value}`).join('\n')));
+    f.refresh();
+    const { id } = f.json(...f.args);
+    return { id, journey, status, evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } };
+  };
+  f.jsonFile('receipt.json', {});
+  const intervals = [
+    capture('edit', 'edit', [1, 1, 0, 0, 0, 0, 0], 'passed'),
+    capture('also-edit', 'edit', [1, 1, 0, 0, 0, 0, 0], 'passed'),
+    capture('neighbor-only', 'inspect', [0, 0, 0, 0, 1, 0, 0], 'failed'),
+  ];
+  f.jsonFile('outcomes.json', { version: 1, intervals });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.jsonFile('routes.json', { version: 1, actions: [{ id: 'edit' }, { id: 'inspect' }], routes: intervals.map(({ journey }) => {
+    const id = journey.slice(6, -4);
+    return { id, argv: ['test', id], paths: [journey], journeys: [journey] };
+  }) });
+  const functions = { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256, files: [{ path, sha256: f.hash(path), ranges: [[1, 4], [5, 7]] }] };
+  f.jsonFile('functions.json', functions);
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.', '--function-map', 'functions.json'];
+  const report = f.json(...args);
+  assert.equal(report.coverage.passedOnlyKnown.gapLines, 5);
+  assert.equal(report.extensionCandidates.count, 0);
+  assert.equal(report.functionReview.edgeCandidates.gapLines, 2);
+  assert.equal(report.functionReview.edgeCandidates.count, 2);
+  assert.equal(report.functionReview.edgeCandidates.items.length, 1, 'Do not schedule a duplicate selector');
+  const [{ examples: [example], sources, marginalGapLines }] = report.functionReview.edgeCandidates.items;
+  assert.equal(marginalGapLines, 2);
+  assert.deepEqual(sources, [{ path, gapLines: 2, gapRanges: [[3, 4]] }]);
+  assert.equal(example.observedAnchor, 2);
+  assert.deepEqual(example.functionRange, [1, 4]);
+  assert.deepEqual(example.actionIds, ['edit']);
+  assert.deepEqual(report.functionReview.entryPoints.items[0].gapRanges, [[5, 7]], 'Adjacent functions require their own evidence');
+  assert.equal(f.json(...args, '--source', path + ':3', '--action', 'edit').actionReview.functionEdgeCandidates.gapLines, 1);
+  assert.equal(f.json(...args, '--source', path, '--action', 'inspect').actionReview.functionEdgeCandidates.gapLines, 0);
+  functions.files[0].ranges.push([3, 4]);
+  f.jsonFile('functions.json', functions);
+  assert.equal(f.json(...args).functionReview.edgeCandidates.gapLines, 0, 'Do not borrow an anchor from the enclosing function for an unentered closure');
+});
+
 test('worklist uses pinned function boundaries to distinguish a missing entry point from a scenario extension', t => {
   const f = project(t), path = 'src/app.py', journey = 'tests/editor.mjs';
   f.put(journey, '// An observed editing scenario.\n');

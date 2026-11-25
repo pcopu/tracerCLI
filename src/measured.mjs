@@ -585,20 +585,72 @@ function crossesFunction(ranges, left, right) {
     && !ranges.some(([start, end]) => start <= left && right <= end);
 }
 
+// A terminal block has no second anchor inside its function. Use only the
+// immediate surviving anchor in the smallest compiler range for that block.
+function collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges }) {
+  if (!ranges?.length) return;
+  for (let start = first; start <= last;) {
+    const owner = ownerAt(start);
+    let end = start;
+    while (end < last && ownerAt(end + 1) === owner) end++;
+    const left = start - 1, right = end + 1;
+    if (owner) {
+      const before = ownerAt(left) === owner, after = ownerAt(right) === owner;
+      if (before !== after) {
+        const anchor = before ? left : right;
+        const range = [lines[start], lines[end]];
+        const matched = new Set(), startupMatched = new Set(), exactMatched = new Set();
+        for (const { journey, intervalId, rows, startup, actionIds, matchesAction } of passing) {
+          if (rows[anchor][2] <= rows[anchor][1]) continue;
+          const example = { path, range, functionRange: owner, observedAnchor: lines[anchor], intervalId, journey,
+            ...(actionIds?.length && { actionIds }) };
+          const seen = startup ? startupMatched : matched;
+          if (!seen.has(journey)) {
+            seen.add(journey);
+            (startup ? edges.startup : edges.scenario).push(example);
+          }
+          if (matchesAction && !exactMatched.has(journey)) {
+            exactMatched.add(journey);
+            edges.action.push(example);
+          }
+        }
+      }
+    }
+    start = end + 1;
+  }
+}
+
 // Both anchors must increase in the same interval. Lines without counters
 // can split the physical ranges of a single gap in the instrumented sequence.
 function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions) {
   const surroundingIntervals = [], startupIntervals = [], actionIntervals = [], crossFunctionGaps = [];
+  const edges = functions && { scenario: [], startup: [], action: [] };
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
     if (!passing?.length || !passedOnlyKnown.gapRanges.length) continue;
     const { lines } = referenceFilesByPath.get(path).file;
     const index = new Map(lines.map((line, i) => [line, i]));
+    const ranges = functions?.files.get(path);
+    const owners = new Map();
+    const ownerAt = position => {
+      if (position < 0 || position >= lines.length) return;
+      if (!owners.has(position)) {
+        const line = lines[position];
+        let nearest;
+        for (const range of ranges) {
+          if (range[0] > line) break;
+          if (line <= range[1] && (!nearest || range[1] - range[0] < nearest[1] - nearest[0])) nearest = range;
+        }
+        owners.set(position, nearest);
+      }
+      return owners.get(position);
+    };
     const gaps = passedOnlyKnown.gapRanges.map(([start, end]) => [index.get(start), index.get(end)]);
     for (let cursor = 0; cursor < gaps.length;) {
       const [first, initialLast] = gaps[cursor++];
       let last = initialLast;
       while (gaps[cursor]?.[0] === last + 1) last = gaps[cursor++][1];
+      collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges });
       const left = first - 1, right = last + 1;
       if (left < 0 || right >= lines.length) continue;
       const range = [lines[first], lines[last]];
@@ -623,7 +675,7 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath,
       else for (const example of atStartup.values()) startupIntervals.push(example);
     }
   }
-  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps };
+  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps, ...(edges && { functionEdges: edges }) };
 }
 
 function uniqueLineContexts(lines) {

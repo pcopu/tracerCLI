@@ -303,10 +303,17 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     && extensionCandidates(measured.startupIntervals, catalog.journeys, current, assigned, pending, limit);
   const actionReview = actionId === undefined ? undefined
     : reviewAction(actionId, catalog, actionLabel, measured, sourceFocus, limit);
+  const edgeCandidates = measured.functionEdges && extensionCandidates(measured.functionEdges.scenario, catalog.journeys, current, assigned, pending, limit);
+  const startupEdgeCandidates = catalog.launchActions && measured.functionEdges
+    && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit);
   if (actionReview) {
     if (actionTarget !== undefined) actionReview.target = actionTarget;
     const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
     actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit);
+    if (measured.functionEdges) {
+      const exactEdges = actionReview.restrictions.length ? [] : measured.functionEdges.action;
+      actionReview.functionEdgeCandidates = extensionCandidates(exactEdges, catalog.journeys, current, held, pending, limit);
+    }
   }
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {
@@ -328,7 +335,10 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
     ...(runtime && { runtimeReview: runtime.report }),
     ...(sourceFocus && { sourceFocus }),
-    ...(measured.functions && { functionReview: reviewFunctions(measured, current, assigned, pending, limit) }),
+    ...(measured.functions && { functionReview: { ...reviewFunctions(measured, current, assigned, pending, limit),
+      ...(edgeCandidates && { edgeCandidates,
+        edgeNotice: 'An adjacent counter increased inside the same compiler function. The missing block needs a new condition or assertion.' }),
+      ...(startupEdgeCandidates && { startupEdgeCandidates }) } }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
