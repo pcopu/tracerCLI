@@ -730,6 +730,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure where --source PATH[:RANGE] [--source PATH[:RANGE] ...] [--capture-set FILE] [--json]
   measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
   measure gaps --series FILE --reference-root DIR [--json]
+  measure batch --baseline-capture-set FILE --receipt FILE [--receipt FILE ...]
+                --reference-root DIR --output NEW_DIR [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]

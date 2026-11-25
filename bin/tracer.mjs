@@ -5,7 +5,7 @@ import { bindProposalRoutes } from '../src/route-bindings.mjs';
 import { coverageWorklist } from '../src/coverage-worklist.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
-import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, whereMeasuredBatch, gapsMeasured, gapsSeries } from '../src/measured.mjs';
+import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, whereMeasuredBatch, gapsMeasured, gapsSeries, batchMeasured } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
@@ -42,6 +42,8 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure where --source PATH[:RANGE] [--source PATH[:RANGE] ...] [--capture-set FILE] [--json]
   measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
   measure gaps --series FILE --reference-root DIR [--json]
+  measure batch --baseline-capture-set FILE --receipt FILE [--receipt FILE ...]
+                --reference-root DIR --output NEW_DIR [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -185,14 +187,30 @@ async function main(args) {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
       report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--capture-set', '--json'], where: ['--source', '--capture-set', '--json'],
-      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--series', '--json'] }[mode];
-    if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file or measure gaps for a reference build.');
+      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--series', '--json'],
+      batch: ['--baseline-capture-set', '--receipt', '--reference-root', '--output', '--json'] }[mode];
+    if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file, measure gaps for a reference build, or measure batch for a Scriv run.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
-      const repeated = flag === '--input-root' || mode === 'where' && flag === '--source';
+      const repeated = flag === '--input-root' || flag === '--receipt' || mode === 'where' && flag === '--source';
       if (!allowed.includes(flag) || (Object.hasOwn(options, flag) && !repeated)) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
       if (repeated) (options[flag] ??= []).push(value(flags, i++, flag));
       else options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
+    }
+    if (mode === 'batch') {
+      if (['--baseline-capture-set', '--receipt', '--reference-root', '--output'].some(flag => !options[flag])) {
+        fail('measure batch requires --baseline-capture-set, --receipt, --reference-root and --output.');
+      }
+      const result = batchMeasured(new Tracer(settings).root, { baselineCaptureSet: options['--baseline-capture-set'],
+        receiptPaths: options['--receipt'], referenceRoot: options['--reference-root'], output: options['--output'] });
+      if (options['--json']) console.log(JSON.stringify(result, null, 2));
+      else {
+        const { gainedLines, lostLines } = result.comparison;
+        const { observedLines, instrumentedLines, gapLines } = result.passedOnlyKnown;
+        console.log(`${gainedLines} comparable passing lines gained, ${lostLines} lost. ${observedLines}/${instrumentedLines} observed, ${gapLines} gaps.`);
+        console.log(`Capture set saved to ${result.captureSet}`);
+      }
+      return;
     }
     if (mode === 'where' && !options['--source']) fail('measure where requires --source.');
     if (mode === 'gaps' && options['--series']) {

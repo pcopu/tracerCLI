@@ -201,3 +201,27 @@ tracer measure gaps --series /analysis/series.json \
 Each stage compares with the preceding capture set. Keep the same reference root in every set after the baseline. JSON `reports` contains an ordinary gap comparison for each stage in input order. The default text output shows each stage's passing total, comparable gains and losses, and passing lines without a comparable baseline.
 
 Shared manifests, dataset payloads, captured source snapshots, and producer evidence are read once during the invocation. Outcome declarations, compatibility checks, and current checkout source checks still apply to each comparison. A later command verifies the inputs again. The command is read-only and waits for every comparison to validate before printing reports.
+
+## Measure a completed Scriv batch
+
+Pass the `evidence.json` from a finished Scriv CLI run with imported coverage.
+The output directory must be new and outside all source roots.
+
+```sh
+tracer measure batch --baseline-capture-set /external/baseline/captures.json \
+  --receipt /external/run/evidence.json --reference-root /external/reference/source \
+  --output /external/next-batch
+```
+
+Repeat `--receipt` to include several completed runs. Tracer binds each
+measured interval to its import receipt and its declared scenario, group, and
+outcome. It checks the run, build, probe, source and receipt digests before
+publishing the derived capture set. Passing observations can earn passing
+credit. Failed scenarios with completed imports retain their observations and
+failed outcome. The receipt is producer evidence about the invocation.
+
+The output contains `captures.json` and `outcomes.json` for subsequent
+worklists or batches. `report.json` has the same format and contents as the
+reference gap comparison against the baseline, including gained and lost line
+ranges. `batch.json` summarizes the comparison and records each receipt's
+elapsed time and digest. For a new destination, invalid input leaves the output absent.

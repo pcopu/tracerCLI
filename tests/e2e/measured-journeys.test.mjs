@@ -1109,3 +1109,64 @@ test('worklist reads native CLI discovery and matches exact capture group labels
     assert.equal(f.run([...args, '--json'], 1).stdout, '');
   }
 });
+
+test('native batch builds a reusable capture set from a verified Scriv receipt', t => {
+  const base = project(t), run = project(t);
+  const { id: baselineID } = base.json(...base.args);
+  base.jsonFile('passed.json', { status: 'passed' });
+  base.jsonFile('outcomes.json', { version: 1, intervals: [{ id: baselineID, journey: 'baseline', status: 'passed',
+    evidence: { path: 'passed.json', sha256: base.hash('passed.json') } }] });
+  base.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json', scope: 'source-lines' });
+  const runID = '90e44128-7562-459d-87e1-c723990f9d04';
+  run.manifest.runId = run.manifest.before.runId = run.manifest.after.runId = runID;
+  run.put('after.lcov', run.record('DA:1,1\nDA:2,1\nDA:3,9'));
+  run.refresh(); const imported = run.json(...run.args);
+  const analysis = 'coverage/analysis/source';
+  run.put(`${analysis}/src/app.py`, source);
+  run.put(`${analysis}/${dataPath}`, readFileSync(join(run.root, dataPath)));
+  execFileSync('git', ['init', '-q'], { cwd: join(run.root, analysis) });
+  run.jsonFile(`coverage/sessions/${runID}/import.json`, imported);
+  const scenario = 'tests/e2e/journeys/editor.mjs', group = 'reconnect';
+  const receipt = { schemaVersion: 1, kind: 'actual-app-cli-scenarios', status: 'passed', sourceUnchanged: true, appUnchanged: true,
+    startedAt: '2026-11-25T00:00:00.000Z', endedAt: '2026-11-25T00:00:07.000Z',
+    app: { executableSHA256: run.manifest.before.buildSha256 }, selection: { group }, scenarios: [{ scenario, group, status: 'passed' }],
+    coverage: { status: 'imported', imported: 1, sourceManifestSHA256: run.manifest.sourceManifestSha256, probeSHA256: run.manifest.probeSha256,
+      analysis: { version: 1, kind: 'scriv-external-coverage-analysis', root: join(run.root, analysis),
+        dataset: join(run.root, analysis, dataPath), sourceManifestSHA256: run.manifest.sourceManifestSha256, sourceUnchanged: true },
+      intervals: [{ runID, scenario, group, scenarioStatus: 'passed', status: 'imported', imported: true }] } };
+  run.jsonFile('evidence.json', receipt);
+  const args = ['measure', 'batch', '--baseline-capture-set', 'captures.json', '--receipt', join(run.root, 'evidence.json'), '--reference-root', '.'];
+  const out = join(run.root, 'accepted');
+  const result = base.json(...args, '--output', out);
+  assert.equal(result.kind, 'native-measurement-batch');
+  assert.deepEqual(result.passedOnlyKnown, { files: 1, instrumentedLines: 3, observedLines: 3, gapLines: 0, percent: 100 });
+  assert.equal(result.comparison.gainedLines, 1);
+  assert.equal(result.comparison.lostLines, 0);
+  assert.equal(result.receipts[0].elapsedSeconds, 7);
+  const captures = join(out, 'captures.json');
+  const quality = base.json('measure', 'gaps', '--capture-set', captures, '--baseline-capture-set', 'captures.json', '--reference-root', '.');
+  assert.deepEqual(JSON.parse(readFileSync(join(out, 'report.json'))), quality);
+  assert.equal(quality.outcomes.declarations.find(row => row.id === imported.id).journey, `${scenario}#${group}`);
+  base.run([...args, '--output', out, '--json'], 1);
+  assert.deepEqual(JSON.parse(readFileSync(join(out, 'report.json'))), quality);
+  const rejected = join(run.root, 'rejected');
+  receipt.coverage.intervals[0].scenarioStatus = 'failed';
+  run.jsonFile('evidence.json', receipt);
+  const failure = base.run([...args, '--output', rejected, '--json'], 1);
+  assert.match(failure.stderr, /scenario outcome/i);
+  assert.equal(existsSync(rejected), false);
+
+  receipt.status = receipt.scenarios[0].status = 'failed';
+  run.jsonFile('evidence.json', receipt);
+  const failedOutput = join(run.root, 'retained-failure');
+  const failed = base.json(...args, '--output', failedOutput);
+  assert.equal(failed.comparison.gainedLines, 0);
+  assert.equal(failed.passedOnlyKnown.observedLines, 2);
+  const failedReport = JSON.parse(readFileSync(join(failedOutput, 'report.json')));
+  assert.equal(failedReport.allObserved.observedLines, 3);
+  assert.equal(failedReport.intervals.outcomes.failed, 1);
+  base.run([...args, '--receipt', join(run.root, 'evidence.json'), '--output', rejected, '--json'], 1);
+  base.run([...args, '--output', join(run.root, analysis, 'new-batch'), '--json'], 1);
+  assert.equal(existsSync(rejected), false);
+  assert.equal(existsSync(join(run.root, analysis, 'new-batch')), false);
+});

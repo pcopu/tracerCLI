@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
 import { Tracer, safePath, parseRange, validateActions, compactRanges } from './tracer.mjs';
 
 export const MEASURED_PATH = 'docs/testing/code-e2e-measurements.json';
@@ -713,4 +713,100 @@ function comparePassingEvidence(current, baseline, referenceFiles, currentFiles)
     provenanceGroups: [...baseline.provenance.values()].map(group => ({ ...group, origins: [...group.origins] })),
     intervals: { unique: baseline.records.size, duplicates: baseline.duplicates, outcomes },
     outcomes: { kind: 'producer-declared', provenance: baseline.outcomeProvenance, declarations: baseline.outcomeBindings } } };
+}
+
+function nativeBatchReceipt(path) {
+  const { content, sha256 } = readInput(path), receipt = JSON.parse(content);
+  const coverage = receipt?.coverage, analysis = coverage?.analysis, scenarioRows = receipt?.scenarios;
+  if (receipt?.schemaVersion !== 1 || receipt.kind !== 'actual-app-cli-scenarios'
+      || !['passed', 'failed'].includes(receipt.status) || receipt.sourceUnchanged !== true || receipt.appUnchanged !== true
+      || coverage?.status !== 'imported' || analysis?.version !== 1 || analysis.kind !== 'scriv-external-coverage-analysis'
+      || analysis.sourceUnchanged !== true || !object(receipt.selection) || !Array.isArray(scenarioRows)
+      || !Array.isArray(coverage.intervals) || !coverage.intervals.length || coverage.imported !== coverage.intervals.length) {
+    fail('Require a finished Scriv receipt with unchanged app and source and fully imported coverage.');
+  }
+  const directory = dirname(path), root = join(directory, 'coverage', 'analysis', 'source');
+  if (analysis.root !== root || analysis.dataset !== join(root, MEASURED_PATH) || !hex(coverage.sourceManifestSHA256)
+      || analysis.sourceManifestSHA256 !== coverage.sourceManifestSHA256 || !hex(coverage.probeSHA256)
+      || !hex(receipt.app?.executableSHA256)) fail('Invalid native batch analysis path or source, probe and build identities.');
+  const start = Date.parse(receipt.startedAt), end = Date.parse(receipt.endedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) fail('Invalid native batch receipt elapsed time.');
+
+  const scenarioOutcome = new Map();
+  for (const row of scenarioRows) {
+    if (typeof row?.scenario !== 'string' || !/^tests\/e2e\/(?:journeys\/)?[A-Za-z0-9_-]+\.mjs$/.test(row.scenario)
+        || scenarioOutcome.has(row.scenario) || row.group !== receipt.selection.group
+        || (row.group !== undefined && (typeof row.group !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(row.group)))) {
+      fail('Invalid native batch scenario identity or group.');
+    }
+    scenarioOutcome.set(row.scenario, row.status);
+  }
+  if (realpathSync(root) !== root) fail('Native batch analysis root must be unsymlinked.');
+  const store = new MeasuredStore(root), dataset = store.readMap({ withHash: true });
+  if (dataset.data?.intervals.length !== coverage.intervals.length) fail('Native batch dataset and receipt list different numbers of intervals.');
+  const imported = new Map(dataset.data.intervals.map(interval => [interval.id, interval]));
+  const outcomes = [];
+  for (const row of coverage.intervals) {
+    if (typeof row?.runID !== 'string' || !/^[a-zA-Z0-9-]{1,200}$/.test(row.runID)
+        || row.status !== 'imported' || row.imported !== true) fail('Invalid native batch interval import.');
+    const status = scenarioOutcome.get(row.scenario);
+    if (row.group !== receipt.selection.group || !['passed', 'failed'].includes(status) || row.scenarioStatus !== status
+        || (receipt.status === 'passed' && status !== 'passed')) fail('Native batch interval and scenario outcome disagree.');
+    const importReceipt = join(directory, 'coverage', 'sessions', row.runID, 'import.json');
+    const { id } = JSON.parse(readInput(importReceipt).content), manifest = imported.get(id)?.manifest;
+    if (!manifest || manifest.runId !== row.runID || manifest.before.buildSha256 !== receipt.app.executableSHA256
+        || manifest.probeSha256 !== coverage.probeSHA256 || manifest.sourceManifestSha256 !== coverage.sourceManifestSHA256) {
+      fail('Native batch import receipt does not bind to the measured run, build, probe and source.');
+    }
+    imported.delete(id);
+    outcomes.push({ id, journey: row.scenario + (row.group ? `#${row.group}` : ''), status, evidence: { path, sha256 } });
+  }
+  const sourceRoots = [coverage.sourceProvenance?.buildSourceRoot, coverage.sourceProvenance?.journeySourceRoot].filter(text);
+  return { root, sourceRoots, outcomes, path, sha256, status: receipt.status, elapsedSeconds: (end - start) / 1000,
+    datasetSha256: dataset.datasetSha256 };
+}
+
+export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenceRoot, output }) {
+  const shared = measurementSnapshot();
+  const baseline = measuredInputs(root, { captureSet: baselineCaptureSet }, false, shared.manifests);
+  const baselineOutcomes = baseline.outcomes ? readMeasurementManifest(baseline.outcomes, shared.manifests).data : { version: 1, intervals: [] };
+  if (baselineOutcomes.version !== 1 || !Array.isArray(baselineOutcomes.intervals)) fail('Invalid baseline outcome declarations.');
+  const outcomes = baselineOutcomes.intervals.map(row => ({ ...row,
+    evidence: { ...row.evidence, path: resolve(dirname(baseline.outcomes), row.evidence.path) } }));
+  const inputRoots = baseline.inputRoots.map(path => realpathSync(path)), existing = new Set(inputRoots);
+  const receipts = receiptPaths.map(path => nativeBatchReceipt(resolve(root, path)));
+  for (const receipt of receipts) {
+    if (existing.has(receipt.root)) fail('Native batch analysis is already in the capture set.');
+    existing.add(receipt.root);
+    inputRoots.push(receipt.root);
+    outcomes.push(...receipt.outcomes);
+  }
+  const destination = resolve(root, output), parent = dirname(destination);
+  if (realpathSync(parent) !== parent || !lstatSync(parent).isDirectory() || existsSync(destination)) {
+    fail('Native batch output must be a new directory with an existing unsymlinked parent.');
+  }
+  const forbidden = [root, ...inputRoots, realpathSync(resolve(root, referenceRoot)), ...receipts.flatMap(receipt => receipt.sourceRoots)];
+  if (forbidden.some(path => destination === path || destination.startsWith(path + sep))) fail('Native batch output must be outside all source roots.');
+
+  const staging = mkdtempSync(join(parent, '.tracer-batch-'));
+  const write = (name, value) => writeFileSync(join(staging, name), `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+  try {
+    write('captures.json', { version: 1, scope: baseline.scopeMode, inputRoots, outcomes: 'outcomes.json' });
+    write('outcomes.json', { version: 1, intervals: outcomes });
+    const report = gapsMeasured(root, { referenceRoot, captureSet: join(staging, 'captures.json'), baselineCaptureSet }, shared);
+    for (const receipt of receipts) {
+      const origin = report.origins.find(origin => origin.root === receipt.root);
+      if (origin?.sha256 !== receipt.datasetSha256 || origin.invalidSnapshotFiles?.length) fail('Native batch source or dataset changed after receipt validation.');
+    }
+    report.captureSet.path = join(destination, 'captures.json');
+    report.outcomes.provenance.path = join(destination, 'outcomes.json');
+    const result = { kind: 'native-measurement-batch', version: 1, output: destination, captureSet: report.captureSet.path,
+      passedOnlyKnown: report.passedOnlyKnown, comparison: report.comparison,
+      receipts: receipts.map(({ path, sha256, status, elapsedSeconds, outcomes }) => ({ path, sha256, status, elapsedSeconds, intervals: outcomes.length })) };
+    write('report.json', report);
+    write('batch.json', result);
+    if (existsSync(destination)) fail('Native batch output already exists.');
+    renameSync(staging, destination);
+    return result;
+  } finally { rmSync(staging, { recursive: true, force: true }); }
 }

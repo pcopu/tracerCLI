@@ -79,6 +79,13 @@ Reuse valid captures before rerunning unchanged scenarios. For unavailable instr
 
 ## Run a repeatable capture batch
 
+After a Scriv run completes and imports coverage, use `tracer measure batch
+--baseline-capture-set BASELINE --receipt EVIDENCE --reference-root REFERENCE
+--output NEW_DIR`. This validates the receipt, reports passing gains and losses,
+and writes the next reusable capture set. Repeat `--receipt` for several runs.
+Keep the output outside pinned source. See `docs/measured.md` for the artifacts
+and failure handling.
+
 Reuse the same verified source snapshot and build across compatible captures. A capture should keep its own evidence and only the source files the adapter needs for verification. On the same APFS volume, use `cp -cRp` when an additional exact snapshot is required and verify the retained manifest. Preview the app adapter’s archive compaction before applying it to finished runs, and measure filesystem free space separately because cloned files can share disk blocks.
 
 1. Keep reference analysis roots, source/build manifests, raw snapshots, scenario receipts and digest-bound outcome declarations in durable private storage outside the tracked source tree. Save a capture set for the baseline, use `measure gaps` to find the largest observed shortfalls, and use `measure where` to check which real journeys already reach a named range. Keep different metric families, such as Swift DA lines and Worker statement anchors, separate. Use strict `measure union` when all captures share one complete instrumentation identity and the report is about that build alone.
