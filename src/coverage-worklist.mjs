@@ -392,7 +392,8 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       startup: nativeCaseBatch(batches.startup, { limit, held, pending, startup: true }),
     } }),
     ...(actionReview && { actionReview }),
-    ...(measured.recordedActions && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit, dispatchPlans) }),
+    ...(measured.recordedActions && (focus || measured.recordedActions.size)
+      && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit, dispatchPlans) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
     ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
@@ -441,7 +442,7 @@ const targetLabel = digest => `${activationLabel} --target-sha256 ${digest}`;
 const windowLabelFor = digest => `${activationLabel} --window-target-sha256 ${digest}`;
 
 function discoverRecordedActions(catalog, focus) {
-  if (!focus || !catalog.measurementActions) return;
+  if (!catalog.measurementActions) return;
   const menuLabels = new Map([...catalog.measurementActions]
     .filter(([, label]) => label.startsWith('scriv menu-action --scope '))
     .map(([id, label]) => [label, { id, label, actionArgs: ['--action', id] }]));
@@ -454,17 +455,21 @@ function discoverRecordedActions(catalog, focus) {
     const labels = new Set(record.actionLabels);
     const commands = new Set(record.actions);
     const matches = [];
-    for (const command of commands) {
+    if (focus) for (const command of commands) {
       const action = commandLabels.get(command);
       if (action) matches.push({ action, window: false });
     }
     for (const label of labels) {
       const menu = menuLabels.get(label);
-      if (menu && commands.has('scriv menu-action')) matches.push({ action: menu, window: false });
+      if (focus && menu && commands.has('scriv menu-action')) matches.push({ action: menu, window: false });
       if (!supportsActivate || !commands.has(activationLabel)) continue;
       const digest = /^scriv activate --target-sha256 ([a-f0-9]{64})$/.exec(label)?.[1];
-      if (digest) matches.push({ action: { id: 'activate', label, targetSha256: digest,
-        actionArgs: ['--action', 'activate', '--target-sha256', digest] }, window: labels.has(windowLabelFor(digest)) });
+      if (!digest) continue;
+      const window = labels.has(windowLabelFor(digest));
+      // A whole-scope search stays bounded to exact control windows. Session
+      // action hints are available when the caller supplies a source range.
+      if (focus || window) matches.push({ action: { id: 'activate', label, targetSha256: digest,
+        actionArgs: ['--action', 'activate', '--target-sha256', digest] }, window });
     }
     return matches;
   } };

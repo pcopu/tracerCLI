@@ -869,8 +869,8 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
 }
 
 function observedSourceLines({ path, rows }, focus) {
-  if (!focus.intersects(path, 1, Infinity)) return [];
-  return rows.filter(([line, before, after]) => after > before && focus.intersects(path, line)).map(([line]) => line);
+  if (focus && !focus.intersects(path, 1, Infinity)) return [];
+  return rows.filter(([line, before, after]) => after > before && (!focus || focus.intersects(path, line))).map(([line]) => line);
 }
 
 function recordActionSource(sources, execution, path, lines, example) {

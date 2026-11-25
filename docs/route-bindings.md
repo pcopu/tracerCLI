@@ -214,6 +214,11 @@ producer-declared journey labels from the capture set's outcome file. Use the
 label for the specific scenario group. Aliases with identical arguments can
 share a label. Tracer rejects a label tied to different argument lists.
 
+A whole-scope worklist with UIKit capabilities lists exact passing control
+windows in `recordedActions.items`. A matched window can nominate source gaps
+and exact CLI cases without a preselected source range. Add `--source` to
+include whole-session action hints for a caller you are investigating.
+
 Once you know the production caller and its CLI action, use the action ID and
 the caller's source range to find a scenario to extend.
 

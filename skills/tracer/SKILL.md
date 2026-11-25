@@ -167,6 +167,11 @@ filter. Use the scenario or a live CLI snapshot to find the control to
 activate. Read the relevant assertion and production caller before extending
 a scenario found in a whole-session interval.
 
+With UIKit capabilities, a whole-scope worklist lists exact passing control
+windows in `recordedActions.items` without a source filter. Start with a
+matching `dispatchBatch` to inspect the control, exact scenario and pinned
+source anchors. Add `--source` when you also need whole-session action hints.
+
 When you know the caller and discovered CLI action, use `worklist --action ID
 --source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
 also supply the app's saved `--capabilities` output. Use the advertised scope

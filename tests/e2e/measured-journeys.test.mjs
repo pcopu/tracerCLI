@@ -1241,6 +1241,12 @@ test('worklist matches an exact completed Scriv control target without falling b
   assert.equal(broad.dispatchWindows, undefined);
   assert.deepEqual(exact.dispatchBatch.argv, ['test', '--case', 'journeys/window']);
   assert.deepEqual(exact.dispatchBatch, window.dispatchBatch);
+  const global = f.json(...args.slice(0, -3));
+  assert.equal(global.recordedActions.count, 1, 'Discovery nominates exact passing windows without a preselected source');
+  const [globalLead] = global.recordedActions.items;
+  assert.deepEqual(globalLead.actionArgs, window.actionArgs);
+  assert.deepEqual(globalLead.dispatchBatch, window.dispatchBatch);
+  assert.deepEqual(global.coverage, automatic.coverage);
   assert.deepEqual(exact.extensionCandidates.items.map(route => route.routeIds), [['journeys/captured']]);
   const different = f.json(...args, 'activate', '--target', 'workspace-open-recent').actionReview;
   assert.equal(different.dispatchWindows.count, 0);
