@@ -132,12 +132,20 @@ Paths inside the capture set resolve relative to its directory. The file uses th
 ```sh
 tracer measure where --capture-set /analysis/captures.json --source src/model.py:40-90
 tracer measure where --capture-set /analysis/captures.json --source src/model.py --json
+tracer measure where --capture-set /analysis/captures.json \
+  --source src/model.py:40-90 --source src/storage.py:12-60 --json
 tracer measure union --capture-set /analysis/captures.json --json
 ```
 
 A capture set provides the roots, outcome path and scope together. Combining it with direct `--input-root`, `--outcomes` or `--scope` flags is an error. Existing direct union flags retain their behavior. Without a capture set, `where` reads only the selected root's conventional measurement dataset. An absent local dataset produces `unknown` query ranges.
 
 `where` hashes the current requested file and checks exact requested bounds. It returns current `observedRanges`, `unobservedInstrumentedRanges` and `unknownRanges`. Unobserved instrumented ranges have usable current counter rows with no observed increase in the listed captures. Unknown ranges lack usable current instrumentation. Changed current source and stale snapshot files contribute historical evidence with original hashes and captured-source coordinates clipped to the requested bounds, while their current query ranges remain unknown. Historical coordinates are never relocated to guess current code identity. The source hash is rechecked before returning.
+
+Repeat `--source` for up to 32 paths or ranges from the same capture set.
+Tracer validates shared inputs once and emits the same per-range reports in the
+requested order. A single selector keeps its original format. With multiple
+selectors, JSON contains a `reports` array and plain output prints each range.
+An invalid selector fails the whole command before output.
 
 Each current hit identifies its canonical interval, stored aliases, exact observed overlap and recorded ordered actions. Journey and outcome labels come only from supplied producer declarations. Known-passing observed ranges are separate. Plain output groups hits by journey and declared outcome, with merged ranges and interval counts. JSON retains per-interval details and relevant evidence bindings.
 

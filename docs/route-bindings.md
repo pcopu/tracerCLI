@@ -89,3 +89,32 @@ candidate for the recorded discovery context, and a scenario path match still
 requires source review and observed execution. Use `tracer app --` to run
 approved scenario selectors. Compare later captures with `measure gaps` and
 report each batch’s unique passing lines added, remaining gaps and wall time.
+
+## Rank the coverage work that remains
+
+```sh
+tracer proposal worklist --file docs/testing/proposed-scenario-map.json \
+  --routes /external/discovered-routes.json \
+  --capture-set /external/captures.json --reference-root /external/reference/source
+```
+
+Use this read-only command to choose the next batch. It validates the capture
+set once, intersects current proposal ranges with lines that lack a passing
+observation, and orders each next-action queue by the number of affected lines.
+It groups runnable candidates by exact ordered scenario arguments. Each queue
+item lists selectable route IDs and shows restricted alternatives with their
+reasons. Review the entry point, action IDs and required condition before
+running a selector.
+
+Each selector counts a shared line once. The same line can appear under
+alternative plans or selectors, so use `assignedGapLines` for the deduplicated
+count. `unassigned` ranks current instrumented gaps without a scoreable
+association. Start from those files when old source pins have gone stale or a
+behavior has no proposal. `unavailable` lists reference gaps whose current source
+cannot be matched. Files without instrumentation have no numeric score.
+`--limit` caps the items shown per queue (default 15) while totals remain whole.
+
+The proposal and route catalog stay unchanged. Existing captures supply the
+measured coverage totals. The proposed priorities describe work to investigate.
+Run scoped scenarios on compatible builds and use `measure gaps` with a frozen
+baseline to verify unique lines actually added and elapsed time.

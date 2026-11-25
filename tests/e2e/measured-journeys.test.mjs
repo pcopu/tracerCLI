@@ -907,3 +907,82 @@ test('measured gaps journey: compare an ordered series using the same verified e
   assert.equal(refused.stdout, '');
   assert.match(refused.stderr, /outcome evidence digest mismatch/i);
 });
+
+test('coverage worklist ranks actual passing gaps, groups exact selectors and preserves unresolved work', t => {
+  const f = project(t);
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0\nDA:4,0'));
+  f.put('after.lcov', f.record('DA:1,1\nDA:2,0\nDA:3,0\nDA:4,0'));
+  f.refresh();
+  const { id } = f.json(...f.args);
+  f.jsonFile('evidence.json', { status: 'passed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: 'seed', status: 'passed', evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.put('tests/a.mjs', '// First reuse of the actual selector.\n');
+  f.put('tests/b.mjs', '// Second reuse of the same actual selector.\n');
+  const scenario = (id, paths, actionIds, extra = {}) => ({ id, title: id, featureId: 'project',
+    state: paths.length ? 'existing' : 'unwritten', existingPaths: paths, actionIds,
+    entryPoint: { path: 'src/app.py', symbol: 'run' }, plannedActions: ['Open'], expectedOutcomes: ['Visible'], ...extra });
+  const association = (rangeId, start, end, scenarioIds) => ({ rangeId, featureId: 'project',
+    source: { path: 'src/app.py', start, end }, scenarioIds, status: 'model-proposed-unreviewed',
+    rationale: 'Synthetic current source', confidence: 'high', uncertainty: '', proposedAssertions: ['Visible'] });
+  f.jsonFile('draft.json', { schemaVersion: 1, kind: 'proposed-scenario-association-map', status: 'model-proposed-unreviewed',
+    scenarios: [scenario('first', ['tests/a.mjs'], ['open']), scenario('second', ['tests/b.mjs'], ['open']),
+      scenario('extend', [], ['open']), scenario('new-route', [], ['drag']),
+      scenario('restricted', ['tests/a.mjs'], ['open'], { restriction: 'Missing approved device' })],
+    associations: [association('primary', 1, 2, ['first', 'second', 'new-route', 'restricted']), association('variant', 3, 3, ['extend'])] });
+  f.jsonFile('proposal.json', f.json('proposal', 'prepare', '--file', 'draft.json'));
+  const selector = ['test', 'workspace', '--name', 'with spaces'];
+  f.jsonFile('routes.json', { version: 1, actions: [{ id: 'open' }], routes: [
+    { id: 'workspace', paths: ['tests/a.mjs'], argv: selector },
+    { id: 'alias', paths: ['tests/b.mjs'], argv: selector },
+    { id: 'device-only', paths: ['tests/a.mjs'], argv: ['test', 'device-only'], restriction: 'Requires a paired device' },
+  ] });
+  f.run(['init', '--app-json', JSON.stringify([process.execPath, '-e', "require('node:fs').writeFileSync('WORKLIST_EXECUTED_APP', 'bad')"])]);
+  const args = ['proposal', 'worklist', '--file', 'proposal.json', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const report = f.json(...args);
+  assert.equal(report.kind, 'provisional-coverage-worklist');
+  assert.deepEqual(report.coverage.passedOnlyKnown, { files: 1, instrumentedLines: 4, observedLines: 1, gapLines: 3, percent: 25 });
+  assert.deepEqual(report.routes.map(row => [row.argv, row.planIds, row.gapLines]), [[selector, ['first', 'second'], 1]]);
+  const ready = report.queues['action-and-scenario'].items.find(row => row.planId === 'first');
+  assert.deepEqual(ready.routeIds, ['workspace', 'alias']);
+  assert.deepEqual(ready.restrictedRoutes, [{ routeIds: ['device-only'], restrictions: ['Requires a paired device'] }]);
+  assert.deepEqual(report.queues['needs-cli-action'].items.map(row => [row.planId, row.missingActionIds]), [['new-route', ['drag']]]);
+  assert.deepEqual(report.queues['needs-scenario'].items.map(row => [row.planId, row.gapLines]), [['extend', 1]]);
+  assert.deepEqual(report.queues.blocked.items.map(row => row.restrictions), [['Missing approved device']]);
+  assert.deepEqual(report.unassigned, { files: 1, gapLines: 1, items: [{ path: 'src/app.py', gapLines: 1, gapRanges: [[4, 4]] }] });
+  assert.equal(report.assignedGapLines, 2, 'Shared lines count once across plan and selector aliases');
+  assert.equal(existsSync(join(f.root, 'WORKLIST_EXECUTED_APP')), false);
+  assert.deepEqual(f.json(...args), report);
+  const stale = project(t);
+  for (const path of ['proposal.json', 'routes.json', 'tests/a.mjs', 'tests/b.mjs']) stale.put(path, readFileSync(join(f.root, path)));
+  stale.put('src/app.py', source + 'Changed current source.\n');
+  const historical = stale.json(...args.slice(0, -4), '--capture-set', join(f.root, 'captures.json'), '--reference-root', f.root);
+  assert.equal(historical.assignedGapLines, 0);
+  assert.equal(historical.unavailable.gapLines, 4);
+  assert.equal(historical.unassigned.gapLines, 0);
+  assert.deepEqual(historical.routes, []);
+});
+
+test('batched source lookup shares evidence reads while preserving each standalone result', t => {
+  const first = project(t), second = project(t);
+  first.json(...first.args);
+  second.manifest.runId = second.manifest.before.runId = second.manifest.after.runId = 'other-run';
+  second.put('after.lcov', second.record('DA:1,1\nDA:2,2\nDA:3,9'));
+  second.refresh();
+  second.json(...second.args);
+  second.put('src/app.py', source + 'Historical snapshot drift.\n');
+  first.put('src/uninstrumented.py', 'An uninstrumented file.\n');
+  first.jsonFile('captures.json', { version: 1, inputRoots: ['.', second.root], scope: 'source-lines' });
+  const selectors = ['src/app.py:2', 'src/uninstrumented.py', 'src/app.py:1-3'];
+  const base = ['measure', 'where', '--capture-set', 'captures.json'];
+  const expected = selectors.map(selector => first.json(...base, '--source', selector));
+  assert.equal(expected[0].historical.length, 1);
+  assert.equal(expected[1].status, 'unknown');
+  const batch = first.json(...base, ...selectors.flatMap(selector => ['--source', selector]));
+  assert.equal(batch.kind, 'measured-source-lookup-batch');
+  assert.deepEqual(batch.reports, expected);
+  assert.match(first.run([...base, ...selectors.flatMap(selector => ['--source', selector])]).stdout, /src\/uninstrumented.py:1-1: unknown/);
+  const bad = first.run([...base, '--source', selectors[0], '--source', 'src/app.py:999', '--json'], 1);
+  assert.equal(bad.stdout, '');
+  assert.match(bad.stderr, /outside the current file/);
+});

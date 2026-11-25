@@ -2,9 +2,10 @@
 import { Tracer, VERSION, NOTICE, location, validateMinimum } from '../src/tracer.mjs';
 import { initialize, runApp } from '../src/project.mjs';
 import { bindProposalRoutes } from '../src/route-bindings.mjs';
+import { coverageWorklist } from '../src/coverage-worklist.mjs';
 import { setupAgent } from '../src/agent-setup.mjs';
 import { checkForUpdate, updateCLI, configureUpdates, updateStatus, rollbackUpdate, maybeAutoUpdate, refreshRegisteredSkills } from '../src/update.mjs';
-import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, gapsMeasured, gapsSeries } from '../src/measured.mjs';
+import { importMeasured, reportMeasured, checkMeasured, unionMeasured, whereMeasured, whereMeasuredBatch, gapsMeasured, gapsSeries } from '../src/measured.mjs';
 import { prepareScenarios, checkScenarios, reportScenarios, scenarioPacket, linkScenarios } from '../src/scenarios.mjs';
 import { proposalCommand, DEFAULT_PROPOSAL } from '../src/proposals.mjs';
 import { auditQueue } from '../src/audit-queue.mjs';
@@ -38,7 +39,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure report [--source PATH[:RANGE] | --action TEXT | --sequence JSON] [--json]
   measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure union --capture-set FILE [--json]
-  measure where --source PATH[:RANGE] [--capture-set FILE] [--json]
+  measure where --source PATH[:RANGE] [--source PATH[:RANGE] ...] [--capture-set FILE] [--json]
   measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
   measure gaps --series FILE --reference-root DIR [--json]
   measure check [--json]
@@ -51,6 +52,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal bind --file PROPOSAL --routes CATALOG [--json]
+  proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prioritize --file PROPOSAL [--limit N] [--json]
   next [--file PROPOSAL] [--limit N] [--scenario ID] [--json]
@@ -127,8 +129,8 @@ async function main(args) {
   }
   if (command === 'proposal' || command === 'next') {
     const [mode, ...flags] = command === 'next' ? ['next', ...rest] : rest, options = {};
-    if (!['prepare', 'check', 'report', 'audit', 'prioritize', 'bind', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit or prioritize.');
-    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : [])];
+    if (!['prepare', 'check', 'report', 'audit', 'prioritize', 'bind', 'worklist', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit, prioritize, bind or worklist.');
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : mode === 'worklist' ? ['--routes', '--capture-set', '--reference-root', '--limit'] : [])];
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
@@ -136,8 +138,19 @@ async function main(args) {
     }
     if (!options['--file'] && mode !== 'next') fail(`proposal ${mode} requires --file.`);
     if (mode === 'bind' && !options['--routes']) fail('proposal bind requires --routes.');
+    if (mode === 'worklist' && (!options['--routes'] || !options['--capture-set'] || !options['--reference-root'])) {
+      fail('proposal worklist requires --routes, --capture-set and --reference-root.');
+    }
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
-    const result = mode === 'bind' ? bindProposalRoutes(new Tracer(settings), options['--file'], options['--routes']) : proposalCommand(new Tracer(settings), options['--file'] ?? DEFAULT_PROPOSAL, { mode, scenarioId: options['--scenario'],
+    const tracer = new Tracer(settings);
+    if (mode === 'worklist') {
+      const result = coverageWorklist(tracer, { file: options['--file'], routesFile: options['--routes'],
+        captureSet: options['--capture-set'], referenceRoot: options['--reference-root'],
+        limit: options['--limit'] === undefined ? undefined : Number(options['--limit']) });
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+    const result = mode === 'bind' ? bindProposalRoutes(tracer, options['--file'], options['--routes']) : proposalCommand(tracer, options['--file'] ?? DEFAULT_PROPOSAL, { mode, scenarioId: options['--scenario'],
       offset: options['--offset'] === undefined ? 0 : Number(options['--offset']), limit: options['--limit'] === undefined ? (mode === 'next' ? 1 : 25) : Number(options['--limit']) });
     console.log(JSON.stringify(result, null, 2));
     if (mode === 'check' && !result.valid) process.exitCode = 1;
@@ -175,8 +188,9 @@ async function main(args) {
     if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file or measure gaps for a reference build.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
-      if (!allowed.includes(flag) || (Object.hasOwn(options, flag) && flag !== '--input-root')) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
-      if (flag === '--input-root') (options[flag] ??= []).push(value(flags, i++, flag));
+      const repeated = flag === '--input-root' || mode === 'where' && flag === '--source';
+      if (!allowed.includes(flag) || (Object.hasOwn(options, flag) && !repeated)) fail(`Unknown or duplicate measure ${mode} option: ${flag}`);
+      if (repeated) (options[flag] ??= []).push(value(flags, i++, flag));
       else options[flag] = ['--json', '--allow-stale'].includes(flag) ? true : value(flags, i++, flag);
     }
     if (mode === 'where' && !options['--source']) fail('measure where requires --source.');
@@ -193,7 +207,9 @@ async function main(args) {
       manifest: options['--manifest'], sources: options['--sources'], stripPrefix: options['--strip-prefix'], allowStale: !!options['--allow-stale'] })
       : mode === 'report' ? reportMeasured(tracer.root, query) : mode === 'union'
         ? unionMeasured(tracer.root, { inputRoots: options['--input-root'], outcomes: options['--outcomes'], scopeMode: options['--scope'], captureSet: options['--capture-set'] })
-        : mode === 'where' ? whereMeasured(tracer.root, { source: options['--source'], captureSet: options['--capture-set'] })
+        : mode === 'where' ? (options['--source'].length === 1
+          ? whereMeasured(tracer.root, { source: options['--source'][0], captureSet: options['--capture-set'] })
+          : whereMeasuredBatch(tracer.root, { sources: options['--source'], captureSet: options['--capture-set'] }))
           : mode === 'gaps' ? (options['--series']
             ? gapsSeries(tracer.root, { referenceRoot: options['--reference-root'], series: options['--series'] })
             : gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'] }))
@@ -203,10 +219,12 @@ async function main(args) {
       console.log(result.notice);
       if (mode === 'import') console.log(`${result.changed ? 'Imported' : 'Already imported'} interval: ${result.id}`);
       else if (mode === 'where') {
-        console.log(`${result.source.path}:${result.source.start}-${result.source.end}: ${result.status}; ${result.hits.length} observed and ${result.historical.length} historical interval(s).`);
-        console.log(`Observed: ${formatRanges(result.observedRanges)}; unobserved instrumented: ${formatRanges(result.unobservedInstrumentedRanges)}; unknown: ${formatRanges(result.unknownRanges)}.`);
-        console.log('Journey outcomes are producer-declared.');
-        for (const journey of result.journeys) console.log(`${journey.journey ?? '(unknown journey)'} ${journey.outcome}: ${formatRanges(journey.observedRanges)} (${journey.intervals} interval(s))`);
+        for (const report of result.reports ?? [result]) {
+          console.log(`${report.source.path}:${report.source.start}-${report.source.end}: ${report.status}; ${report.hits.length} observed and ${report.historical.length} historical interval(s).`);
+          console.log(`Observed: ${formatRanges(report.observedRanges)}; unobserved instrumented: ${formatRanges(report.unobservedInstrumentedRanges)}; unknown: ${formatRanges(report.unknownRanges)}.`);
+          console.log('Journey outcomes are producer-declared.');
+          for (const journey of report.journeys) console.log(`${journey.journey ?? '(unknown journey)'} ${journey.outcome}: ${formatRanges(journey.observedRanges)} (${journey.intervals} interval(s))`);
+        }
       } else if (mode === 'union') {
         console.log(`Scope ${result.scope.id} (${result.scope.mode}); ${result.intervals.unique} unique intervals, ${result.intervals.duplicates} duplicates.`);
         console.log(`All observed: ${result.allObserved.observedLines}/${result.allObserved.instrumentedLines}; passed-only known: ${result.passedOnlyKnown.observedLines}/${result.passedOnlyKnown.instrumentedLines}; unknown outcomes: ${result.intervals.outcomes.unknown}.`);

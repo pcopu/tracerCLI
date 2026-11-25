@@ -299,20 +299,21 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
     inputRoots.unshift(...inputRoots.splice(index, 1));
   }
   const origins = [], records = new Map(), storedIds = new Map(), provenance = new Map();
-  const snapshots = retainFiles ? shared?.datasets ?? new Map() : undefined;
+  const snapshots = shared?.datasets ?? (retainFiles ? new Map() : undefined);
   let scope, scopeId, sourceLinesId, duplicates = 0;
   for (const inputRoot of inputRoots) {
     const path = resolve(root, inputRoot);
     const store = shared?.stores.get(path) ?? new MeasuredStore(path);
     shared?.stores.set(path, store);
     const isReference = store.root === referenceRoot;
-    if (!existsSync(store.mapPath)) {
+    // A shared report keeps the first known dataset state for this root.
+    const reused = snapshots?.get(store.root);
+    if (!reused && (shared?.missingDatasets.has(store.root) || !existsSync(store.mapPath))) {
       if (isReference) fail('The reference measurement dataset is missing.');
       if (!lookupPath && !retainFiles) fail('Union input measurement dataset is missing.');
+      shared?.missingDatasets.add(store.root);
       origins.push({ root: store.root, dataset: store.mapPath, sha256: null, intervals: 0, status: 'missing' }); continue;
     }
-    // A repeated root retains origin/duplicate accounting without rereading the dataset.
-    const reused = snapshots?.get(store.root);
     if (!reused && shared?.maxDatasets !== undefined && snapshots.size === shared.maxDatasets) {
       fail(`Gap series exceeds ${shared.maxDatasets} distinct measurement input roots.`);
     }
@@ -451,11 +452,11 @@ export function unionMeasured(root, options = {}) {
 }
 
 
-export function whereMeasured(root, { source, captureSet } = {}) {
+export function whereMeasured(root, { source, captureSet } = {}, shared) {
   const range = parseRange(source, false), store = new MeasuredStore(root), lines = store.readLines(range.path);
   const sourceSha256 = sha(lines.join('')), start = range.start ?? 1, end = range.end ?? lines.length;
   if (range.start && end > lines.length) fail('Requested source range is outside the current file.');
-  const loaded = loadMeasuredRecords(root, { captureSet }, { lookupPath: range.path });
+  const loaded = loadMeasuredRecords(root, { captureSet }, { lookupPath: range.path, shared });
   const observed = new Set(), instrumented = new Set(), passed = new Set(), hits = [], historical = [], families = new Map(), journeys = new Map();
   const sorted = values => [...values].sort((a, b) => a - b);
   for (const group of loaded.provenance.values()) {
@@ -509,6 +510,17 @@ export function whereMeasured(root, { source, captureSet } = {}) {
     intervals: { unique: loaded.records.size, duplicates: loaded.duplicates, matchingSource: [...loaded.records.values()].filter(record => record.lookupFile).length } };
 }
 
+export function whereMeasuredBatch(root, { sources, captureSet }) {
+  if (sources.length < 2 || sources.length > 32) fail('Batched source lookup requires 2-32 --source selectors.');
+  const shared = measurementSnapshot();
+  const reports = sources.map(source => whereMeasured(root, { source, captureSet }, shared));
+  const store = new MeasuredStore(root);
+  for (const { source } of reports) {
+    if (sha(store.readLines(source.path).join('')) !== source.sha256) fail('Requested source changed during measurement lookup.');
+  }
+  return { kind: 'measured-source-lookup-batch', notice: MEASURED_NOTICE, reports };
+}
+
 function missingRanges(lines, start, end) {
   const result = [];
   let next = start;
@@ -526,14 +538,13 @@ function currentSource(store, path) {
   }
 }
 
-function gapSnapshot(maxDatasets) {
-  // Each report validates its own scope and outcome declarations against the
-  // exact dataset, snapshot-source and producer-evidence bytes read once here.
+function measurementSnapshot(maxDatasets) {
+  // Independent reports share validated inputs only within one command.
   return { maxDatasets, stores: new Map(), datasets: new Map(), manifests: new Map(),
-    intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
+    missingDatasets: new Set(), intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }, shared = gapSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
@@ -619,7 +630,7 @@ export function gapsSeries(root, { referenceRoot, series }) {
   if (manifest.version !== 1 || !Array.isArray(sets) || sets.length < 2 || sets.length > 32 || sets.some(set => !text(set))) {
     fail('Require gap series version 1 and 2-32 capture sets beginning with a baseline.');
   }
-  const captureSets = sets.map(set => resolve(dirname(path), set)), shared = gapSnapshot(256);
+  const captureSets = sets.map(set => resolve(dirname(path), set)), shared = measurementSnapshot(256);
   const reports = captureSets.slice(1).map((captureSet, index) =>
     gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet: captureSets[index] }, shared));
   return { kind: 'lcov-reference-gap-series', notice: MEASURED_NOTICE, series: { path, sha256: input.sha256 }, reports };

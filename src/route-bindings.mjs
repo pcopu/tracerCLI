@@ -133,7 +133,7 @@ export function bindProposalRoutes(tracer, file, routesFile) {
     const matched = new Set(candidates.flatMap(binding => binding.matches.find(match => match.planId === plan.id).paths));
     plans.push({ id: plan.id, state: plan.state, status: candidates.some(binding => binding.selectable) ? 'candidate' : candidates.length ? 'restricted' : 'unmatched',
       routeIds: candidates.flatMap(binding => binding.routeIds), unmatchedPaths: plan.existingPaths.filter(path => !matched.has(path)),
-      ...(catalog.actions && { behavior: matchBehavior(plan, catalog.actions, candidates) }) });
+      ...(catalog.actions && { title: plan.title, featureId: plan.featureId, behavior: matchBehavior(plan, catalog.actions, candidates) }) });
   }
   return { version: 1, kind: 'provisional-plan-route-bindings', status: 'provisional', assertionMatch: 'unknown',
     notice: 'Exact path joins only. Source predictions and route candidates are provisional. No route is executed, assertion matched, manual link promoted or coverage observed.',
