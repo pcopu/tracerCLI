@@ -38,6 +38,10 @@ source-to-CLI witnesses. Check `routes` for an existing scenario and
 `unassigned` gaps to their callers and check live CLI discovery for the
 required action. The command works without a proposal or manual links.
 
+For Scriv, save `tracer app -- test --list` output and pass that file directly
+as `--routes`. Tracer derives exact scenario groups and recorded journey labels
+from the discovery output while preserving its restrictions.
+
 Add exact outcome `journeys` labels to discovered routes to find existing
 scenarios worth extending. `extensionCandidates` shows passing intervals with
 observations on both sides of a gap. Start with gaps that have one candidate

@@ -142,6 +142,20 @@ cannot supply a match. Missing mapping data leaves the full gaps visible.
 Use `proposal worklist` when you already have focused behavior plans to rank.
 Both commands are read-only and use the same measured denominator.
 
+Scriv can use its launch-free discovery output directly as `--routes`.
+
+```sh
+tracer app -- test --list > /external/scriv-discovery.json
+tracer worklist --routes /external/scriv-discovery.json \
+  --capture-set /external/captures.json --reference-root /external/reference/source
+```
+
+Tracer accepts the version-1 `native-cli-scenario-catalog`, validates the
+scenario paths and selection, preserves each blocker, and constructs the exact
+`test --scenario ID` and `--group NAME` selectors. It matches Scriv's recorded
+journey labels by path and optional `#group`. For proposal classification with
+discovered action IDs, supply the normalized route catalog with `actions`.
+
 For coverage worklists, a route can also declare `journeys`, the exact
 producer-declared journey labels from the capture set's outcome file. Use the
 label for the specific scenario group. Aliases with identical arguments can

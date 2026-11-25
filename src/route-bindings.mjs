@@ -30,6 +30,46 @@ function regularFile(root, file) {
   }
   return path;
 }
+function nativeScenarioRoutes(discovery) {
+  object(discovery, ['schemaVersion', 'kind', 'selection', 'scenarios']);
+  if (discovery.schemaVersion !== 1) fail('Expected version-1 native CLI scenario discovery.');
+  list(discovery.scenarios, true);
+  const { selection } = discovery;
+  object(selection, ['mode', 'availableScenarioCount', 'selectedScenarioCount']);
+  const { mode, availableScenarioCount, selectedScenarioCount } = selection;
+  if (!['all', 'subset'].includes(mode) || !Number.isSafeInteger(availableScenarioCount)
+      || selectedScenarioCount !== discovery.scenarios.length || availableScenarioCount < selectedScenarioCount
+      || (mode === 'all' && availableScenarioCount !== selectedScenarioCount)) fail('Invalid native scenario selection counts.');
+
+  const ids = new Set(), routes = [];
+  for (const scenario of discovery.scenarios) {
+    object(scenario, ['id', 'path'], ['groups', 'restriction']);
+    const { id, path } = scenario;
+    if (typeof id !== 'string' || !/^(?:journeys\/)?[A-Za-z0-9_-]+$/.test(id)
+        || ids.has(id) || path !== `tests/e2e/${id}.mjs`) fail('Invalid or duplicate native scenario identity.');
+    ids.add(id);
+    const argv = ['test', '--scenario', id];
+    const route = { id, paths: [path], argv, journeys: [path] };
+    if (Object.hasOwn(scenario, 'restriction')) {
+      const restriction = scenario.restriction;
+      object(restriction, ['status', 'reason', 'detail']);
+      if (restriction.status !== 'blocked' || Object.hasOwn(scenario, 'groups')) fail('Invalid native scenario restriction.');
+      text(restriction.reason); text(restriction.detail);
+      route.restriction = `${restriction.reason} (${restriction.detail})`;
+    }
+    routes.push(route);
+    if (Object.hasOwn(scenario, 'groups')) {
+      list(scenario.groups);
+      if (new Set(scenario.groups).size !== scenario.groups.length) fail('Duplicate native scenario group.');
+      for (const group of scenario.groups) {
+        if (typeof group !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(group)) fail('Invalid native scenario group.');
+        routes.push({ id: `${id}/group/${group}`, paths: [path], argv: [...argv, '--group', group], journeys: [`${path}#${group}`] });
+      }
+    }
+  }
+  return { version: 1, routes };
+}
+
 export function readRoutes(root, file) {
   text(file);
   const path = resolve(root, file), info = lstatSync(path);
@@ -37,14 +77,16 @@ export function readRoutes(root, file) {
   if (info.size > 32 * 1024 * 1024) fail('Route catalog exceeds 32 MiB.');
   const bytes = readFileSync(path);
   if (bytes.length > 32 * 1024 * 1024) fail('Route catalog exceeds 32 MiB.');
-  const catalog = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  const input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  const native = input?.kind === 'native-cli-scenario-catalog';
+  const catalog = native ? nativeScenarioRoutes(input) : input;
   object(catalog, ['version', 'routes'], ['actions']);
   if (catalog.version !== 1) fail('Expected version-1 route catalog.');
   list(catalog.routes, true);
   const ids = new Map(), executions = new Map(), journeys = new Map();
   for (const route of catalog.routes) {
     object(route, ['id', 'paths', 'argv'], ['restriction', 'journeys']);
-    if (typeof route.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_/-]{0,255}$/.test(route.id)) fail('Invalid route id.');
+    if (!native && (typeof route.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_/-]{0,255}$/.test(route.id))) fail('Invalid route id.');
     list(route.paths); list(route.argv);
     for (const path of route.paths) regularFile(root, path);
     for (const arg of route.argv) {

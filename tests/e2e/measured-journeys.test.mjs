@@ -1071,3 +1071,41 @@ test('direct worklist finds scenario extension leads from one passing interval a
   f.jsonFile('routes.json', { version: 1, routes });
   assert.match(f.run([...args, '--json'], 1).stderr, /Ambiguous.*journey/i);
 });
+
+test('worklist reads native CLI discovery and matches exact capture group labels', t => {
+  const f = project(t);
+  const { id } = f.json(...f.args);
+  f.jsonFile('evidence.json', { status: 'passed' });
+  const path = 'tests/e2e/journeys/review.mjs', blocked = 'tests/e2e/_blocked.mjs';
+  f.put(path, '// Native review journey\n');
+  f.put(blocked, '// Blocked native journey\n');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: path + '#alternate', status: 'passed',
+    evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const discovery = { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 2, selectedScenarioCount: 2 }, scenarios: [
+      { id: 'journeys/review', path, groups: ['default', 'alternate'] },
+      { id: '_blocked', path: blocked, restriction: { status: 'blocked', reason: 'fixture-unavailable', detail: 'Requires a paired device.' } },
+    ] };
+  f.jsonFile('discovery.json', discovery);
+  const args = ['worklist', '--routes', 'discovery.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const result = f.json(...args);
+  assert.equal(result.routesSha256, f.hash('discovery.json'));
+  assert.equal(result.extensionCandidates.count, 1);
+  assert.deepEqual(result.extensionCandidates.items[0].argv, ['test', '--scenario', 'journeys/review', '--group', 'alternate']);
+  assert.equal(result.extensionCandidates.items[0].examples[0].journey, path + '#alternate');
+  f.run(['link', 'src/app.py:2', '--step', `${blocked}:1`, '--action', 'Open the blocked control', '--why', 'Check the control']);
+  const restricted = f.json(...args).selectorReview.items[0];
+  assert.equal(restricted.witnessPath, blocked);
+  assert.deepEqual(restricted.candidates[0].restrictions, ['fixture-unavailable (Requires a paired device.)']);
+  const invalid = [
+    doc => { doc.scenarios[0].groups.push('alternate'); },
+    doc => { doc.scenarios[0].path = blocked; },
+    doc => { doc.scenarios[1].groups = ['unsafe']; },
+    doc => { doc.selection.selectedScenarioCount = 1; },
+  ];
+  for (const edit of invalid) {
+    const input = structuredClone(discovery); edit(input); f.jsonFile('discovery.json', input);
+    assert.equal(f.run([...args, '--json'], 1).stdout, '');
+  }
+});
