@@ -848,6 +848,39 @@ test('measured gaps journey: compare passing gains and losses even when the old 
   assert.deepEqual([older, latest].map(f => f.hash(dataPath)), before);
 });
 
+test('measured gaps journey: distinguish a smaller rebuilt reference from passing gains', t => {
+  const old = project(t), f = project(t), path = 'src/app.py';
+  function capture(project, name) {
+    const { id } = project.json(...project.args);
+    project.jsonFile('receipt.json', {});
+    project.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: name, status: 'passed',
+      evidence: { path: 'receipt.json', sha256: project.hash('receipt.json') } }] });
+    project.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  }
+  capture(old, 'old editor');
+  const trimmed = source.replace('second\n', '');
+  f.put(path, trimmed);
+  f.jsonFile('sources.json', { files: [{ path, sha256: f.hash(path) }] });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  f.manifest.before.buildSha256 = f.manifest.after.buildSha256 = sha('trimmed build');
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0'));
+  f.put('after.lcov', f.record('DA:1,1\nDA:2,1'));
+  f.refresh();
+  capture(f, 'new editor');
+  const args = ['measure', 'gaps', '--capture-set', 'captures.json', '--reference-root', '.', '--baseline-capture-set', join(old.root, 'captures.json')];
+  const result = f.json(...args, '--baseline-reference-root', old.root);
+  assert.equal(result.comparison.gainedLines, 0);
+  assert.equal(result.comparison.lostLines, 0);
+  assert.equal(result.comparison.passingLinesWithoutComparableBaseline, 2);
+  const delta = result.comparison.referenceChange;
+  assert.equal(delta.before.root, old.root);
+  assert.equal(delta.before.instrumentedLines, 3);
+  assert.equal(delta.after.instrumentedLines, 2);
+  assert.equal(delta.instrumentedLinesDelta, -1);
+  assert.deepEqual(delta.changedFiles, [{ path, change: 'source-changed', beforeInstrumentedLines: 3, afterInstrumentedLines: 2 }]);
+  assert.match(f.run([...args, '--baseline-reference-root', f.root], 1).stderr, /reference root.*capture set/i);
+});
+
 test('measured gaps journey: reject conflicting evidence declarations for the same occurrence across comparison sets', t => {
   const f = project(t), id = f.json(...f.args).id;
   f.jsonFile('evidence.json', { synthetic: true });

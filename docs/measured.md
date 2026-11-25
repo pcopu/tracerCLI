@@ -186,6 +186,16 @@ The reference root must be in the current capture set. The baseline may come fro
 
 In `comparison`, `gainedLines` and `lostLines` are the set differences in known passing observations for comparable files. `passingLinesWithoutComparableBaseline` counts newly measured current files separately when baseline identity is missing or incompatible. A comparable interval with an unknown outcome provides instrumentation identity but no passing credit. `files` ranks changed paths by gains, then losses, then path and includes exact ranges for each category. `baseline` preserves origin hashes, producer identities and outcome bindings. Earlier source changes are not counted as comparable gains and unavailable current files remain visible in the primary gap report.
 
+When a rebuild changed the reference denominator, add
+`--baseline-reference-root /analysis/previous/analysis/source`. That root
+must belong to the baseline capture set. Tracer validates each reference's
+exact source and instrumentation independently. `comparison.referenceChange`
+reports the two pinned denominators, the net line-count difference, and files
+whose source or instrumentation changed. A scope decrease records the
+reference change. The same evidence rules still govern passing gains and
+losses on comparable files. The `measure batch` command accepts the same
+option when appending new-build receipts.
+
 Adding or dropping an outcome declaration can change gained or lost known-passing lines without a new execution. To measure a batch's contribution, keep the complete baseline captures and declarations frozen, then append only the new captures and their outcomes. Review losses for omitted captures or absent declarations. Pair comparable gains with verified producer elapsed wall time for the same batch. Keep build and preparation time explicit and do not sum jobs that ran in parallel.
 
 ### Compare several batches in one command

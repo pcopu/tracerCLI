@@ -738,10 +738,12 @@ function recordActionSource(sources, execution, { path, rows }, example, focus) 
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
-  const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
+  if (baselineReferenceRoot) baselineReferenceRoot = realpathSync(resolve(root, baselineReferenceRoot));
+  const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet },
+    { referenceRoot: baselineReferenceRoot, retainFiles: true, shared });
   const { files: referenceFiles, ...referenceIdentity } = loaded.scope;
   const functions = functionMapFile && readReferenceFunctions(root, functionMapFile, loaded.scope, referenceRoot);
   const store = new MeasuredStore(root), referenceFilesByPath = new Map();
@@ -834,7 +836,10 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     ...(functions && { functions }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
-    ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
+    ...(baseline && { comparison: {
+      ...comparePassingEvidence(loaded, baseline, referenceFilesByPath, files),
+      ...(baselineReferenceRoot && { referenceChange: compareReferenceScopes(baseline, baselineReferenceRoot, loaded, referenceRoot) }),
+    } }) };
 }
 
 export function gapsSeries(root, { referenceRoot, series }) {
@@ -855,6 +860,29 @@ function fileEvidenceMismatch(record, captured, reference) {
   if (!record.validFiles.has(captured.path)) return 'snapshot-invalid';
   if (captured.rows.length !== reference.lines.length || captured.rows.some(([line], i) => line !== reference.lines[i])) return 'universe-mismatch';
   return null;
+}
+
+function compareReferenceScopes(previous, previousRoot, current, currentRoot) {
+  const summarize = ({ scope, scopeId }, root) => ({ root, scopeId, buildSha256: scope.buildSha256,
+    sourceManifestSha256: scope.sourceManifestSha256, files: scope.files.length,
+    instrumentedLines: scope.files.reduce((sum, file) => sum + file.lines.length, 0) });
+  const before = summarize(previous, previousRoot), after = summarize(current, currentRoot);
+  const previousFiles = new Map(previous.scope.files.map(file => [file.path, file]));
+  const currentFiles = new Map(current.scope.files.map(file => [file.path, file]));
+  const changedFiles = [];
+  for (const path of [...new Set([...previousFiles.keys(), ...currentFiles.keys()])].sort()) {
+    const old = previousFiles.get(path), next = currentFiles.get(path);
+    let change;
+    if (!old) change = 'added-file';
+    else if (!next) change = 'removed-file';
+    else if (old.sha256 !== next.sha256) change = 'source-changed';
+    else if (old.lines.length !== next.lines.length || old.lines.some((line, i) => line !== next.lines[i])) {
+      change = 'instrumentation-changed';
+    }
+    if (change) changedFiles.push({ path, change, beforeInstrumentedLines: old?.lines.length ?? 0,
+      afterInstrumentedLines: next?.lines.length ?? 0 });
+  }
+  return { before, after, instrumentedLinesDelta: after.instrumentedLines - before.instrumentedLines, changedFiles };
 }
 
 function comparePassingEvidence(current, baseline, referenceFiles, currentFiles) {
@@ -951,7 +979,7 @@ function nativeBatchReceipt(path) {
     datasetSha256: dataset.datasetSha256 };
 }
 
-export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenceRoot, output }) {
+export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenceRoot, baselineReferenceRoot, output }) {
   const shared = measurementSnapshot();
   const baseline = measuredInputs(root, { captureSet: baselineCaptureSet }, false, shared.manifests);
   const baselineOutcomes = baseline.outcomes ? readMeasurementManifest(baseline.outcomes, shared.manifests).data : { version: 1, intervals: [] };
@@ -978,7 +1006,7 @@ export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenc
   try {
     write('captures.json', { version: 1, scope: baseline.scopeMode, inputRoots, outcomes: 'outcomes.json' });
     write('outcomes.json', { version: 1, intervals: outcomes });
-    const report = gapsMeasured(root, { referenceRoot, captureSet: join(staging, 'captures.json'), baselineCaptureSet }, shared);
+    const report = gapsMeasured(root, { referenceRoot, captureSet: join(staging, 'captures.json'), baselineCaptureSet, baselineReferenceRoot }, shared);
     for (const receipt of receipts) {
       const origin = report.origins.find(origin => origin.root === receipt.root);
       if (origin?.sha256 !== receipt.datasetSha256 || origin.invalidSnapshotFiles?.length) fail('Native batch source or dataset changed after receipt validation.');

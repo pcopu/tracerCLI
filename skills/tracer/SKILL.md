@@ -77,6 +77,13 @@ before they are suggested as scenario work. Rebuild and confirm the new scope
 if reviewed code is deleted.
 
 
+When retiring reviewed dead code, pin the new reference and recapture the
+remaining behavior in changed files. Use `measure batch
+--baseline-reference-root OLD_REFERENCE --reference-root NEW_REFERENCE`
+with the previous capture set and the new receipts. Report the denominator
+change from `comparison.referenceChange` alongside genuine passing gains or
+losses. Preserve the previous reference and its raw captures.
+
 After a rebuild, add `--replay` and use a capture set containing both the new
 reference and retained earlier results. `replayCandidates` ranks the existing
 CLI selectors that previously observed still-missing behavior, deduplicated by

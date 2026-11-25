@@ -40,10 +40,10 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   measure union --input-root ROOT [--input-root ROOT ...] [--scope strict|source-lines] [--outcomes FILE] [--json]
   measure union --capture-set FILE [--json]
   measure where --source PATH[:RANGE] [--source PATH[:RANGE] ...] [--capture-set FILE] [--json]
-  measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE] [--json]
+  measure gaps --capture-set FILE --reference-root DIR [--baseline-capture-set FILE [--baseline-reference-root DIR]] [--json]
   measure gaps --series FILE --reference-root DIR [--json]
   measure batch --baseline-capture-set FILE --receipt FILE [--receipt FILE ...]
-                --reference-root DIR --output NEW_DIR [--json]
+                --reference-root DIR [--baseline-reference-root DIR] --output NEW_DIR [--json]
   measure check [--json]
   audit enqueue --file PROPOSAL --author NAME [--offset N] [--limit N]
                 [--context PATH ...] [--max-pending N] [--json]
@@ -192,8 +192,8 @@ async function main(args) {
     const [mode, ...flags] = rest, options = {};
     const allowed = { import: ['--before', '--after', '--manifest', '--sources', '--strip-prefix', '--allow-stale', '--json'],
       report: ['--source', '--action', '--sequence', '--json'], check: ['--json'], union: ['--input-root', '--scope', '--outcomes', '--capture-set', '--json'], where: ['--source', '--capture-set', '--json'],
-      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--series', '--json'],
-      batch: ['--baseline-capture-set', '--receipt', '--reference-root', '--output', '--json'] }[mode];
+      gaps: ['--capture-set', '--reference-root', '--baseline-capture-set', '--baseline-reference-root', '--series', '--json'],
+      batch: ['--baseline-capture-set', '--receipt', '--reference-root', '--baseline-reference-root', '--output', '--json'] }[mode];
     if (!allowed) fail('Use measure import, report, check or union. Use measure where for a file, measure gaps for a reference build, or measure batch for a Scriv run.');
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
@@ -207,17 +207,22 @@ async function main(args) {
         fail('measure batch requires --baseline-capture-set, --receipt, --reference-root and --output.');
       }
       const result = batchMeasured(new Tracer(settings).root, { baselineCaptureSet: options['--baseline-capture-set'],
-        receiptPaths: options['--receipt'], referenceRoot: options['--reference-root'], output: options['--output'] });
+        receiptPaths: options['--receipt'], referenceRoot: options['--reference-root'],
+        baselineReferenceRoot: options['--baseline-reference-root'], output: options['--output'] });
       if (options['--json']) console.log(JSON.stringify(result, null, 2));
       else {
         const { gainedLines, lostLines } = result.comparison;
         const { observedLines, instrumentedLines, gapLines } = result.passedOnlyKnown;
         console.log(`${gainedLines} comparable passing lines gained, ${lostLines} lost. ${observedLines}/${instrumentedLines} observed, ${gapLines} gaps.`);
+        printReferenceChange(result.comparison.referenceChange);
         console.log(`Capture set saved to ${result.captureSet}`);
       }
       return;
     }
     if (mode === 'where' && !options['--source']) fail('measure where requires --source.');
+    if (mode === 'gaps' && options['--baseline-reference-root'] && !options['--baseline-capture-set']) {
+      fail('--baseline-reference-root requires --baseline-capture-set.');
+    }
     if (mode === 'gaps' && options['--series']) {
       if (options['--capture-set'] || options['--baseline-capture-set']) fail('--series cannot be combined with --capture-set or --baseline-capture-set.');
       if (!options['--reference-root']) fail('measure gaps --series requires --reference-root.');
@@ -236,7 +241,7 @@ async function main(args) {
           : whereMeasuredBatch(tracer.root, { sources: options['--source'], captureSet: options['--capture-set'] }))
           : mode === 'gaps' ? (options['--series']
             ? gapsSeries(tracer.root, { referenceRoot: options['--reference-root'], series: options['--series'] })
-            : gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'] }))
+            : gapsMeasured(tracer.root, { captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], baselineCaptureSet: options['--baseline-capture-set'], baselineReferenceRoot: options['--baseline-reference-root'] }))
             : checkMeasured(tracer.root);
     if (options['--json']) console.log(JSON.stringify(result, null, 2));
     else {
@@ -460,7 +465,13 @@ try {
 }
 catch (error) { console.error(`tracer: ${error.message}`); process.exitCode = 1; }
 
-function printGapComparison({ gainedLines, lostLines, passingLinesWithoutComparableBaseline, files }) {
+function printReferenceChange(change) {
+  if (!change) return;
+  console.log(`Reference scope: ${change.before.instrumentedLines} → ${change.after.instrumentedLines} instrumented lines across ${change.before.files} → ${change.after.files} files.`);
+}
+
+function printGapComparison({ gainedLines, lostLines, passingLinesWithoutComparableBaseline, files, referenceChange }) {
+  printReferenceChange(referenceChange);
   console.log(`Known-passing evidence: ${gainedLines} passing line(s) gained, ${lostLines} lost, ${passingLinesWithoutComparableBaseline} without comparable baseline.`);
   for (const file of files.slice(0, 10)) {
     console.log(`${file.path} — ${file.gainedLines} gained, ${file.lostLines} lost, ${file.passingLinesWithoutComparableBaseline} without comparable baseline`);
