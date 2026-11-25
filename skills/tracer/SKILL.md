@@ -130,6 +130,16 @@ range, including on previously observed lines. Use those selectors to find
 the relevant assertions and fixtures. Shared support files can leave more
 than one group for review.
 
+If you know the caller but need its CLI action, start with
+`worklist --source PATH[:RANGE]` and Scriv’s saved `--capabilities`. Inspect
+`recordedActions.items` for matching dispatch windows, advertised semantic
+actions and recorded control fingerprints. The result includes the exact
+scenario selectors. Pass its `actionArgs` with the same source selection to
+inspect that action. A recorded `--target-sha256` works as an evidence
+filter. Use the scenario or a live CLI snapshot to find the control to
+activate. Read the relevant assertion and production caller before extending
+a scenario found in a whole-session interval.
+
 When you know the caller and discovered CLI action, use `worklist --action ID
 --source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
 also supply the app's saved `--capabilities` output. Use the advertised scope

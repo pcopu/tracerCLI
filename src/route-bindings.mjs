@@ -114,7 +114,8 @@ function nativeActionIds(input) {
       }
     }
   }
-  return { ids, measurementActions };
+  const semanticActionIds = new Set([...input.semanticApplicationCommands ?? [], ...input.semanticGestureCommands ?? []]);
+  return { ids, measurementActions, semanticActionIds };
 }
 
 export function readRoutes(root, file, { capabilitiesFile } = {}) {
@@ -168,15 +169,15 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
       actions.set(action.id, action);
     }
   }
-  let capabilitiesSha256, measurementActions;
+  let capabilitiesSha256, measurementActions, semanticActionIds;
   if (capabilitiesFile !== undefined) {
     const { input, sha256 } = readCatalogDocument(root, capabilitiesFile);
     capabilitiesSha256 = sha256;
     const discovered = nativeActionIds(input);
     actions = new Map([...discovered.ids].map(id => [id, actions?.get(id) ?? { id }]));
-    measurementActions = discovered.measurementActions;
+    ({ measurementActions, semanticActionIds } = discovered);
   }
-  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions,
+  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions, semanticActionIds,
     ...(native && { launchActions: ['launch isolated Scriv through the CLI', 'scriv capabilities'] }) };
 }
 

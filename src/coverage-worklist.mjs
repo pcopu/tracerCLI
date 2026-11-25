@@ -224,7 +224,7 @@ function reviewFunctions(measured, current, assigned, pending, limit) {
     entryPoints: { count: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) } };
 }
 
-function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel, actionTarget }) {
+function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel, actionTarget, actionTargetSha256 }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
@@ -308,6 +308,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit);
   if (actionReview) {
     if (actionTarget !== undefined) actionReview.target = actionTarget;
+    if (actionTargetSha256 !== undefined) actionReview.targetSha256 = actionTargetSha256;
     const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
     actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit);
     if (measured.functionEdges) {
@@ -330,6 +331,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     ...(extensions && { extensionCandidates: extensions }),
     ...(startup && { startupCandidates: startup }),
     ...(actionReview && { actionReview }),
+    ...(measured.recordedActions && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
     ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
@@ -343,16 +345,19 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-function reviewAction(id, catalog, label, { actionSources, dispatchWindowSources }, sourceFocus, limit) {
-  const restrictions = [catalog.actions.get(id)?.restriction].filter(Boolean);
-  const actionRows = sources => [...(sources ?? [])].map(([execution, { files, example }]) => ({
+function observedActionRoutes(sources, restrictions) {
+  return [...(sources ?? [])].map(([execution, { files, example }]) => ({
     routeIds: execution.routeIds, argv: execution.argv, restrictions: [...new Set([...restrictions, ...execution.restrictions])], example,
     observedLines: [...files.values()].reduce((sum, lines) => sum + lines.size, 0),
     sources: [...files].sort(([a], [b]) => a.localeCompare(b)).map(([path, lines]) =>
       ({ path, observedRanges: compactRanges([...lines].sort((a, b) => a - b)) })),
   })).sort((a, b) => b.observedLines - a.observedLines || a.routeIds[0].localeCompare(b.routeIds[0]));
-  const candidates = actionRows(actionSources);
-  const windows = actionRows(dispatchWindowSources).filter(row => !row.restrictions.length);
+}
+
+function reviewAction(id, catalog, label, { actionSources, dispatchWindowSources }, sourceFocus, limit) {
+  const restrictions = [catalog.actions.get(id)?.restriction].filter(Boolean);
+  const candidates = observedActionRoutes(actionSources, restrictions);
+  const windows = observedActionRoutes(dispatchWindowSources, restrictions).filter(row => !row.restrictions.length);
   const routes = candidates.filter(row => !row.restrictions.length), restricted = candidates.filter(row => row.restrictions.length);
   const hasObservedSource = routes[0]?.observedLines > 0;
   const allFocusedLinesPassed = sourceFocus.gapLines === 0 && !sourceFocus.unknown.length;
@@ -370,16 +375,77 @@ function reviewAction(id, catalog, label, { actionSources, dispatchWindowSources
   };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, functionMapFile, limit = 15 }) {
+const activationLabel = 'scriv activate';
+const targetLabel = digest => `${activationLabel} --target-sha256 ${digest}`;
+const windowLabelFor = digest => `${activationLabel} --window-target-sha256 ${digest}`;
+
+function discoverRecordedActions(catalog, focus) {
+  if (!focus || !catalog.measurementActions) return;
+  const menuLabels = new Map([...catalog.measurementActions]
+    .filter(([, label]) => label.startsWith('scriv menu-action --scope '))
+    .map(([id, label]) => [label, { id, label, actionArgs: ['--action', id] }]));
+  const commandLabels = new Map([...catalog.semanticActionIds].map(id => {
+    const label = catalog.measurementActions.get(id);
+    return [label, { id, label, actionArgs: ['--action', id] }];
+  }));
+  const supportsActivate = catalog.measurementActions.get('activate') === activationLabel;
+  return { focus, actions(record) {
+    const labels = new Set(record.actionLabels);
+    const commands = new Set(record.actions);
+    const matches = [];
+    for (const command of commands) {
+      const action = commandLabels.get(command);
+      if (action) matches.push({ action, window: false });
+    }
+    for (const label of labels) {
+      const menu = menuLabels.get(label);
+      if (menu && commands.has('scriv menu-action')) matches.push({ action: menu, window: false });
+      if (!supportsActivate || !commands.has(activationLabel)) continue;
+      const digest = /^scriv activate --target-sha256 ([a-f0-9]{64})$/.exec(label)?.[1];
+      if (digest) matches.push({ action: { id: 'activate', label, targetSha256: digest,
+        actionArgs: ['--action', 'activate', '--target-sha256', digest] }, window: labels.has(windowLabelFor(digest)) });
+    }
+    return matches;
+  } };
+}
+
+function reviewRecordedActions(matches, catalog, limit) {
+  const items = [], restricted = [];
+  for (const { action, sessions, windows } of matches.values()) {
+    const { id } = action;
+    const restrictions = [catalog.actions.get(id)?.restriction].filter(Boolean);
+    const windowRoutes = observedActionRoutes(windows, restrictions);
+    const sessionRoutes = observedActionRoutes(sessions, restrictions);
+    for (const [rows, wantRestricted] of [[items, false], [restricted, true]]) {
+      const focused = windowRoutes.filter(row => Boolean(row.restrictions.length) === wantRestricted);
+      const routes = focused.length ? focused : sessionRoutes.filter(row => Boolean(row.restrictions.length) === wantRestricted);
+      if (routes.length) rows.push({ ...action, evidence: focused.length ? 'dispatch-window' : 'session',
+        observedLines: routes[0].observedLines, routeCount: routes.length, routes: routes.slice(0, limit) });
+    }
+  }
+  const priority = row => row.evidence === 'dispatch-window' ? 0 : row.targetSha256 ? 2 : 1;
+  const summarize = rows => ({ count: rows.length, items: rows.sort((a, b) => priority(a) - priority(b)
+    || b.observedLines - a.observedLines || a.label.localeCompare(b.label)).slice(0, limit) });
+  return { ...summarize(items), restricted: summarize(restricted),
+    notice: 'Matches current source to passing recorded CLI intervals. Session matches need caller review. Background work can overlap a dispatch window.' };
+}
+
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, actionTargetSha256, functionMapFile, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
-  if (actionTarget !== undefined) {
-    if (actionId !== 'activate' || catalog.measurementActions?.get(actionId) !== 'scriv activate') {
+  if (actionTarget !== undefined && actionTargetSha256 !== undefined) {
+    throw new Error('Use one of --target or --target-sha256.');
+  }
+  if (actionTarget !== undefined || actionTargetSha256 !== undefined) {
+    if (actionId !== 'activate' || catalog.measurementActions?.get(actionId) !== activationLabel) {
       throw new Error('--target requires --action activate and UIKit --capabilities advertising activate.');
     }
-    if (!/^[a-zA-Z][a-zA-Z0-9._-]{0,127}$/.test(actionTarget) || /\s/.test(actionTarget)) {
+    if (actionTarget !== undefined && (!/^[a-zA-Z][a-zA-Z0-9._-]{0,127}$/.test(actionTarget) || /\s/.test(actionTarget))) {
       throw new Error('--target requires a stable control identifier, e.g. workspace-project.');
+    }
+    if (actionTargetSha256 !== undefined && (actionTargetSha256.length !== 64 || !/^[a-f0-9]{64}$/.test(actionTargetSha256))) {
+      throw new Error('--target-sha256 requires 64 lowercase hexadecimal digits.');
     }
   }
   if (actionId !== undefined && !focus) throw new Error('--action requires --source.');
@@ -388,10 +454,10 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   if (actionId !== undefined) {
     actionLabel = catalog.measurementActions ? catalog.measurementActions.get(actionId) : catalog.actions.get(actionId)?.id;
   }
-  if (actionTarget !== undefined) {
-    const digest = createHash('sha256').update(actionTarget).digest('hex');
-    actionLabel += ` --target-sha256 ${digest}`;
-    windowLabel = `scriv activate --window-target-sha256 ${digest}`;
+  const digest = actionTargetSha256 ?? (actionTarget === undefined ? undefined : createHash('sha256').update(actionTarget).digest('hex'));
+  if (digest) {
+    actionLabel = targetLabel(digest);
+    windowLabel = windowLabelFor(digest);
   }
   const actionQuery = actionLabel && { label: actionLabel, windowLabel, focus, journeys: catalog.journeys };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
@@ -399,12 +465,13 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   const direct = sourceFirst || !binding;
   const labels = catalog.measurementActions ?? (catalog.actions && [...catalog.actions.keys()].map(id => [id, id]));
   const actionIdsByLabel = direct && labels && new Map([...labels].map(([id, label]) => [label, id]));
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile,
+  const actionDiscovery = direct && discoverRecordedActions(catalog, focus);
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, actionDiscovery, launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile,
     extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;
-  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel, actionTarget });
+  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel, actionTarget, actionTargetSha256 });
 }
 
 function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit, focus }) {

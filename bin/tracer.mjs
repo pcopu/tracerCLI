@@ -55,7 +55,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal bind --file PROPOSAL --routes CATALOG [--json]
   worklist --routes CATALOG --capture-set FILE --reference-root DIR
-           [--source PATH[:RANGE] ...] [--action ID [--target CONTROL_ID]] [--file PROPOSAL] [--capabilities FILE] [--function-map FILE] [--replay] [--limit N] [--json]
+           [--source PATH[:RANGE] ...] [--action ID [--target CONTROL_ID | --target-sha256 HASH]] [--file PROPOSAL] [--capabilities FILE] [--function-map FILE] [--replay] [--limit N] [--json]
   proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR
                     [--capabilities FILE] [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
@@ -135,7 +135,7 @@ async function main(args) {
   if (command === 'proposal' || command === 'next' || command === 'worklist') {
     const [mode, ...flags] = command === 'proposal' ? rest : [command, ...rest], options = {};
     if (!['prepare', 'check', 'report', 'audit', 'prioritize', 'bind', 'worklist', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit, prioritize, bind or worklist.');
-    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : mode === 'worklist' ? ['--routes', '--capabilities', '--capture-set', '--reference-root', '--limit', ...(command === 'worklist' ? ['--replay', '--source', '--action', '--target', '--function-map'] : [])] : [])];
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : mode === 'worklist' ? ['--routes', '--capabilities', '--capture-set', '--reference-root', '--limit', ...(command === 'worklist' ? ['--replay', '--source', '--action', '--target', '--target-sha256', '--function-map'] : [])] : [])];
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || flag !== '--source' && Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
@@ -152,7 +152,7 @@ async function main(args) {
     if (mode === 'worklist') {
       const result = coverageWorklist(tracer, { file: options['--file'], routesFile: options['--routes'],
         capabilitiesFile: options['--capabilities'], sourceFirst: command === 'worklist', replay: options['--replay'],
-        sources: options['--source'], actionId: options['--action'], actionTarget: options['--target'],
+        sources: options['--source'], actionId: options['--action'], actionTarget: options['--target'], actionTargetSha256: options['--target-sha256'],
         captureSet: options['--capture-set'], referenceRoot: options['--reference-root'], functionMapFile: options['--function-map'],
         limit: options['--limit'] === undefined ? undefined : Number(options['--limit']) });
       console.log(JSON.stringify(result, null, 2));

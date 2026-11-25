@@ -779,18 +779,21 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
   return { eligible, failed, failures };
 }
 
-function recordActionSource(sources, execution, { path, rows }, example, focus) {
+function observedSourceLines({ path, rows }, focus) {
+  if (!focus.intersects(path, 1, Infinity)) return [];
+  return rows.filter(([line, before, after]) => after > before && focus.intersects(path, line)).map(([line]) => line);
+}
+
+function recordActionSource(sources, execution, path, lines, example) {
   if (!sources.has(execution)) sources.set(execution, { files: new Map(), example });
-  if (!focus.intersects(path, 1, Infinity)) return;
-  const entry = sources.get(execution), lines = rows.filter(([line, before, after]) =>
-    after > before && focus.intersects(path, line)).map(([line]) => line);
+  const entry = sources.get(execution);
   if (!lines.length) return;
   if (!entry.files.size) entry.example = example;
   if (!entry.files.has(path)) entry.files.set(path, new Set());
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, actionDiscovery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   if (baselineReferenceRoot) baselineReferenceRoot = realpathSync(resolve(root, baselineReferenceRoot));
@@ -808,6 +811,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   const outcomeCounts = { passed: 0, failed: 0, unknown: 0 }, outOfReference = new Map(), extensionRecords = new Map();
   const actionSources = actionQuery && new Map();
   const dispatchWindowSources = actionQuery?.windowLabel && new Map();
+  const recordedActions = actionDiscovery && new Map();
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
@@ -818,6 +822,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     const actionExecution = actionQuery && outcome === 'passed' && hasAction(record, actionQuery.label)
       && actionQuery.journeys.get(declaration.journey);
     const dispatchWindow = dispatchWindowSources && actionExecution && record.actionLabels?.includes(actionQuery.windowLabel);
+    const recordedExecution = actionDiscovery && extensionJourney && !startup && extensionJourneys.get(declaration.journey);
+    const discovered = recordedExecution && actionDiscovery.actions(record);
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
     for (const captured of record.captureFiles) {
@@ -834,10 +840,20 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         entry.intervals++; target.incompatible.set(key, entry); continue;
       }
       if (!target.comparable) continue;
-      if (actionExecution) {
+      if (actionExecution || discovered?.length) {
         const example = { journey: declaration.journey, intervalId: record.id };
-        recordActionSource(actionSources, actionExecution, captured, example, actionQuery.focus);
-        if (dispatchWindow) recordActionSource(dispatchWindowSources, actionExecution, captured, example, actionQuery.focus);
+        const lines = observedSourceLines(captured, (actionQuery ?? actionDiscovery).focus);
+        if (actionExecution) {
+          recordActionSource(actionSources, actionExecution, captured.path, lines, example);
+          if (dispatchWindow) recordActionSource(dispatchWindowSources, actionExecution, captured.path, lines, example);
+        }
+        if (lines.length) {
+          for (const { action, window } of discovered || []) {
+            if (!recordedActions.has(action.label)) recordedActions.set(action.label, { action, sessions: new Map(), windows: new Map() });
+            const { sessions, windows } = recordedActions.get(action.label);
+            recordActionSource(window ? windows : sessions, recordedExecution, captured.path, lines, example);
+          }
+        }
       }
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
@@ -891,6 +907,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(actionSources && { actionSources }),
     ...(dispatchWindowSources && { dispatchWindowSources }),
+    ...(recordedActions && { recordedActions }),
     ...(functions && { functions }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),

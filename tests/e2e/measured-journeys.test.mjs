@@ -1169,7 +1169,7 @@ test('worklist maps a discovered Scriv menu scope by its exact recorded label', 
 test('worklist matches an exact completed Scriv control target without falling back to generic activation', t => {
   const f = project(t);
   const fingerprint = identifier => `scriv activate --target-sha256 ${sha(identifier)}`;
-  const routes = ['captured', 'other', 'legacy', 'window', 'mismatched-window'].map(name => ({ id: `journeys/${name}`, path: `tests/e2e/journeys/${name}.mjs` }));
+  const routes = ['captured', 'other', 'legacy', 'window', 'mismatched-window', 'failed'].map(name => ({ id: `journeys/${name}`, path: `tests/e2e/journeys/${name}.mjs` }));
   f.jsonFile('receipt.json', {});
   const intervals = routes.map(({ path }, i) => {
     f.put(path, '// Real scenario selector witness.\n');
@@ -1177,23 +1177,46 @@ test('worklist matches an exact completed Scriv control target without falling b
     f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = runId;
     f.manifest.actions = ['scriv snapshot', 'scriv activate'];
     if (i < 2) f.manifest.actionLabels = [fingerprint(['workspace-open', 'workspace-open-recent'][i])];
-    else if (i >= 3) {
+    else if (i === 3 || i === 4) {
       f.manifest.actionLabels = [
         fingerprint(i === 3 ? 'workspace-open' : 'workspace-open-recent'),
         `scriv activate --window-target-sha256 ${sha('workspace-open')}`,
       ];
-    } else delete f.manifest.actionLabels;
+    } else if (i === 5) {
+      f.manifest.actionLabels = [fingerprint('wandering-control')];
+    } else {
+      f.manifest.actions.push('scriv menu-action', 'scriv import-json');
+      f.manifest.actionLabels = ['scriv menu-action --scope script-entries', 'scriv menu-action --scope unpublished-scope'];
+    }
     f.refresh();
-    return { id: f.json(...f.args).id, journey: path, status: 'passed',
+    return { id: f.json(...f.args).id, journey: path, status: i === 5 ? 'failed' : 'passed',
       evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } };
   });
   f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
     selection: { mode: 'all', availableScenarioCount: routes.length, selectedScenarioCount: routes.length }, scenarios: routes });
-  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['snapshot', 'activate'] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['snapshot', 'activate', 'menu-action', 'import-json'],
+    semanticMenuActionScopes: ['script-entries'], semanticApplicationCommands: ['import-json'] });
   f.jsonFile('outcomes.json', { version: 1, intervals });
   f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
   const args = ['worklist', '--routes', 'discovery.json', '--capabilities', 'capabilities.json',
     '--capture-set', 'captures.json', '--reference-root', '.', '--source', 'src/app.py', '--action'];
+  const automatic = f.json(...args.slice(0, -1));
+  const [window, imported, menu, other] = automatic.recordedActions.items;
+  assert.equal(automatic.recordedActions.count, 4, 'Only passing exact targets and discovered semantic actions are suggested');
+  assert.equal(window.evidence, 'dispatch-window');
+  assert.deepEqual(window.actionArgs, ['--action', 'activate', '--target-sha256', sha('workspace-open')]);
+  assert.deepEqual(window.routes.map(row => row.routeIds), [['journeys/window']]);
+  assert.equal(imported.evidence, 'session');
+  assert.deepEqual(imported.actionArgs, ['--action', 'import-json']);
+  assert.equal(menu.evidence, 'session');
+  assert.deepEqual(menu.actionArgs, ['--action', 'script-entries']);
+  assert.deepEqual(menu.routes.map(row => row.routeIds), [['journeys/legacy']]);
+  assert.equal(other.evidence, 'session', 'A different target’s window marker cannot upgrade an activation');
+  assert.deepEqual(other.actionArgs, ['--action', 'activate', '--target-sha256', sha('workspace-open-recent')]);
+  assert.equal(f.json(...args.slice(0, -3), '--source', 'src/app.py:2').recordedActions.count, 0);
+  assert.deepEqual(f.json(...args.slice(0, -1), ...window.actionArgs).actionReview.dispatchWindows.items, window.routes);
+  assert.match(f.run([...args, 'activate', '--target-sha256', 'wrong'], 1).stderr, /64 lowercase hexadecimal/);
+  assert.match(f.run([...args, 'activate', '--target', 'workspace-open', '--target-sha256', sha('workspace-open')], 1).stderr, /one of/);
   const broad = f.json(...args, 'activate').actionReview;
   assert.equal(broad.routeCount, 5);
   const exact = f.json(...args, 'activate', '--target', 'workspace-open').actionReview;
