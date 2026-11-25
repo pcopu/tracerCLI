@@ -1916,6 +1916,28 @@ test('native batch builds a reusable capture set from a verified Scriv receipt',
   assert.deepEqual(batch.receipts[0].cases, cases.map(row => ({ ...row, status: 'passed', elapsedSeconds: 1, intervals: 1 })));
   const grouped = JSON.parse(readFileSync(join(groupedOutput, 'report.json')));
   assert.equal(grouped.outcomes.declarations.find(row => row.id === secondImport.id).journey, `${scenario}#${secondGroup}`);
+  const inputRoots = ['.'];
+  const baselineDataset = readFileSync(join(base.root, dataPath));
+  for (let index = 1; index < 256; index++) {
+    const name = `retained/analysis-${index}`;
+    base.put(`${name}/src/app.py`, source);
+    base.put(`${name}/${dataPath}`, baselineDataset);
+    execFileSync('git', ['init', '-q'], { cwd: join(base.root, name) });
+    inputRoots.push(name);
+  }
+  base.jsonFile('large-captures.json', { version: 1, inputRoots, outcomes: 'outcomes.json', scope: 'source-lines' });
+  const largeOutput = join(run.root, 'large-batch');
+  const largeBatch = base.json('measure', 'batch', '--baseline-capture-set', 'large-captures.json', '--receipt',
+    join(run.root, 'evidence.json'), '--reference-root', '.', '--output', largeOutput);
+  const large = JSON.parse(readFileSync(join(largeOutput, 'report.json')));
+  assert.equal(large.origins.length, 257);
+  assert.equal(large.intervals.duplicates, 255);
+  assert.deepEqual(largeBatch.passedOnlyKnown, batch.passedOnlyKnown);
+  assert.equal(largeBatch.comparison.gainedLines, 1);
+  assert.equal(largeBatch.comparison.lostLines, 0);
+  base.jsonFile('large-series.json', { version: 1, captureSets: ['large-captures.json', largeBatch.captureSet] });
+  const series = base.json('measure', 'gaps', '--reference-root', '.', '--series', 'large-series.json');
+  assert.deepEqual(series.reports[0], large);
   receipt.coverage.intervals[0].group = secondGroup;
   run.jsonFile('evidence.json', receipt);
   assert.match(base.run([...args, '--output', rejected, '--json'], 1).stderr, /session.*case/i);
@@ -2133,6 +2155,63 @@ test('worklist ranks fresh replays from retained passing evidence without credit
 
   old.put(path, previous + 'stale snapshot\n');
   assert.equal(f.json(...args, '--replay').replayCandidates.gapLines, 1);
+});
+
+test('native worklist keeps startup replays separate from regular case outcomes', t => {
+  const earlier = project(t), current = project(t), path = 'src/app.py';
+  const previous = 'opening line\nprepare the environment\nhandshake boundary\nregular interaction\nvisible status\nexit normally\n';
+  const updated = 'new file heading\n' + previous;
+  const id = 'journeys/recovery', witness = 'tests/e2e/journeys/recovery.mjs', group = 'cold';
+  const journey = witness + '#' + group;
+  const startup = ['launch isolated Scriv through the CLI', 'scriv capabilities'];
+  const session = ['scriv capabilities', 'scriv activate'];
+  function prepare(f, text) {
+    f.put(path, text);
+    f.jsonFile('sources.json', { files: [{ path, sha256: f.hash(path) }] });
+    f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256
+      = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+    const lines = text.trimEnd().split('\n').map((_, index) => index + 1);
+    f.put('before.lcov', f.record(lines.map(line => `DA:${line},0`).join('\n')));
+    return (runId, actions, hits, status = 'passed') => {
+      Object.assign(f.manifest, { runId, actions });
+      f.manifest.before.runId = f.manifest.after.runId = runId;
+      f.put('after.lcov', f.record(lines.map(line => `DA:${line},${Number(hits.includes(line))}`).join('\n')));
+      f.refresh();
+      const { id } = f.json(...f.args);
+      const evidence = runId + '.json';
+      f.jsonFile(evidence, { status });
+      return { id, journey, status, evidence: { path: join(f.root, evidence), sha256: f.hash(evidence) } };
+    };
+  }
+  const captureEarlier = prepare(earlier, previous), captureCurrent = prepare(current, updated);
+  current.put(witness, '// Reviewed native case.\n');
+  current.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    launchModes: ['--startup-trace'], scenarios: [{ id, path: witness, groups: [group] }] });
+  current.jsonFile('captures.json', { version: 1, inputRoots: [earlier.root, '.'], outcomes: 'outcomes.json' });
+  const outcomes = [captureEarlier('earlier-startup', startup, [2]), captureEarlier('earlier-session', session, [4]),
+    captureCurrent('current-session', session, [7]), captureCurrent('failed-session', session, [6], 'failed')];
+  function report() {
+    current.jsonFile('outcomes.json', { version: 1, intervals: outcomes });
+    return current.json('worklist', '--replay', '--routes', 'discovery.json', '--capture-set', 'captures.json', '--reference-root', '.');
+  }
+  const initial = report();
+  const startupArgv = ['test', '--scenario', id, '--group', group, '--coverage-startup'];
+  assert.deepEqual(initial.replayCandidates.items.map(row => [row.argv, row.sources[0].gapRanges]), [[startupArgv, [[3, 3]]]]);
+  assert.equal(initial.failedReplays.count, 0, 'A regular failure cannot block startup');
+  assert.equal(initial.coverage.passedOnlyKnown.observedLines, 1);
+
+  outcomes.push(captureCurrent('failed-startup', startup, [], 'failed'));
+  const failed = report();
+  assert.equal(failed.replayCandidates.count, 0);
+  assert.deepEqual(failed.failedReplays.items.map(row => row.argv), [startupArgv]);
+  assert.equal(failed.coverage.passedOnlyKnown.observedLines, 1);
+
+  outcomes.push(captureCurrent('current-startup', startup, [3]));
+  const recovered = report();
+  assert.equal(recovered.replayCandidates.count, 0);
+  assert.equal(recovered.failedReplays.count, 0);
+  assert.equal(recovered.coverage.passedOnlyKnown.observedLines, 2);
 });
 
 test('worklist guides branch-state case reuse, extension and repair without executing the app', t => {

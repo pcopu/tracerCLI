@@ -200,7 +200,7 @@ Adding or dropping an outcome declaration can change gained or lost known-passin
 
 ### Compare several batches in one command
 
-List the baseline first and the succeeding capture sets in execution order. Paths are relative to the series file and may also be absolute. A series accepts 2–32 capture sets and up to 256 distinct measurement input roots across them. Split larger sequences at a shared checkpoint.
+List the baseline first and the succeeding capture sets in execution order. Paths are relative to the series file and may also be absolute. A series accepts 2–32 capture sets and up to 10,000 distinct measurement input roots across them. Each capture set accepts up to 10,000 input roots and unique intervals, so retaining a separate verified root per run does not impose a smaller batch limit.
 
 ```json
 {
@@ -216,7 +216,7 @@ tracer measure gaps --series /analysis/series.json \
 
 Each stage compares with the preceding capture set. Keep the same reference root in every set after the baseline. JSON `reports` contains an ordinary gap comparison for each stage in input order. The default text output shows each stage's passing total, comparable gains and losses, and passing lines without a comparable baseline.
 
-Shared manifests, dataset payloads, captured source snapshots, and producer evidence are read once during the invocation. Outcome declarations, compatibility checks, and current checkout source checks still apply to each comparison. A later command verifies the inputs again. The command is read-only and waits for every comparison to validate before printing reports.
+Shared manifests, dataset payloads, captured source snapshots, and producer evidence are read once during the invocation. Aggregate gap reports retain the validated payload identities, shared line sets and counter-increase flags in memory. The original datasets keep the exact counters for `measure report` and `measure where`. Outcome declarations, compatibility checks, and current checkout source checks still apply to each comparison. A later command verifies the inputs again. The command is read-only and waits for every comparison to validate before printing reports.
 
 ## Measure a completed Scriv batch
 

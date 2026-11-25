@@ -181,6 +181,8 @@ CLI selectors that previously observed still-missing behavior, deduplicated by
 marginal candidate lines. Run the leading selectors on the verified build and
 use `measure batch` to record fresh gains. Earlier observations only guide
 selection when source or instrumentation changed.
+Keep `--coverage-startup` on replay commands that include it. Startup
+and session attempts have independent outcomes for the same selector.
 Inspect `failedReplays` for selectors already tried on the reference build.
 Use the bound receipt and any typed `failure.diagnostic` to fix the failed
 scenario. For an ambiguous native selector, use the reported source location

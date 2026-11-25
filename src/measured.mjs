@@ -5,6 +5,7 @@ import { Tracer, safePath, parseRange, validateActions, compactRanges } from './
 
 export const MEASURED_PATH = 'docs/testing/code-e2e-measurements.json';
 export const MEASURED_NOTICE = 'LCOV COUNTER DELTAS: observed during the whole recorded interval, not caused by each action. Supplied provenance is not a build attestation or proof of correctness. Manual links and their minimums are separate.';
+const MAX_MEASUREMENT_INTERVALS = 10000; // Also permits one input root per interval.
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = message => { throw new Error(message); };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -152,11 +153,11 @@ function validateInterval(value) {
   const { payloadSha256, ...payload } = value;
   if (payloadSha256 !== sha(JSON.stringify(payload))) fail('Measured payload digest mismatch. This is integrity checking, not a signature.');
 }
-function currentFile(store, file) {
+function currentFile(store, file, lastLine = file.rows.at(-1)[0]) {
   try {
     const lines = store.readLines(file.path);
     if (sha(lines.join('')) !== file.sha256) return 'Source bytes are stale against the pinned capture manifest.';
-    if (file.rows.at(-1)[0] > lines.length) return 'Instrumented line is outside the source file.';
+    if (lastLine > lines.length) return 'Instrumented line is outside the source file.';
   } catch (error) { return error.message; }
   return null;
 }
@@ -276,7 +277,8 @@ function measuredInputs(root, options, localDefault, manifests) {
   inputRoots ??= localDefault ? [root] : undefined;
   scopeMode ??= 'strict';
   if (!['strict', 'source-lines'].includes(scopeMode)) fail('Union --scope must be strict or source-lines.');
-  if (!Array.isArray(inputRoots) || !inputRoots.length || inputRoots.length > 256 || inputRoots.some(path => !text(path))) fail('Require 1-256 measurement input roots.');
+  if (!Array.isArray(inputRoots) || !inputRoots.length || inputRoots.length > MAX_MEASUREMENT_INTERVALS
+      || inputRoots.some(path => !text(path))) fail(`Require 1-${MAX_MEASUREMENT_INTERVALS} measurement input roots.`);
   return { inputRoots, outcomes, scopeMode, captureSet };
 }
 
@@ -298,6 +300,23 @@ function intervalScope(interval, scopes) {
   return result;
 }
 
+function summarizeInterval(interval, scopes) {
+  // Aggregate comparisons need the line universe and whether each counter increased.
+  // Preserve exact payload identity before releasing the validated counter triples.
+  const identity = intervalIdentity(interval);
+  identity.scope = intervalScope(interval, scopes);
+  const byPath = new Map(identity.scope.scope.files.map(file => [file.path, file]));
+  const files = interval.files.map(file => ({
+    ...byPath.get(file.path),
+    increased: Uint8Array.from(file.rows, ([, before, after]) => Number(after > before)),
+  }));
+  return { id: interval.id, manifest: interval.manifest, identity, files };
+}
+
+function* increasedLines({ lines, increased }) {
+  for (let index = 0; index < lines.length; index++) if (increased[index]) yield lines[index];
+}
+
 function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainFiles = Boolean(referenceRoot), shared } = {}) {
   const { inputRoots, outcomes, scopeMode, captureSet } = measuredInputs(root, options, Boolean(lookupPath), shared?.manifests);
   if (referenceRoot) {
@@ -307,6 +326,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
   }
   const origins = [], records = new Map(), storedIds = new Map(), provenance = new Map();
   const snapshots = shared?.datasets ?? (retainFiles ? new Map() : undefined);
+  const scopes = shared?.scopes ?? (retainFiles ? new Map() : undefined);
   let scope, scopeId, sourceLinesId, duplicates = 0;
   for (const inputRoot of inputRoots) {
     const path = resolve(root, inputRoot);
@@ -325,6 +345,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
       fail(`Gap series exceeds ${shared.maxDatasets} distinct measurement input roots.`);
     }
     const snapshot = reused ?? { ...store.readMap({ withHash: true }), checked: new Map() };
+    if (!reused && retainFiles) snapshot.data.intervals = snapshot.data.intervals.map(interval => summarizeInterval(interval, scopes));
     snapshots?.set(store.root, snapshot);
     const { data, datasetSha256, checked } = snapshot;
     if (isReference && !data.intervals.length) fail('The reference measurement dataset must contain at least one interval.');
@@ -337,8 +358,9 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
       let snapshotError = null;
       for (const file of interval.files) {
         if (lookupPath && file.path !== lookupPath) continue;
-        const key = JSON.stringify([file.path, file.sha256, file.rows.at(-1)[0]]);
-        if (!checked.has(key)) checked.set(key, currentFile(store, file));
+        const lastLine = retainFiles ? file.lines.at(-1) : file.rows.at(-1)[0];
+        const key = JSON.stringify([file.path, file.sha256, lastLine]);
+        if (!checked.has(key)) checked.set(key, currentFile(store, file, lastLine));
         if (checked.get(key)) {
           if (isReference) fail(`Reference interval ${interval.id}, ${file.path}: ${checked.get(key)}`);
           if (!lookupPath && !retainFiles) fail(`Union input ${interval.id}: ${checked.get(key)}`);
@@ -346,8 +368,8 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
           snapshotError = checked.get(key);
         } else validFiles?.add(file.path);
       }
-      const identity = shared?.intervals.get(interval) ?? intervalIdentity(interval);
-      shared?.intervals.set(interval, identity);
+      const identity = interval.identity ?? shared?.intervals.get(interval) ?? intervalIdentity(interval);
+      if (!retainFiles) shared?.intervals.set(interval, identity);
       const { occurrence, digest } = identity, { id } = interval, previous = records.get(occurrence);
       if (storedIds.has(id) && storedIds.get(id) !== occurrence) fail(`Conflicting duplicate interval: ${id}`);
       storedIds.set(id, occurrence);
@@ -359,9 +381,9 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
         if (validFiles) for (const path of validFiles) previous.validFiles.add(path);
         duplicates++; continue;
       }
-      if (records.size === 10000) fail('Measurement union exceeds 10000 unique intervals.');
+      if (records.size === MAX_MEASUREMENT_INTERVALS) fail(`Measurement union exceeds ${MAX_MEASUREMENT_INTERVALS} unique intervals.`);
       const { scope: currentScope, scopeId: currentScopeId, sourceLinesId: currentSourceLinesId } =
-        (identity.scope ??= intervalScope(interval, shared?.scopes));
+        (identity.scope ??= intervalScope(interval, scopes));
       if (isReference && scope && scopeId !== currentScopeId) fail('Incompatible strict measurement scope within the reference dataset.');
       if (!lookupPath && !retainFiles && scope && (scopeMode === 'strict' ? scopeId !== currentScopeId : sourceLinesId !== currentSourceLinesId)) {
         fail(`Incompatible measurement scope: ${scopeMode === 'strict' ? scopeId : sourceLinesId} versus ${scopeMode === 'strict' ? currentScopeId : currentSourceLinesId}. Report these scopes separately.`);
@@ -389,7 +411,9 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
   if (outcomes !== undefined) {
     const path = resolve(root, outcomes), { sha256, data } = readMeasurementManifest(path, shared?.manifests);
     keys(data, ['version', 'intervals'], 'union outcomes');
-    if (data.version !== 1 || !Array.isArray(data.intervals) || data.intervals.length > 10000) fail('Require outcomes version 1 and at most 10000 interval declarations.');
+    if (data.version !== 1 || !Array.isArray(data.intervals) || data.intervals.length > MAX_MEASUREMENT_INTERVALS) {
+      fail(`Require outcomes version 1 and at most ${MAX_MEASUREMENT_INTERVALS} interval declarations.`);
+    }
     const evidenceFiles = shared?.evidenceDigests ?? new Map();
     for (const row of data.intervals) {
       keys(row, ['id', 'journey', 'status', 'evidence'], 'interval outcome');
@@ -638,26 +662,26 @@ function collectPassingCallers(files, passingByFile, functions, dispatchGaps) {
     const body = nested ? start + 1 : start;
     const callerRanges = functions.files.get(caller.path);
     const seen = new Set(), seenWindows = new Set(), declarations = new Map();
-    for (const { journey, intervalId, rows, startup, actionIds, exactReference, windowAction } of passing) {
+    for (const { journey, intervalId, lines, increased, startup, actionIds, exactReference, windowAction } of passing) {
       const kind = startup ? 'startup' : 'scenario';
       const key = JSON.stringify([journey, kind]);
       const windowKey = windowAction && JSON.stringify([journey, windowAction]);
       const needsWindow = windowKey && !seenWindows.has(windowKey);
       if (!exactReference || (seen.has(key) && !needsWindow)) continue;
-      const anchor = rows.find(([line, before, after]) => line >= body && line <= end && after > before
+      const anchor = lines.find((line, index) => line >= body && line <= end && increased[index]
         && innermostFunction(callerRanges, line) === caller.functionRange);
       const example = { path, functionRange: targetRange, caller, intervalId, journey, ...(actionIds?.length && { actionIds }) };
       if (anchor) {
         const needsScenario = !seen.has(key);
         for (const range of ranges) {
-          const match = { ...example, range, observedAnchor: anchor[0] };
+          const match = { ...example, range, observedAnchor: anchor };
           if (needsWindow) addDispatchGap(dispatchGaps, windowAction, match);
           if (needsScenario) candidates[kind].push(match);
         }
         if (needsWindow) seenWindows.add(windowKey);
         seen.add(key);
         declarations.delete(key);
-      } else if (!seen.has(key) && nested && !declarations.has(key) && rows.some(([line, before, after]) => line === start && after > before)) {
+      } else if (!seen.has(key) && nested && !declarations.has(key) && lines.some((line, index) => line === start && increased[index])) {
         // Creating a UIAction or registering a callback can count its declaration.
         declarations.set(key, { kind, example: { ...example, observedAnchor: start } });
       }
@@ -696,8 +720,8 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
       if (before !== after && (lines[anchor] !== owner[0] || !nested.has(owner))) {
         const range = [lines[start], lines[end]];
         const matched = new Set(), startupMatched = new Set(), exactMatched = new Set();
-        for (const { journey, intervalId, rows, startup, actionIds, matchesAction, windowAction } of passing) {
-          if (rows[anchor][2] <= rows[anchor][1]) continue;
+        for (const { journey, intervalId, increased, startup, actionIds, matchesAction, windowAction } of passing) {
+          if (!increased[anchor]) continue;
           const example = { path, range, functionRange: owner, observedAnchor: lines[anchor], intervalId, journey,
             ...(actionIds?.length && { actionIds }) };
           const seen = startup ? startupMatched : matched;
@@ -746,10 +770,10 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath,
       const range = [lines[first], lines[last]];
       const gapRanges = last - first === range[1] - range[0] ? undefined : compactRanges(lines.slice(first, right));
       const found = new Map(), atStartup = new Map(), exactAction = new Map(), windowMatches = [];
-      for (const { journey, intervalId, rows, startup, actionIds, matchesAction, windowAction } of passing) {
+      for (const { journey, intervalId, increased, startup, actionIds, matchesAction, windowAction } of passing) {
         const group = startup ? atStartup : found;
         if (group.has(journey) && (!matchesAction || exactAction.has(journey)) && !windowAction) continue;
-        if (rows[left][2] <= rows[left][1] || rows[right][2] <= rows[right][1]) continue;
+        if (!increased[left] || !increased[right]) continue;
         const example = { path, range, ...(gapRanges && { gapRanges }),
           observedAround: [lines[left], lines[right]], intervalId, journey,
           ...(actionIds?.length && { actionIds }) };
@@ -814,15 +838,28 @@ function replayFailure(record, declaration) {
   return { ...failure, diagnostic };
 }
 
-function replayPassingSources(store, files, referenceFilesByPath, loaded, journeys, shared) {
+function isStartupObservation(record, launchActions) {
+  return launchActions?.length === record.actions.length
+    && launchActions.every((action, index) => action === record.actions[index]);
+}
+
+function replayPassingSources(store, files, referenceFilesByPath, loaded, journeys, shared, launchActions) {
   const targets = new Map(files.filter(file => file.status === 'current' && file.passedOnlyKnown.gapLines)
     .map(({ path, passedOnlyKnown }) => [path, { reference: referenceFilesByPath.get(path).file,
       gaps: new Set(passedOnlyKnown.gapRanges.flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, index) => start + index))),
       seen: new Set(), mappings: new Map() }]));
-  const passing = [], failures = new Map();
+  const passing = [], failures = new Map(), startupExecutions = new Map();
   for (const record of loaded.records.values()) {
-    const declaration = loaded.declarations.get(record.id), execution = journeys.get(declaration?.journey);
+    const declaration = loaded.declarations.get(record.id);
+    let execution = journeys.get(declaration?.journey);
     if (!execution || execution.restrictions.length) continue;
+    // Startup and post-handshake attempts have independent outcomes.
+    if (isStartupObservation(record, launchActions)) {
+      if (!startupExecutions.has(execution)) {
+        startupExecutions.set(execution, { ...execution, argv: [...execution.argv, '--coverage-startup'] });
+      }
+      execution = startupExecutions.get(execution);
+    }
     if (declaration.status === 'failed') {
       if (record.provenanceId === loaded.scopeId && record.validFiles.size && !failures.has(execution)) {
         failures.set(execution, replayFailure(record, declaration));
@@ -867,9 +904,9 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
       target.mappings.set(sha256, mapping);
     }
     const mapping = target.mappings.get(sha256);
-    for (const [line, before, after] of captured.rows) {
+    for (const line of increasedLines(captured)) {
       const currentLine = sameBytes ? line : mapping.get(line);
-      if (after <= before || !target.gaps.has(currentLine)) continue;
+      if (!target.gaps.has(currentLine)) continue;
       const queue = failures.has(execution) ? failed : eligible;
       if (!queue.has(execution)) queue.set(execution, new Map());
       const sources = queue.get(execution);
@@ -880,9 +917,10 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
   return { eligible, failed, failures };
 }
 
-function observedSourceLines({ path, rows }, focus) {
+function observedSourceLines(captured, focus) {
+  const { path } = captured;
   if (focus && !focus.intersects(path, 1, Infinity)) return [];
-  return rows.filter(([line, before, after]) => after > before && (!focus || focus.intersects(path, line))).map(([line]) => line);
+  return [...increasedLines(captured)].filter(line => !focus || focus.intersects(path, line));
 }
 
 function recordActionSource(sources, execution, path, lines, example) {
@@ -917,8 +955,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
-    const startup = extensionJourney && launchActions?.length === record.actions.length
-      && launchActions.every((action, index) => action === record.actions[index]);
+    const startup = extensionJourney && isStartupObservation(record, launchActions);
     const actionIds = extensionJourney && !startup && actionIdsByLabel
       && [...new Set([...record.actions, ...(record.actionLabels ?? [])].map(label => actionIdsByLabel.get(label)).filter(Boolean))];
     const actionExecution = actionQuery && outcome === 'passed' && hasAction(record, actionQuery.label)
@@ -983,11 +1020,10 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
         extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id,
-          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution), windowAction,
+          lines: captured.lines, increased: captured.increased, startup, actionIds, matchesAction: !startup && Boolean(actionExecution), windowAction,
           exactReference: provenanceId === loaded.scopeId });
       }
-      for (const [line, before, after] of captured.rows) {
-        if (after <= before) continue;
+      for (const line of increasedLines(captured)) {
         target.observed[outcome].add(line);
         if (outcome === 'passed' && provenanceId === loaded.scopeId) target.referencePassing.add(line);
       }
@@ -1040,7 +1076,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     ...(functions && { functions }),
     ...(passingCallers && { passingCallers }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions, dispatchGaps)),
-    ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
+    ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared, launchActions) }),
     ...(baseline && { comparison: {
       ...comparePassingEvidence(loaded, baseline, referenceFilesByPath, files),
       ...(baselineReferenceRoot && { referenceChange: compareReferenceScopes(baseline, baselineReferenceRoot, loaded, referenceRoot) }),
@@ -1054,7 +1090,7 @@ export function gapsSeries(root, { referenceRoot, series }) {
   if (manifest.version !== 1 || !Array.isArray(sets) || sets.length < 2 || sets.length > 32 || sets.some(set => !text(set))) {
     fail('Require gap series version 1 and 2-32 capture sets beginning with a baseline.');
   }
-  const captureSets = sets.map(set => resolve(dirname(path), set)), shared = measurementSnapshot(256);
+  const captureSets = sets.map(set => resolve(dirname(path), set)), shared = measurementSnapshot(MAX_MEASUREMENT_INTERVALS);
   const reports = captureSets.slice(1).map((captureSet, index) =>
     gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet: captureSets[index] }, shared));
   return { kind: 'lcov-reference-gap-series', notice: MEASURED_NOTICE, series: { path, sha256: input.sha256 }, reports };
@@ -1063,7 +1099,8 @@ export function gapsSeries(root, { referenceRoot, series }) {
 function fileEvidenceMismatch(record, captured, reference) {
   if (captured.sha256 !== reference.sha256) return 'source-mismatch';
   if (!record.validFiles.has(captured.path)) return 'snapshot-invalid';
-  if (captured.rows.length !== reference.lines.length || captured.rows.some(([line], i) => line !== reference.lines[i])) return 'universe-mismatch';
+  if (captured.lines !== reference.lines && (captured.lines.length !== reference.lines.length
+      || captured.lines.some((line, index) => line !== reference.lines[index]))) return 'universe-mismatch';
   return null;
 }
 
@@ -1106,7 +1143,7 @@ function comparePassingEvidence(current, baseline, referenceFiles, currentFiles)
       if (!previousPassing.has(captured.path)) previousPassing.set(captured.path, new Set());
       if (beforeOutcome?.status !== 'passed') continue;
       const known = previousPassing.get(captured.path);
-      for (const [line, before, after] of captured.rows) if (after > before) known.add(line);
+      for (const line of increasedLines(captured)) known.add(line);
     }
   }
 

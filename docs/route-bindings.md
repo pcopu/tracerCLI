@@ -436,10 +436,11 @@ exact journey label to an unrestricted selector. On changed files it matches
 unique, exact source lines with both neighboring lines unchanged. For unchanged
 bytes with different instrumented lines, it uses the original coordinates.
 Each prior source snapshot and outcome must pass the ordinary evidence checks.
-A selector with a passing compatible capture for the same file is skipped.
-If a selector already failed in the exact reference scope, its remaining
-candidate ranges appear in `failedReplays` with the failed interval and
-receipt. Inspect the failure before running that selector again.
+A startup replay includes `--coverage-startup` in its command. A passing
+compatible capture for the same file and mode satisfies that replay.
+When an attempt fails in the exact reference scope, `failedReplays` shows
+the remaining ranges, failed interval and receipt for that capture mode.
+Inspect the failure before running that selector again.
 A Scriv receipt may also provide a typed `failure.diagnostic` with a relative
 scenario source location and the number of matching controls. Tracer validates
 the diagnostic against the receipt's exact scenario and group. Older receipts
