@@ -1,4 +1,4 @@
-import { bindProposalRoutes, readRoutes } from './route-bindings.mjs';
+import { bindCatalogPlans, readRoutes } from './route-bindings.mjs';
 import { gapsMeasured } from './measured.mjs';
 import { compactRanges } from './tracer.mjs';
 
@@ -76,10 +76,8 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
   return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
 }
 
-function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }) {
-  const catalog = readRoutes(tracer.root, routesFile);
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, extensionJourneys: catalog.journeys });
-  const { current, unavailable } = gapFiles(measured);
+function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit }) {
+  const held = decisions?.held;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
   for (const execution of catalog.executions) {
@@ -103,7 +101,7 @@ function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }
       fileHashes.set(path, source.sha256);
     }
     if (fileHashes.get(path) !== measuredFile.sha256) throw new Error(`Current source changed during worklist analysis: ${path}`);
-    const lines = measuredFile.lines.filter(line => start <= line && line <= end);
+    const lines = measuredFile.lines.filter(line => start <= line && line <= end && !held?.get(path)?.has(line));
     if (!lines.length) continue;
     const [execution] = candidates;
     const needsReview = candidates.length !== 1 || execution.restrictions.length > 0;
@@ -124,25 +122,43 @@ function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }
     candidates: executionsByPath.get(witnessPath).map(({ routeIds, argv, restrictions }) => ({ routeIds, argv, restrictions })),
     ...details(work) })).sort((a, b) => b.gapLines - a.gapLines || a.witnessPath.localeCompare(b.witnessPath));
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
+  const count = files => [...files.values()].reduce((sum, lines) => sum + lines.size, 0);
+  const linkedGapLines = count(assigned);
+  if (held) for (const [path, lines] of held) addLines(assigned, path, lines);
+  const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, limit);
+  if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
+  const decisionSummary = decisions && {
+    proposal: decisions.report.proposal, queues: decisions.report.queues, routes: decisions.report.routes,
+    assignedGapLines: decisions.report.assignedGapLines, heldGapLines: count(held), classifiedGapLines: count(assigned),
+  };
   return { kind: 'source-coverage-worklist', version: 1,
     notice: 'Ranks passing gaps from current source and witnessed CLI links. Exact witness-path matches are candidates. No scenario ran and no action attribution is implied.',
     coverage: { reference, captureSet: capture, allObserved, passedOnlyKnown }, routesSha256: catalog.routesSha256, links,
-    limit, linkedGapLines: [...assigned.values()].reduce((sum, lines) => sum + lines.size, 0),
+    limit, linkedGapLines,
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
-    ...(measured.surroundingIntervals && { extensionCandidates: extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, limit) }),
+    ...(extensions && { extensionCandidates: extensions }),
+    ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, captureSet, referenceRoot, limit = 15 }) {
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
-  if (file === undefined) return directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit });
-  const binding = bindProposalRoutes(tracer, file, routesFile);
-  if (!binding.behaviorRanges) throw new Error('Proposal worklist requires a route catalog with discovered actions.');
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot });
-  const { current, unavailable } = gapFiles(measured);
+  const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
+  const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
+  if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
+  const direct = sourceFirst || !binding;
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, extensionJourneys: direct ? catalog.journeys : undefined });
+  const scope = gapFiles(measured);
+  const decisions = binding && proposalWorklist({ binding, measured, ...scope, capabilitiesSha256: catalog.capabilitiesSha256, limit });
+  if (!direct) return decisions.report;
+  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit });
+}
 
-  const assigned = new Map(), byPlan = new Map();
+function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit }) {
+  const assigned = new Map(), byPlan = new Map(), held = new Map();
+  const heldStatuses = new Set(['blocked', 'needs-cli-action']);
+  const statuses = new Map(binding.plans.map(({ id, behavior }) => [id, behavior.next]));
   const unscored = { staleOrInvalid: 0, unavailableOrUninstrumented: 0 };
   for (const prediction of binding.behaviorRanges) {
     const { path, start, end, fileSha256 } = prediction.source;
@@ -152,6 +168,7 @@ export function coverageWorklist(tracer, { file, routesFile, captureSet, referen
     const lines = measuredFile.lines.filter(line => start <= line && line <= end);
     if (!lines.length) continue;
     addLines(assigned, path, lines);
+    if (prediction.planIds.every(id => heldStatuses.has(statuses.get(id)))) addLines(held, path, lines);
     for (const planId of prediction.planIds) {
       if (!byPlan.has(planId)) byPlan.set(planId, new Map());
       addLines(byPlan.get(planId), path, lines);
@@ -192,13 +209,15 @@ export function coverageWorklist(tracer, { file, routesFile, captureSet, referen
 
   const unassigned = remainingGaps(current, assigned);
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
-  return { kind: 'provisional-coverage-worklist', version: 1,
+  const report = { kind: 'provisional-coverage-worklist', version: 1,
     notice: 'Ranks current source lines without passing observations. Associations and selectors are candidates. Scores can overlap across plans and selectors. No route was executed.',
     coverage: { reference, captureSet: capture, allObserved, passedOnlyKnown },
-    proposal: { sha256: binding.proposalSha256, routesSha256: binding.routesSha256, unscoredRanges: unscored },
+    proposal: { sha256: binding.proposalSha256, routesSha256: binding.routesSha256, unscoredRanges: unscored,
+      ...(capabilitiesSha256 && { capabilitiesSha256 }) },
     limit, assignedGapLines: [...assigned.values()].reduce((sum, lines) => sum + lines.size, 0),
     routeCount: routes.length, routes: routes.slice(0, limit),
     queues: Object.fromEntries(Object.entries(queues).map(([step, rows]) => [step, { count: rows.length,
       items: rows.sort((a, b) => b.gapLines - a.gapLines || a.planId.localeCompare(b.planId)).slice(0, limit) }])),
     unassigned: fileSummary(unassigned, limit), unavailable: fileSummary(unavailable, limit) };
+  return { report, assigned, held };
 }

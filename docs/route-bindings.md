@@ -139,8 +139,8 @@ missing condition.
 Trace those behaviors to their production callers and check which CLI actions
 already reach them. A stale link or a witness without a discovered selector
 cannot supply a match. Missing mapping data leaves the full gaps visible.
-Use `proposal worklist` when you already have focused behavior plans to rank.
-Both commands are read-only and use the same measured denominator.
+Add `--file` to the worklist when you have reviewed behavior plans.
+The worklist commands are read-only and share the same measured denominator.
 
 Scriv can use its launch-free discovery output directly as `--routes`.
 
@@ -153,8 +153,27 @@ tracer worklist --routes /external/scriv-discovery.json \
 Tracer accepts the version-1 `native-cli-scenario-catalog`, validates the
 scenario paths and selection, preserves each blocker, and constructs the exact
 `test --scenario ID` and `--group NAME` selectors. It matches Scriv's recorded
-journey labels by path and optional `#group`. For proposal classification with
-discovered action IDs, supply the normalized route catalog with `actions`.
+journey labels by path and optional `#group`. For proposal classification,
+use the app's `capabilities` response from the Scriv build you are targeting.
+Save the version-1 UIKit JSON outside pinned source and supply it directly.
+A normalized route catalog with `actions` also works.
+
+```sh
+tracer worklist --routes /external/scriv-discovery.json \
+  --capabilities /external/scriv-capabilities.json \
+  --file docs/testing/focused-behaviors.json \
+  --capture-set /external/captures.json --reference-root /external/reference/source
+```
+
+`decisions.queues` ranks current reviewed plans alongside the discovery leads.
+A source range whose plans all require a CLI action or have a recorded blocker
+stays in its decision queue and is omitted from scenario recommendations.
+Shared ranges with an eligible alternative can still appear as scenario leads.
+Only current source pins can change which leads are suggested. The report hashes
+both discovery inputs, retains the full passing-gap total, and counts the union
+of exact witnesses and scored plans in `decisions.classifiedGapLines`. Use
+`unassigned` for gaps with neither and `unavailable` for unmatched source.
+Use `proposal worklist` for a report limited to the proposal queues.
 
 For coverage worklists, a route can also declare `journeys`, the exact
 producer-declared journey labels from the capture set's outcome file. Use the
@@ -168,4 +187,6 @@ lines. This locates an existing fixture and scenario to inspect when adding a
 condition. Treat the intervening gap as uncovered. Restrictions still apply.
 The overall total counts each shared gap once. `exclusiveGapLines` counts
 gaps with one candidate selector and sorts those selectors first. The report
-keeps the gap in `unassigned` until it has a current witness.
+keeps the gap in `unassigned` until it has a current witness or a scored plan.
+The anchor examples retain their full surrounding gap for context. Candidate
+`sources` contain the exact lines still suggested for extension.

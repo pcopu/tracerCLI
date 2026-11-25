@@ -40,7 +40,12 @@ required action. The command works without a proposal or manual links.
 
 For Scriv, save `tracer app -- test --list` output and pass that file directly
 as `--routes`. Tracer derives exact scenario groups and recorded journey labels
-from the discovery output while preserving its restrictions.
+from the discovery output while preserving its restrictions. When a source
+review has produced focused plans, add `--file PROPOSAL --capabilities FILE`
+using Scriv’s UIKit capability response. Read `decisions.queues` alongside
+scenario leads. A current reviewed blocker or missing action can hold a range
+out of the scenario queue. Shared code stays eligible through other plans.
+Start with the largest actionable group and keep the original denominator.
 
 Add exact outcome `journeys` labels to discovered routes to find existing
 scenarios worth extending. `extensionCandidates` shows passing intervals with

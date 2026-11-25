@@ -70,14 +70,31 @@ function nativeScenarioRoutes(discovery) {
   return { version: 1, routes };
 }
 
-export function readRoutes(root, file) {
+function readCatalogDocument(root, file) {
   text(file);
   const path = resolve(root, file), info = lstatSync(path);
   if (!info.isFile() || realpathSync(path) !== path) fail('Route catalog must be a regular unsymlinked file.');
   if (info.size > 32 * 1024 * 1024) fail('Route catalog exceeds 32 MiB.');
   const bytes = readFileSync(path);
   if (bytes.length > 32 * 1024 * 1024) fail('Route catalog exceeds 32 MiB.');
-  const input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  return { input: JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), sha256: hash(bytes) };
+}
+
+function nativeActionIds(input) {
+  if (input?.protocol !== 1 || input.driver !== 'UIKit controls') fail('Expected Scriv UIKit CLI capabilities protocol 1.');
+  list(input.commands);
+  const ids = new Set();
+  for (const key of ['commands', 'publicDelegateCommands', 'publicTextInputCommands', 'semanticApplicationCommands',
+    'semanticGestureCommands', 'semanticMenuActionScopes', 'syntheticFixtureCommands']) {
+    if (!Object.hasOwn(input, key)) continue;
+    list(input[key], true);
+    for (const id of input[key]) { text(id); ids.add(id); }
+  }
+  return ids;
+}
+
+export function readRoutes(root, file, { capabilitiesFile } = {}) {
+  const { input, sha256: routesSha256 } = readCatalogDocument(root, file);
   const native = input?.kind === 'native-cli-scenario-catalog';
   const catalog = native ? nativeScenarioRoutes(input) : input;
   object(catalog, ['version', 'routes'], ['actions']);
@@ -127,7 +144,13 @@ export function readRoutes(root, file) {
       actions.set(action.id, action);
     }
   }
-  return { routesSha256: hash(bytes), executions: [...executions.values()], actions, journeys };
+  let capabilitiesSha256;
+  if (capabilitiesFile !== undefined) {
+    const { input, sha256 } = readCatalogDocument(root, capabilitiesFile);
+    capabilitiesSha256 = sha256;
+    actions = new Map([...nativeActionIds(input)].map(id => [id, actions?.get(id) ?? { id }]));
+  }
+  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256 };
 }
 
 function sourcePrediction({ row, current, errors }) {
@@ -155,9 +178,12 @@ function matchBehavior(plan, actions, candidates) {
 }
 
 export function bindProposalRoutes(tracer, file, routesFile) {
+  return bindCatalogPlans(tracer, file, readRoutes(tracer.root, routesFile));
+}
+
+export function bindCatalogPlans(tracer, file, catalog) {
   const proposal = readProposal(tracer.root, file, tracer.map);
   const inspected = inspectProposal(tracer.root, proposal.value, tracer.inventory());
-  const catalog = readRoutes(tracer.root, routesFile);
   const bindings = [], plans = [], unmatchedRouteIds = [], byPlan = new Map();
   for (const execution of catalog.executions) {
     const matches = proposal.value.scenarios.map(plan => ({ planId: plan.id, paths: plan.existingPaths.filter(path => execution.paths.includes(path)) }))

@@ -1170,3 +1170,65 @@ test('native batch builds a reusable capture set from a verified Scriv receipt',
   assert.equal(existsSync(rejected), false);
   assert.equal(existsSync(join(run.root, analysis, 'new-batch')), false);
 });
+
+test('combined worklist respects current reviewed dispositions without hiding shared or stale gaps', t => {
+  const f = project(t), path = 'tests/e2e/edit.mjs';
+  f.put(path, '// Exact native scenario witness\n');
+  const { id } = f.json(...f.args);
+  f.jsonFile('evidence.json', { status: 'passed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: path, status: 'passed',
+    evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 }, scenarios: [{ id: 'edit', path }] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['activate'], semanticMenuActionScopes: ['edit-scope'] });
+  const plan = (id, extra = {}) => ({ id, title: id, featureId: 'editing', state: 'needs-extension', existingPaths: [path],
+    entryPoint: { path: 'src/app.py', symbol: 'change' }, actionIds: ['activate', 'edit-scope'],
+    plannedActions: ['Change'], expectedOutcomes: ['Visible result'], ...extra });
+  const draft = { schemaVersion: 1, kind: 'proposed-scenario-association-map', status: 'model-proposed-unreviewed',
+    scenarios: [plan('held', { restriction: 'Fixture denies device pairing' }), plan('allowed'), plan('missing', { actionIds: ['drag'] })],
+    associations: [{ rangeId: 'active', featureId: 'editing', status: 'model-proposed-unreviewed',
+      source: { path: 'src/app.py', start: 2, end: 2 }, rationale: 'Known runtime conditions', confidence: 'high', uncertainty: '',
+      proposedAssertions: ['Visible result'], scenarioIds: ['held'] }] };
+  f.jsonFile('draft.json', draft);
+  const prepared = f.json('proposal', 'prepare', '--file', 'draft.json');
+  const args = ['worklist', '--file', 'proposal.json', '--capabilities', 'capabilities.json', '--routes', 'discovery.json',
+    '--capture-set', 'captures.json', '--reference-root', '.'];
+  const report = ids => {
+    const proposal = structuredClone(prepared);
+    proposal.associations[0].scenarioIds = ids;
+    f.jsonFile('proposal.json', proposal);
+    return f.json(...args);
+  };
+  const blocked = report(['held']);
+  assert.equal(blocked.kind, 'source-coverage-worklist');
+  assert.equal(blocked.coverage.passedOnlyKnown.gapLines, 1);
+  assert.equal(blocked.extensionCandidates.gapLines, 0);
+  assert.equal(blocked.decisions.heldGapLines, 1);
+  assert.equal(blocked.decisions.proposal.capabilitiesSha256, f.hash('capabilities.json'));
+  assert.deepEqual(blocked.decisions.queues.blocked.items[0].restrictions, ['Fixture denies device pairing']);
+  const missing = report(['missing']);
+  assert.equal(missing.extensionCandidates.gapLines, 0);
+  assert.deepEqual(missing.decisions.queues['needs-cli-action'].items[0].missingActionIds, ['drag']);
+  const shared = report(['held', 'allowed']);
+  assert.equal(shared.decisions.heldGapLines, 0);
+  assert.equal(shared.extensionCandidates.gapLines, 1);
+  assert.equal(shared.decisions.queues['needs-scenario'].items[0].planId, 'allowed');
+  prepared.associations[0].source.fileSha256 = '0'.repeat(64);
+  const stale = report(['held']);
+  assert.equal(stale.decisions.heldGapLines, 0);
+  assert.equal(stale.extensionCandidates.gapLines, 1);
+  assert.equal(stale.unassigned.gapLines, 1);
+
+  prepared.associations[0].source.fileSha256 = f.hash('src/app.py');
+  f.run(['link', 'src/app.py:2', '--action', 'activate', '--step', `${path}:1`, '--why', 'Existing witness for a shared entry point.']);
+  const heldWitness = report(['held']);
+  assert.equal(heldWitness.linkedGapLines, 0);
+  assert.equal(heldWitness.routeCount, 0);
+  assert.equal(heldWitness.decisions.classifiedGapLines, 1);
+  assert.equal(heldWitness.unassigned.gapLines, 0);
+  const sharedWitness = report(['held', 'allowed']);
+  assert.equal(sharedWitness.linkedGapLines, 1);
+  assert.equal(sharedWitness.routes[0].gapLines, 1);
+  assert.equal(sharedWitness.decisions.classifiedGapLines, 1);
+});

@@ -54,8 +54,10 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   audit status|drain --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal bind --file PROPOSAL --routes CATALOG [--json]
-  worklist --routes CATALOG --capture-set FILE --reference-root DIR [--limit N] [--json]
-  proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR [--limit N] [--json]
+  worklist --routes CATALOG --capture-set FILE --reference-root DIR
+           [--file PROPOSAL] [--capabilities FILE] [--limit N] [--json]
+  proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR
+                    [--capabilities FILE] [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
   proposal prioritize --file PROPOSAL [--limit N] [--json]
   next [--file PROPOSAL] [--limit N] [--scenario ID] [--json]
@@ -133,7 +135,7 @@ async function main(args) {
   if (command === 'proposal' || command === 'next' || command === 'worklist') {
     const [mode, ...flags] = command === 'proposal' ? rest : [command, ...rest], options = {};
     if (!['prepare', 'check', 'report', 'audit', 'prioritize', 'bind', 'worklist', ...(command === 'next' ? ['next'] : [])].includes(mode)) fail('Use proposal prepare, check, report, audit, prioritize, bind or worklist.');
-    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : mode === 'worklist' ? ['--routes', '--capture-set', '--reference-root', '--limit'] : [])];
+    const allowed = ['--file', '--json', ...(mode === 'audit' ? ['--offset', '--limit'] : mode === 'next' ? ['--limit', '--scenario'] : mode === 'prioritize' ? ['--limit'] : mode === 'bind' ? ['--routes'] : mode === 'worklist' ? ['--routes', '--capabilities', '--capture-set', '--reference-root', '--limit'] : [])];
     for (let i = 0; i < flags.length; i++) {
       const flag = flags[i];
       if (!allowed.includes(flag) || Object.hasOwn(options, flag)) fail(`Unknown or duplicate proposal ${mode} option: ${flag}`);
@@ -147,7 +149,9 @@ async function main(args) {
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);
     const tracer = new Tracer(settings);
     if (mode === 'worklist') {
+      if (options['--capabilities'] && !options['--file']) fail('--capabilities requires --file.');
       const result = coverageWorklist(tracer, { file: options['--file'], routesFile: options['--routes'],
+        capabilitiesFile: options['--capabilities'], sourceFirst: command === 'worklist',
         captureSet: options['--capture-set'], referenceRoot: options['--reference-root'],
         limit: options['--limit'] === undefined ? undefined : Number(options['--limit']) });
       console.log(JSON.stringify(result, null, 2));
