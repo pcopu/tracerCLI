@@ -118,3 +118,26 @@ The proposal and route catalog stay unchanged. Existing captures supply the
 measured coverage totals. The proposed priorities describe work to investigate.
 Run scoped scenarios on compatible builds and use `measure gaps` with a frozen
 baseline to verify unique lines actually added and elapsed time.
+
+## Start from current source and CLI routes
+
+```sh
+tracer worklist --routes /external/discovered-routes.json \
+  --capture-set /external/captures.json --reference-root /external/reference/source
+```
+
+This command starts from the measured gaps. It checks the existing Tracer
+source and witness pins and joins current witness paths to exact discovered
+selectors. A single unrestricted selector appears under `routes` with its
+ordered arguments and the contributing link IDs. Identical argument lists
+share one entry. A witness with multiple selectors or a restricted selector
+appears under `selectorReview` with each alternative and its restrictions.
+Inspect the witness assertions before choosing a scenario group or adding a
+missing condition.
+
+`unassigned` lists measured gaps that still need a source-to-CLI match.
+Trace those behaviors to their production callers and check which CLI actions
+already reach them. A stale link or a witness without a discovered selector
+cannot supply a match. Missing mapping data leaves the full gaps visible.
+Use `proposal worklist` when you already have focused behavior plans to rank.
+Both commands are read-only and use the same measured denominator.

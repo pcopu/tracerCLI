@@ -1,4 +1,4 @@
-import { bindProposalRoutes } from './route-bindings.mjs';
+import { bindProposalRoutes, readRoutes } from './route-bindings.mjs';
 import { gapsMeasured } from './measured.mjs';
 import { compactRanges } from './tracer.mjs';
 
@@ -18,11 +18,7 @@ function summarize(files) {
   return { gapLines: sources.reduce((sum, source) => sum + source.gapLines, 0), sources };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, captureSet, referenceRoot, limit = 15 }) {
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Proposal worklist requires --limit 1-1000.');
-  const binding = bindProposalRoutes(tracer, file, routesFile);
-  if (!binding.behaviorRanges) throw new Error('Proposal worklist requires a route catalog with discovered actions.');
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot });
+function gapFiles(measured) {
   const current = new Map(), unavailable = [];
   for (const file of measured.files) {
     const { gapLines, gapRanges } = file.passedOnlyKnown;
@@ -33,6 +29,85 @@ export function coverageWorklist(tracer, { file, routesFile, captureSet, referen
       current.set(file.path, { sha256: file.currentSource.sha256, lines });
     }
   }
+  return { current, unavailable };
+}
+
+function remainingGaps(current, assigned) {
+  const unassigned = [];
+  for (const [path, file] of current) {
+    const lines = file.lines.filter(line => !assigned.get(path)?.has(line));
+    if (lines.length) unassigned.push({ path, gapLines: lines.length, gapRanges: compactRanges(lines) });
+  }
+  unassigned.sort((a, b) => b.gapLines - a.gapLines || a.path.localeCompare(b.path));
+  return unassigned;
+}
+
+const fileSummary = (rows, limit) => ({ files: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) });
+
+function directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit }) {
+  const catalog = readRoutes(tracer.root, routesFile);
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot });
+  const { current, unavailable } = gapFiles(measured);
+  const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
+  const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
+  for (const execution of catalog.executions) {
+    for (const path of execution.paths) {
+      if (!executionsByPath.has(path)) executionsByPath.set(path, []);
+      executionsByPath.get(path).push(execution);
+    }
+  }
+
+  const links = { mapSha256, staleOrInvalid: 0, actionOnly: 0, witnessWithoutRoute: 0 };
+  const fileHashes = new Map();
+  for (const { link, errors } of tracer.inspect(data, state)) {
+    if (errors.length) { links.staleOrInvalid++; continue; }
+    if (!link.step) { links.actionOnly++; continue; }
+    const candidates = executionsByPath.get(link.step.path);
+    if (!candidates) { links.witnessWithoutRoute++; continue; }
+    const { path, start, end } = link.source, measuredFile = current.get(path);
+    if (!measuredFile?.lines.length) continue;
+    if (!fileHashes.has(path)) {
+      const source = tracer.snapshot({ path, start: 1, end: state.files.get(path).length }, state);
+      fileHashes.set(path, source.sha256);
+    }
+    if (fileHashes.get(path) !== measuredFile.sha256) throw new Error(`Current source changed during worklist analysis: ${path}`);
+    const lines = measuredFile.lines.filter(line => start <= line && line <= end);
+    if (!lines.length) continue;
+    const [execution] = candidates;
+    const needsReview = candidates.length !== 1 || execution.restrictions.length > 0;
+    const bucket = needsReview ? reviewByPath : workByRoute;
+    const key = needsReview ? link.step.path : execution;
+    if (!bucket.has(key)) bucket.set(key, { files: new Map(), linkIds: new Set(), witnessPaths: new Set() });
+    const work = bucket.get(key);
+    addLines(work.files, path, lines);
+    work.linkIds.add(link.id);
+    work.witnessPaths.add(link.step.path);
+    addLines(assigned, path, lines);
+  }
+
+  const details = work => ({ linkIds: [...work.linkIds].sort(), ...summarize(work.files) });
+  const routes = [...workByRoute].map(([execution, work]) => ({ id: execution.routeIds[0],
+    routeIds: execution.routeIds, argv: execution.argv, witnessPaths: [...work.witnessPaths].sort(), ...details(work) })).sort(byImpact);
+  const selectorReview = [...reviewByPath].map(([witnessPath, work]) => ({ witnessPath,
+    candidates: executionsByPath.get(witnessPath).map(({ routeIds, argv, restrictions }) => ({ routeIds, argv, restrictions })),
+    ...details(work) })).sort((a, b) => b.gapLines - a.gapLines || a.witnessPath.localeCompare(b.witnessPath));
+  const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
+  return { kind: 'source-coverage-worklist', version: 1,
+    notice: 'Ranks passing gaps from current source and witnessed CLI links. Exact witness-path matches are candidates. No scenario ran and no action attribution is implied.',
+    coverage: { reference, captureSet: capture, allObserved, passedOnlyKnown }, routesSha256: catalog.routesSha256, links,
+    limit, linkedGapLines: [...assigned.values()].reduce((sum, lines) => sum + lines.size, 0),
+    routeCount: routes.length, routes: routes.slice(0, limit),
+    selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
+    unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
+}
+
+export function coverageWorklist(tracer, { file, routesFile, captureSet, referenceRoot, limit = 15 }) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
+  if (file === undefined) return directWorklist(tracer, { routesFile, captureSet, referenceRoot, limit });
+  const binding = bindProposalRoutes(tracer, file, routesFile);
+  if (!binding.behaviorRanges) throw new Error('Proposal worklist requires a route catalog with discovered actions.');
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot });
+  const { current, unavailable } = gapFiles(measured);
 
   const assigned = new Map(), byPlan = new Map();
   const unscored = { staleOrInvalid: 0, unavailableOrUninstrumented: 0 };
@@ -82,13 +157,7 @@ export function coverageWorklist(tracer, { file, routesFile, captureSet, referen
   }
   routes.sort(byImpact);
 
-  const unassigned = [];
-  for (const [path, file] of current) {
-    const lines = file.lines.filter(line => !assigned.get(path)?.has(line));
-    if (lines.length) unassigned.push({ path, gapLines: lines.length, gapRanges: compactRanges(lines) });
-  }
-  unassigned.sort((a, b) => b.gapLines - a.gapLines || a.path.localeCompare(b.path));
-  const fileSummary = rows => ({ files: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) });
+  const unassigned = remainingGaps(current, assigned);
   const { reference, captureSet: capture, allObserved, passedOnlyKnown } = measured;
   return { kind: 'provisional-coverage-worklist', version: 1,
     notice: 'Ranks current source lines without passing observations. Associations and selectors are candidates. Scores can overlap across plans and selectors. No route was executed.',
@@ -98,5 +167,5 @@ export function coverageWorklist(tracer, { file, routesFile, captureSet, referen
     routeCount: routes.length, routes: routes.slice(0, limit),
     queues: Object.fromEntries(Object.entries(queues).map(([step, rows]) => [step, { count: rows.length,
       items: rows.sort((a, b) => b.gapLines - a.gapLines || a.planId.localeCompare(b.planId)).slice(0, limit) }])),
-    unassigned: fileSummary(unassigned), unavailable: fileSummary(unavailable) };
+    unassigned: fileSummary(unassigned, limit), unavailable: fileSummary(unavailable, limit) };
 }

@@ -30,7 +30,7 @@ function regularFile(root, file) {
   }
   return path;
 }
-function readRoutes(root, file) {
+export function readRoutes(root, file) {
   text(file);
   const path = resolve(root, file), info = lstatSync(path);
   if (!info.isFile() || realpathSync(path) !== path) fail('Route catalog must be a regular unsymlinked file.');

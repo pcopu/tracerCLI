@@ -31,6 +31,13 @@ discovery and capability output to verify action IDs and scopes.
    remaining instrumented gaps, the scoped numerator and denominator, and
    elapsed wall time. Preserve the source and build identities.
 
+Start with `tracer worklist --routes CATALOG --capture-set CAPTURES
+--reference-root REFERENCE`. It ranks current measured gaps and reuses valid
+source-to-CLI witnesses. Check `routes` for an existing scenario and
+`selectorReview` for alternatives or restrictions. Trace the biggest
+`unassigned` gaps to their callers and check live CLI discovery for the
+required action. The command works without a proposal or manual links.
+
 Use `tracer proposal bind --file PROPOSAL --routes CATALOG --json` for the
 read-only match. Add the verified discovery IDs to `actions` in the catalog
 and record `entryPoint` and `actionIds` on the relevant proposal scenarios.

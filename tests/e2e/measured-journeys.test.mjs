@@ -986,3 +986,43 @@ test('batched source lookup shares evidence reads while preserving each standalo
   assert.equal(bad.stdout, '');
   assert.match(bad.stderr, /outside the current file/);
 });
+
+test('direct coverage worklist reuses current witnessed links without preparing a proposal', t => {
+  const f = project(t);
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0\nDA:4,0'));
+  f.put('after.lcov', f.record('DA:1,1\nDA:2,0\nDA:3,0\nDA:4,0'));
+  f.refresh();
+  const { id } = f.json(...f.args);
+  f.jsonFile('evidence.json', { status: 'passed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: 'seed', status: 'passed', evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  for (const path of ['tests/single.mjs', 'tests/grouped.mjs', 'tests/stale.mjs']) f.put(path, '// Saved fixture\n');
+  const link = (line, step) => f.run(['link', `src/app.py:${line}`, '--action', 'Open through CLI', ...step, '--why', 'Checks the visible result']);
+  link(2, ['--step', 'tests/single.mjs:1']);
+  link(2, []);
+  link(3, ['--step', 'tests/grouped.mjs:1']);
+  link(4, ['--step', 'tests/stale.mjs:1']);
+  f.put('tests/stale.mjs', '// Changed fixture\n');
+  const selector = ['test', 'open', '--label', 'with spaces'];
+  f.jsonFile('routes.json', { version: 1, routes: [
+    { id: 'primary', argv: selector, paths: ['tests/single.mjs'] },
+    { id: 'alias', argv: selector, paths: ['tests/single.mjs'] },
+    { id: 'default', argv: ['test', 'grouped'], paths: ['tests/grouped.mjs'] },
+    { id: 'private-device', argv: ['test', 'grouped', '--device'], paths: ['tests/grouped.mjs'], restriction: 'Needs paired device' },
+    { id: 'stale', argv: ['test', 'stale'], paths: ['tests/stale.mjs'] },
+  ] });
+  const mapHash = f.hash('docs/testing/code-e2e-links.json');
+  f.run(['init', '--app-json', JSON.stringify([process.execPath, '-e', "require('node:fs').writeFileSync('DIRECT_WORKLIST_RAN_APP', 'bad')"])]);
+  const report = f.json('worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.');
+  assert.equal(report.kind, 'source-coverage-worklist');
+  assert.equal(report.coverage.passedOnlyKnown.gapLines, 3);
+  assert.deepEqual(report.routes.map(row => [row.routeIds, row.argv, row.gapLines]), [[['primary', 'alias'], selector, 1]]);
+  assert.deepEqual(report.selectorReview.items.map(row => [row.witnessPath, row.candidates.map(candidate => candidate.restrictions), row.gapLines]),
+    [['tests/grouped.mjs', [[], ['Needs paired device']], 1]]);
+  assert.equal(report.linkedGapLines, 2);
+  assert.equal(report.links.staleOrInvalid, 1);
+  assert.equal(report.links.actionOnly, 1);
+  assert.deepEqual(report.unassigned.items[0].gapRanges, [[4, 4]]);
+  assert.equal(f.hash('docs/testing/code-e2e-links.json'), mapHash);
+  assert.equal(existsSync(join(f.root, 'DIRECT_WORKLIST_RAN_APP')), false);
+});
