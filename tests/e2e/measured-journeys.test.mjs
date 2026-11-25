@@ -1023,6 +1023,17 @@ test('direct coverage worklist reuses current witnessed links without preparing 
   assert.equal(report.links.staleOrInvalid, 1);
   assert.equal(report.links.actionOnly, 1);
   assert.deepEqual(report.unassigned.items[0].gapRanges, [[4, 4]]);
+  f.put('src/unmeasured.py', 'Available source without measurement.\n');
+  const scoped = f.json('worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.',
+    '--source', 'src/app.py:2-3', '--source', 'src/app.py:2', '--source', 'src/unmeasured.py');
+  assert.deepEqual(scoped.coverage, report.coverage);
+  assert.deepEqual(scoped.sourceFocus, {
+    sources: [{ path: 'src/app.py', start: 2, end: 3 }, { path: 'src/app.py', start: 2, end: 2 }, { path: 'src/unmeasured.py' }],
+    instrumentedLines: 2, observedPassingLines: 0, gapLines: 2, unknown: [{ path: 'src/unmeasured.py' }],
+  });
+  assert.deepEqual(scoped.routes.map(row => row.argv), [selector]);
+  assert.equal(scoped.selectorReview.count, 1);
+  assert.equal(scoped.unassigned.gapLines, 0);
   assert.equal(f.hash('docs/testing/code-e2e-links.json'), mapHash);
   assert.equal(existsSync(join(f.root, 'DIRECT_WORKLIST_RAN_APP')), false);
 });
@@ -1207,6 +1218,11 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.equal(blocked.decisions.heldGapLines, 1);
   assert.equal(blocked.decisions.proposal.capabilitiesSha256, f.hash('capabilities.json'));
   assert.deepEqual(blocked.decisions.queues.blocked.items[0].restrictions, ['Fixture denies device pairing']);
+  const scoped = f.json(...args, '--source', 'src/app.py:1');
+  assert.deepEqual(scoped.coverage, blocked.coverage);
+  assert.equal(scoped.sourceFocus.observedPassingLines, 1);
+  assert.equal(scoped.decisions.heldGapLines, 0);
+  assert.equal(scoped.extensionCandidates.gapLines, 0);
   const missing = report(['missing']);
   assert.equal(missing.extensionCandidates.gapLines, 0);
   assert.deepEqual(missing.decisions.queues['needs-cli-action'].items[0].missingActionIds, ['drag']);
@@ -1280,6 +1296,9 @@ test('worklist ranks fresh replays from retained passing evidence without credit
   const limited = f.json(...args, '--replay', '--limit', '1');
   assert.equal(limited.replayCandidates.gapLines, 4);
   assert.equal(limited.replayCandidates.items.length, 1);
+  const focused = f.json(...args, '--replay', '--source', 'src/app.py:12-14');
+  assert.equal(focused.replayCandidates.gapLines, 2);
+  assert.deepEqual(focused.replayCandidates.items.map(r => r.sources[0].gapRanges), [[[12, 12]], [[14, 14]]]);
 
   const currentFailure = capture('alpha', [3], 'failed');
   const journey = 'tests/e2e/journeys/alpha.mjs';

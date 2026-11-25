@@ -333,7 +333,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The complete independently authored literal help contract includes the proposal lifecycle command, asserted via all three top-level help routes with unchanged project/home state. Existing narrower proposal witness only checked planning prose and is replaced after semantic review. Manual association only, not execution evidence."
     },
@@ -448,8 +448,8 @@
       "id": "07eff98fc12eb0ce",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 315,
-        "end": 318,
+        "start": 317,
+        "end": 320,
         "sha256": "6efa5df45f8ad77cb18d1f5af1d97f827b3391852b46a4921a9a8478df3b828b"
       },
       "actions": [
@@ -735,8 +735,8 @@
       "id": "0dd12a52708a072f",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 383,
-        "end": 387,
+        "start": 385,
+        "end": 389,
         "sha256": "3cbf7110b55760323744de2586c4cc87b0d31352edd0335a3640ed2e9d086160"
       },
       "actions": [
@@ -1003,8 +1003,8 @@
       "id": "15267aac85c92f47",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 348,
-        "end": 356,
+        "start": 350,
+        "end": 358,
         "sha256": "3403375251d2ef55d8ae10a927d5511577b2f9a5000cf30ee8640195be6708ba"
       },
       "actions": [
@@ -1443,8 +1443,8 @@
       "id": "23afedb282a87ac1",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 197,
-        "end": 203,
+        "start": 199,
+        "end": 205,
         "sha256": "c308a27641ed6e94389419679ad7c166b2f3e5aead9681a49f6cf4dc6c5e4ac3"
       },
       "actions": [
@@ -1493,8 +1493,8 @@
       "id": "24afbac2de633a90",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 346,
-        "end": 347,
+        "start": 348,
+        "end": 349,
         "sha256": "b9d1676086b692a82204c5d573e148bcb4358ab11f838c0955c87325f1adfa16"
       },
       "actions": [
@@ -1513,8 +1513,8 @@
       "id": "25001bda12c1b4e3",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 280,
-        "end": 299,
+        "start": 282,
+        "end": 301,
         "sha256": "575927079a5382d05feb120db90b68f1b002ff2984922637233d25fad8bffe13"
       },
       "actions": [
@@ -1791,8 +1791,8 @@
       "id": "2da1ed25efef8116",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 365,
-        "end": 372,
+        "start": 367,
+        "end": 374,
         "sha256": "80900cd6162b690785c5e2dc620c88b9f89ba87becc8ac2bb5ea8fadfb2ff3c2"
       },
       "actions": [
@@ -1971,8 +1971,8 @@
       "id": "31bd77d8ba841aa8",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 381,
-        "end": 382,
+        "start": 383,
+        "end": 384,
         "sha256": "681733c17dc3d190f49a0b25194b8b54137c00695f9cd4070b9d08ff42427c65"
       },
       "actions": [
@@ -2055,8 +2055,8 @@
       "id": "32616f1d64fc5df1",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 432,
-        "end": 435,
+        "start": 434,
+        "end": 437,
         "sha256": "103b822ddf91be3072b69bb876b79aae87d56c4a3b322dc70d52b8509c057abe"
       },
       "actions": [
@@ -2173,8 +2173,8 @@
       "source": {
         "path": "bin/tracer.mjs",
         "start": 135,
-        "end": 144,
-        "sha256": "cf00f91ee3454c12b609247bd939b5666d7a1dee6037e103eb5b0789c92ea66b"
+        "end": 145,
+        "sha256": "68eec553d683a91c5218d90fa4fe99f7edfcfc945fab048c0f1173679f90b0a2"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -2244,8 +2244,8 @@
       "id": "34dfafe22b22f95b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 402,
-        "end": 403,
+        "start": 404,
+        "end": 405,
         "sha256": "6ee412c9caa2d7e0e02f722458bcb86e04e3bad501b525e801d013a0a028d5c2"
       },
       "actions": [
@@ -2498,8 +2498,8 @@
       "source": {
         "path": "bin/tracer.mjs",
         "start": 135,
-        "end": 144,
-        "sha256": "cf00f91ee3454c12b609247bd939b5666d7a1dee6037e103eb5b0789c92ea66b"
+        "end": 145,
+        "sha256": "68eec553d683a91c5218d90fa4fe99f7edfcfc945fab048c0f1173679f90b0a2"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -2563,8 +2563,8 @@
       "id": "3bdce29322ea51cd",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 306,
-        "end": 306,
+        "start": 308,
+        "end": 308,
         "sha256": "a6d6343500b50385b2f5fd6c73905d69b651fd2ba0d63bcad269ab98cfef71e5"
       },
       "actions": [
@@ -2582,8 +2582,8 @@
       "id": "3cd7099cd9bd0290",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 418,
-        "end": 420,
+        "start": 420,
+        "end": 422,
         "sha256": "f08464f82dc3970ad115ba04527ce296eb5531cbccd7fb11d35126ce11c3bd67"
       },
       "actions": [
@@ -2666,8 +2666,8 @@
       "id": "3ea9e6f5b343d55b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 280,
-        "end": 299,
+        "start": 282,
+        "end": 301,
         "sha256": "575927079a5382d05feb120db90b68f1b002ff2984922637233d25fad8bffe13"
       },
       "actions": [
@@ -2687,8 +2687,8 @@
       "id": "3ead52c61928eb08",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 269,
-        "end": 274,
+        "start": 271,
+        "end": 276,
         "sha256": "d527b9d00429293391b2fda564acf748fbef7c2595759756ec88664b35a726ac"
       },
       "actions": [
@@ -2869,8 +2869,8 @@
       "id": "4191a1882a78d57a",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 166,
-        "end": 189,
+        "start": 168,
+        "end": 191,
         "sha256": "57912013cea9bccc99ceb51a616f291ed0d2004966cdc5ea4a17f6f6fddba130"
       },
       "actions": [
@@ -3030,8 +3030,8 @@
       "id": "43d28d7adfd1a141",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 442,
-        "end": 447,
+        "start": 444,
+        "end": 449,
         "sha256": "30ecc2448d4b2f383424eed62584939b535738cc5239f0c8dae567ff750182ad"
       },
       "actions": [
@@ -3126,8 +3126,8 @@
       "id": "451906267b24e80b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 454,
-        "end": 455,
+        "start": 456,
+        "end": 457,
         "sha256": "ddf31dfb09b9eddc5ac91580c65cf47b861dfdb711d52b652a300963dfd7e919"
       },
       "actions": [
@@ -3149,8 +3149,8 @@
       "id": "46255e5b23918195",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 224,
-        "end": 227,
+        "start": 226,
+        "end": 229,
         "sha256": "fe46e96b7e2a68e7e753e25124b510c53491dcbea85fb30cc38746b0f4bb3fc6"
       },
       "actions": [
@@ -3421,8 +3421,8 @@
       "id": "4b1cd8f442a19f26",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 277,
-        "end": 279,
+        "start": 279,
+        "end": 281,
         "sha256": "2ae5fa9f7d5eacd0fe112a4eb0156f675f11dbe0425c4f3d4d87a9d854a4318c"
       },
       "actions": [
@@ -3472,8 +3472,8 @@
       "id": "4baa97e95217af5b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 160,
-        "end": 162,
+        "start": 162,
+        "end": 164,
         "sha256": "4970c875e1a5a2fe06a7c9d9ddb3c76262f5dcf032427f5076bdb87ae3a9c872"
       },
       "actions": [
@@ -3524,8 +3524,8 @@
       "id": "4f88198903cc3c04",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 325,
-        "end": 344,
+        "start": 327,
+        "end": 346,
         "sha256": "da48dae196c055ef8579a02ac4ac6be6963b4b8e34ea0210202e680fa64336b1"
       },
       "actions": [
@@ -3638,7 +3638,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -3766,8 +3766,8 @@
       "id": "596a9c257df9a65f",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 163,
-        "end": 165,
+        "start": 165,
+        "end": 167,
         "sha256": "58e11ca1f444cfad69a1bbb786d4364b659da931c9af8fbc57022082ca8461f2"
       },
       "actions": [
@@ -3942,8 +3942,8 @@
       "id": "5bdeb982db5f8c4b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 442,
-        "end": 445,
+        "start": 444,
+        "end": 447,
         "sha256": "3095b98c0ac522509465c45cfcff19105cfc5ad642b8133811ec042df0cfcb51"
       },
       "actions": [
@@ -4037,8 +4037,8 @@
       "id": "5dafd50abbcfa414",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 442,
-        "end": 449,
+        "start": 444,
+        "end": 451,
         "sha256": "dd16555f3088d6cf29c4ed71f3cb9666967ab38a29a9bdc5bcdd31288dc29152"
       },
       "actions": [
@@ -4057,8 +4057,8 @@
       "id": "5db2f8cf0c8e83b0",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 436,
-        "end": 436,
+        "start": 438,
+        "end": 438,
         "sha256": "a13f9b22a7513816348094a273ad4ab6c5958fffa6aaa2ac4059758c9b319539"
       },
       "actions": [
@@ -4079,8 +4079,8 @@
       "id": "5e4b29dae7edf6bf",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 388,
-        "end": 392,
+        "start": 390,
+        "end": 394,
         "sha256": "2e9e52761870b767f0efa6902d796577710749f8236d385d240b90177d027a22"
       },
       "actions": [
@@ -4158,8 +4158,8 @@
       "id": "604080f17f161f28",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 440,
-        "end": 440,
+        "start": 442,
+        "end": 442,
         "sha256": "9d974e4cbf16ab891ae6f4fbe4b90affcefaa2865f227b2ae47eb9ba920a13ba"
       },
       "actions": [
@@ -4267,7 +4267,7 @@
         "path": "bin/tracer.mjs",
         "start": 137,
         "end": 138,
-        "sha256": "692a72107dcbbea135b63962de58e9b128b84cb8c29af545095babdcd0a2426b"
+        "sha256": "4c236e59b1573c2d8b18252cc51954fb296f31c72df6721df67a292f4427c103"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -4337,8 +4337,8 @@
       "id": "63fe8b2e99941662",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 240,
-        "end": 240,
+        "start": 242,
+        "end": 242,
         "sha256": "e7d543bcc1f1c689f574bfbd98a641fdc3cf39bf3a798074956383d0990af1cb"
       },
       "actions": [
@@ -4507,8 +4507,8 @@
       "id": "687bc0f2e6aecaf0",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 378,
-        "end": 380,
+        "start": 380,
+        "end": 382,
         "sha256": "5897bb714c5640a31691eea58c1af135e2c9e55f38487ac2d246eacbc2cd3a2a"
       },
       "actions": [
@@ -4527,8 +4527,8 @@
       "id": "68d8aa866d86c14b",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 437,
-        "end": 438,
+        "start": 439,
+        "end": 440,
         "sha256": "530a38905f4eadbd4b9898c4abe953b0a2f803f1b1e77261d2657f52d3493094"
       },
       "actions": [
@@ -5242,8 +5242,8 @@
       "id": "7f64a70ab6e35f61",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 357,
-        "end": 364,
+        "start": 359,
+        "end": 366,
         "sha256": "691d0fe7307e0835fb481353f9b61948b2f02b0625e914db4d7444df3c1fcc92"
       },
       "actions": [
@@ -5917,8 +5917,8 @@
       "id": "901b73076a561ede",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 450,
-        "end": 453,
+        "start": 452,
+        "end": 455,
         "sha256": "bd3b5c6bf2af121b45f1cbbae3c2f2d076b3f88fa7371335d98357e45abec40b"
       },
       "actions": [
@@ -6272,8 +6272,8 @@
       "id": "98e270449756ca21",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 321,
-        "end": 329,
+        "start": 323,
+        "end": 331,
         "sha256": "036492c1f1cfba30b7468a16fe086131737a40cbc922194c3ebdc0507210257e"
       },
       "actions": [
@@ -6603,7 +6603,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The complete help contract asserts the public audit queue modes and flags, including audit --help, outside a project without side effects."
     },
@@ -6727,8 +6727,8 @@
       "source": {
         "path": "bin/tracer.mjs",
         "start": 135,
-        "end": 145,
-        "sha256": "201f140049ee5e8dabf1646a066be2f753c3aa339d759430035789841871065a"
+        "end": 146,
+        "sha256": "6980db79d1137ed92f70229d163f9dad57e874f15613f4e9afea4f4762e7ecd4"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -7097,7 +7097,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -7431,7 +7431,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state."
     },
@@ -7539,8 +7539,8 @@
       "id": "b7506250f4fd7406",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 335,
-        "end": 344,
+        "start": 337,
+        "end": 346,
         "sha256": "5854427caefa5af3d26a6863d0d49e498f43e53741eed2a238bed3247f424271"
       },
       "actions": [
@@ -7559,8 +7559,8 @@
       "id": "b76c0e12863d7e24",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 460,
-        "end": 460,
+        "start": 462,
+        "end": 462,
         "sha256": "7ab0de59aeaf9f50d9734c2a17915ba5ab98afc7f80611645018c90afd5b8334"
       },
       "actions": [
@@ -7699,8 +7699,8 @@
       "id": "b9d498ed0e0733ce",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 396,
-        "end": 398,
+        "start": 398,
+        "end": 400,
         "sha256": "bc3fe7c45355cfce9fbad25a6e4f2d43e510095eed152bc762923d773627c03d"
       },
       "actions": [
@@ -8231,8 +8231,8 @@
       "id": "c3c47c5e04060e35",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 300,
-        "end": 310,
+        "start": 302,
+        "end": 312,
         "sha256": "277659fd4c4070650f60a1df854e82c9b8609e00f00d89cb6c87478fda84b0f4"
       },
       "actions": [
@@ -8562,8 +8562,8 @@
       "id": "c8d641b8e15fd21e",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 365,
-        "end": 372,
+        "start": 367,
+        "end": 374,
         "sha256": "80900cd6162b690785c5e2dc620c88b9f89ba87becc8ac2bb5ea8fadfb2ff3c2"
       },
       "actions": [
@@ -8639,8 +8639,8 @@
       "id": "ca8014054a2ce248",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 373,
-        "end": 377,
+        "start": 375,
+        "end": 379,
         "sha256": "5c2581d73060f6b45398e865c3302c9c09da83c724b792c6ff3d529738a16253"
       },
       "actions": [
@@ -8758,8 +8758,8 @@
       "id": "cd3a3cfadf2866f6",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 429,
-        "end": 431,
+        "start": 431,
+        "end": 433,
         "sha256": "54266bdc10b0aa178dc5721f80831fdff164e728009e06343a5cd1dee4670372"
       },
       "actions": [
@@ -8826,8 +8826,8 @@
       "id": "d0e09a3fe2884355",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 441,
-        "end": 441,
+        "start": 443,
+        "end": 443,
         "sha256": "e1f9c8c45059174b794e032045cfb0ac4c3ef377b49c99b0709ce8fb2f5270e4"
       },
       "actions": [
@@ -9179,8 +9179,8 @@
       "id": "d9db0094196a26c1",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 284,
-        "end": 295,
+        "start": 286,
+        "end": 297,
         "sha256": "0e99e7396faabed5fbff9d15d013fa80107fac6a988cf11885370d2f9007f0a0"
       },
       "actions": [
@@ -9605,8 +9605,8 @@
       "id": "e5e4dd5a2ab222bf",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 429,
-        "end": 431,
+        "start": 431,
+        "end": 433,
         "sha256": "54266bdc10b0aa178dc5721f80831fdff164e728009e06343a5cd1dee4670372"
       },
       "actions": [
@@ -9917,8 +9917,8 @@
       "id": "ec46bee5fcc2726f",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 436,
-        "end": 436,
+        "start": 438,
+        "end": 438,
         "sha256": "a13f9b22a7513816348094a273ad4ab6c5958fffa6aaa2ac4059758c9b319539"
       },
       "actions": [
@@ -10001,8 +10001,8 @@
       "id": "efd41dcfca52511f",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 412,
-        "end": 412,
+        "start": 414,
+        "end": 414,
         "sha256": "62b63c03537be3fa9d6f1524e004cdd8e5cba7d21b39eca42d814ceb5e10ff48"
       },
       "actions": [
@@ -10061,7 +10061,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
+        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state. Maintenance review: Complete independent literal help fixture now includes suggest-moves and union with explicit scope modes. Exact output equality/unchanged state assertions remain."
     },
@@ -10119,8 +10119,8 @@
       "id": "f1e58ba82c7777b1",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 454,
-        "end": 459,
+        "start": 456,
+        "end": 461,
         "sha256": "d8bc72a69839575ef96eab74f3efa0f9ea8694aef0f73e61e9375a782e86b339"
       },
       "actions": [
@@ -10140,8 +10140,8 @@
       "id": "f2888d3f4c7101aa",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 439,
-        "end": 439,
+        "start": 441,
+        "end": 441,
         "sha256": "a79cb294261904b89a158a706180e6f16989d4611081fd16fe1c1a2b9b4539ad"
       },
       "actions": [
@@ -10341,8 +10341,8 @@
       "id": "f840a27ec2174b92",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 311,
-        "end": 320,
+        "start": 313,
+        "end": 322,
         "sha256": "043eb082613bfb4835a90234e1283ba8d6abf3c4c908e242794306afe7a8a5fe"
       },
       "actions": [
@@ -10798,8 +10798,8 @@
       "id": "cf2b9bdefc6b68cf",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 220,
-        "end": 222,
+        "start": 222,
+        "end": 224,
         "sha256": "a8b2aa395d2e1383490ec732a30e7219846c8634fd035dc7d0b19bd262ac1e11"
       },
       "actions": [
@@ -10855,9 +10855,9 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 192,
-        "end": 242,
-        "sha256": "36da6a16e429a9753563b941b0ba0033404546806bc77ac235b7e6cdab6afaa5"
+        "start": 223,
+        "end": 274,
+        "sha256": "cf4463ef0b41bef4b52a7bbd0503f09fe290d76c78aafef4c5efe3ca6242da5a"
       },
       "actions": [
         "tracer proposal worklist with a pinned proposal, discovered routes and a reference capture set",
@@ -10875,8 +10875,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 244,
-        "end": 255,
+        "start": 276,
+        "end": 287,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -10895,9 +10895,9 @@
       "id": "998eb7b7c663eacb",
       "source": {
         "path": "bin/tracer.mjs",
-        "start": 146,
-        "end": 159,
-        "sha256": "95f80f12911fc4b5157598d5ea581e098c9be21bea854d3b318066fdbb890115"
+        "start": 147,
+        "end": 161,
+        "sha256": "3e782a638f1b85b9c80a96cff497e6cb63dee39522e3ee2f3bf9cfa1d5ac7ea2"
       },
       "actions": [
         "tracer proposal worklist with exact current route catalog and reference capture"
@@ -10934,9 +10934,9 @@
       "id": "b5f5d9570d1fd4d6",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 110,
-        "end": 176,
-        "sha256": "b2e63dfefe4581d49156c69377bba1d9c50c8e18a935dfab7034ec4c6279588e"
+        "start": 139,
+        "end": 206,
+        "sha256": "30307ee3e84a47a1df57e705c7534cd68e92f53c4221f5006157caeb2de4b173"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -10945,8 +10945,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1014,
-        "end": 1027,
-        "sha256": "0249c305098613422a34856c1c8e163608812df740522cb8e3c0a3af8452a3a2"
+        "end": 1038,
+        "sha256": "0a79d17b3ddd55604fc27cb6bdbfad7d679ec5656180b3577a8f85ecae3d58a1"
       },
       "why": "Current witnesses lead to candidate CLI selectors while stale or ambiguous links stay out of direct route selection."
     },
@@ -10954,9 +10954,9 @@
       "id": "3367a09dd1f0bb94",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 47,
-        "end": 77,
-        "sha256": "0f3b4ed767929af2e3bb407d83b6c098a0cf1395ae1f1873df933dcff876b0fd"
+        "start": 76,
+        "end": 106,
+        "sha256": "efbd088013661a5c2abdc70f0c8a7345f56d7d63ff76db5a71c87de68cf98978"
       },
       "actions": [
         "tracer worklist with discovered selectors and exact recorded journey labels",
@@ -10964,8 +10964,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1050,
-        "end": 1072,
+        "start": 1061,
+        "end": 1083,
         "sha256": "8680991e9e181a8965aa82a36f9c892dbfb504bbf56ff51e0ef92bc4c4447711"
       },
       "why": "One supported prior scenario is more actionable than several candidates around the same uncovered range."
@@ -10984,8 +10984,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1042,
-        "end": 1059,
+        "start": 1053,
+        "end": 1070,
         "sha256": "d7e2a8dd3ac1c313fb1bebd22f3e2c05f91cd02db1b5fc8e013fa8d8a9d030ce"
       },
       "why": "A capture on either side or a failing interval cannot by itself supply a passing scenario lead."
@@ -11004,8 +11004,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1086,
-        "end": 1108,
+        "start": 1097,
+        "end": 1119,
         "sha256": "e932b111c57824d4281c6ac8c7550b26b4d1877e4d0e3e2d80984d0af572463e"
       },
       "why": "Native discovery can supply recorded journey labels directly while preserving its original restrictions."
@@ -11024,8 +11024,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1122,
-        "end": 1157,
+        "start": 1133,
+        "end": 1168,
         "sha256": "80640713bd85b27effc4c0275e947be648548a65a3bef648f622399d3262ba04"
       },
       "why": "The added outcome is bound to the receipt and exact measured run."
@@ -11044,8 +11044,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1139,
-        "end": 1171,
+        "start": 1150,
+        "end": 1182,
         "sha256": "1aadc34de86151cb9cfd30b90acbef6356fe921d42c575f0242f17e7dfe8ff97"
       },
       "why": "A saved batch report reproduces exact measured comparison and protects the baseline and source."
@@ -11054,8 +11054,8 @@
       "id": "55a535312b44b050",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 156,
-        "end": 166,
+        "start": 185,
+        "end": 195,
         "sha256": "7115fba002a65f153bc28ee3d642db4f40c8b34e56af22f758c69b2b90ee9512"
       },
       "actions": [
@@ -11063,9 +11063,9 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1203,
-        "end": 1233,
-        "sha256": "3b2160979d76a0ae73d91b698ae31dad723ce8af9f4eb776792b636bca3e4723"
+        "start": 1214,
+        "end": 1249,
+        "sha256": "123b29a3a9fa39219a538ce2bb919b40ff8af861a3afd41acc39b65f46420345"
       },
       "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
     },
@@ -11082,9 +11082,9 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1203,
-        "end": 1216,
-        "sha256": "559be276c631c0d595a2df46605d4898c0efad7628f62a4eb41569c22279ac84"
+        "start": 1214,
+        "end": 1232,
+        "sha256": "2cc3ad0c625d44acebfb42ff87b06cd8603382625a3262b284a1e16f2f6d9fed"
       },
       "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
     },
@@ -11101,9 +11101,9 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1257,
-        "end": 1315,
-        "sha256": "0a81561bb25eba7d840d55b6e03c0a1213048e610be298a9e33dcd6ed729bd75"
+        "start": 1273,
+        "end": 1334,
+        "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
     },
@@ -11111,18 +11111,18 @@
       "id": "0dc104fa30534f2d",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 79,
-        "end": 108,
-        "sha256": "1650943e1d141d4fed9a20c899c76f26317d32aafcd876887f37a09332280f15"
+        "start": 108,
+        "end": 137,
+        "sha256": "35f9a6c3447ddc3a97a627f256f7e9caeba9eeb2ec28e6527e3f59d25bd72fb4"
       },
       "actions": [
         "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1270,
-        "end": 1315,
-        "sha256": "dc21c5670e55804c69d235842b0eee8711c0eba5f0f63add6c061e2e42b84f23"
+        "start": 1286,
+        "end": 1334,
+        "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
     },
@@ -11139,11 +11139,30 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1284,
-        "end": 1310,
+        "start": 1303,
+        "end": 1329,
         "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
+    },
+    {
+      "id": "df34762847760576",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 21,
+        "end": 62,
+        "sha256": "0f16ba0c5e5adf7673c2fac4009ceb0dc0901aeda2f2b4b02d95c0a7b83d210a"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --source src/app.py:2-3 --source src/app.py:2 --source src/unmeasured.py"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1026,
+        "end": 1037,
+        "sha256": "e66237e414445ba159d1a6beccf84ad7e4cdc9f7bf8e7b0355ae152144ff244f"
+      },
+      "why": "Clip ranked source gaps to deduplicated exact selectors, retain project coverage and report a source without reference instrumentation."
     }
   ],
   "ignoredSources": [

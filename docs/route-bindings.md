@@ -191,6 +191,24 @@ keeps the gap in `unassigned` until it has a current witness or a scored plan.
 The anchor examples retain their full surrounding gap for context. Candidate
 `sources` contain the exact lines still suggested for extension.
 
+## Rank the routes for a source range
+
+```sh
+tracer worklist --routes /external/scriv-discovery.json \
+  --capture-set /external/captures.json --reference-root /external/new-build/analysis/source \
+  --source src/service.swift:60-124 --source src/controller.swift:90-105
+```
+
+Repeat `--source` to examine related code together. Tracer ranks links,
+scenario extensions, replay candidates and reviewed decisions within the
+selected ranges before applying `--limit`. A path without a range selects the
+whole file. Overlapping selections count each reference line once. The
+project-wide coverage counts stay intact, and `sourceFocus` reports the
+selected instrumented, passing and gap counts. Selections with no reference
+instrumentation are listed under `unknown`. Use `measure where` to inspect
+individual physical lines and prior witnesses. Stale and unavailable files
+retain their reference denominator under `unavailable`.
+
 ## Recover coverage on a rebuilt source tree
 
 ```sh

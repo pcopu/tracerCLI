@@ -46,6 +46,9 @@ using Scriv’s UIKit capability response. Read `decisions.queues` alongside
 scenario leads. A current reviewed blocker or missing action can hold a range
 out of the scenario queue. Shared code stays eligible through other plans.
 Start with the largest actionable group and keep the original denominator.
+Add `worklist --source PATH[:RANGE]` to rank CLI routes for a specific
+behavior. Repeat `--source` for its controller, store and shared helpers.
+Read `sourceFocus` for the selected counts and `coverage` for the full scope.
 
 After a rebuild, add `--replay` and use a capture set containing both the new
 reference and retained earlier results. `replayCandidates` ranks the existing

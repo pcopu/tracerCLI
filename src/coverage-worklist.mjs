@@ -1,6 +1,6 @@
 import { bindCatalogPlans, readRoutes } from './route-bindings.mjs';
 import { gapsMeasured } from './measured.mjs';
-import { compactRanges } from './tracer.mjs';
+import { compactRanges, parseRange } from './tracer.mjs';
 
 const nextSteps = ['action-and-scenario', 'needs-scenario', 'needs-cli-action', 'review-cli-match', 'review-runtime-path', 'blocked'];
 const byImpact = (a, b) => b.gapLines - a.gapLines || a.id.localeCompare(b.id);
@@ -18,18 +18,47 @@ function summarize(files) {
   return { gapLines: sources.reduce((sum, source) => sum + source.gapLines, 0), sources };
 }
 
-function gapFiles(measured) {
-  const current = new Map(), unavailable = [];
-  for (const file of measured.files) {
-    const { gapLines, gapRanges } = file.passedOnlyKnown;
-    if (file.status !== 'current') {
-      unavailable.push({ path: file.path, status: file.status, gapLines, gapRanges });
-    } else {
-      const lines = gapRanges.flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, i) => start + i));
-      current.set(file.path, { sha256: file.currentSource.sha256, lines });
-    }
+function sourceSelection(selectors) {
+  if (!selectors?.length) return undefined;
+  if (selectors.length > 32) throw new Error('Worklist accepts at most 32 --source selectors.');
+  const sources = selectors.map(selector => parseRange(selector, false)), byPath = new Map();
+  for (const source of sources) {
+    if (!byPath.has(source.path)) byPath.set(source.path, []);
+    byPath.get(source.path).push(source);
   }
-  return { current, unavailable };
+  return { sources, intersects: (path, start, end = start) => byPath.get(path)?.some(window =>
+    start <= (window.end ?? Infinity) && (window.start ?? 1) <= end) ?? false };
+}
+
+const expandRanges = ranges => ranges.flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, i) => start + i));
+
+function gapFiles(measured, focus) {
+  const current = new Map(), unavailable = [];
+  let sourceFocus;
+  if (focus) {
+    const unknown = focus.sources.filter(({ path, start = 1, end = Infinity }) =>
+      !measured.files.some(file => file.path === path && file.instrumentedRanges.some(([lo, hi]) => start <= hi && lo <= end)));
+    sourceFocus = { sources: focus.sources, instrumentedLines: 0, observedPassingLines: 0, gapLines: 0, unknown };
+  }
+  for (const file of measured.files) {
+    const { path, status } = file;
+    let { gapLines, gapRanges } = file.passedOnlyKnown;
+    if (focus) {
+      if (!focus.intersects(path, 1, Infinity)) continue;
+      const select = line => focus.intersects(path, line);
+      const instrumentedLines = expandRanges(file.instrumentedRanges).filter(select).length;
+      if (!instrumentedLines) continue;
+      const gaps = expandRanges(gapRanges).filter(select);
+      gapLines = gaps.length;
+      gapRanges = compactRanges(gaps);
+      sourceFocus.instrumentedLines += instrumentedLines;
+      sourceFocus.observedPassingLines += instrumentedLines - gapLines;
+      sourceFocus.gapLines += gapLines;
+    }
+    if (status !== 'current') unavailable.push({ path, status, gapLines, gapRanges });
+    else current.set(path, { sha256: file.currentSource.sha256, lines: expandRanges(gapRanges) });
+  }
+  return { current, unavailable, sourceFocus };
 }
 
 function remainingGaps(current, assigned) {
@@ -55,7 +84,7 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
 
   let gapLines = 0, exclusiveGapLines = 0;
   for (const { path, range: [start, end], executions } of byGap.values()) {
-    const lines = current.get(path).lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line));
+    const lines = current.get(path)?.lines.filter(line => start <= line && line <= end && !assigned.get(path)?.has(line)) ?? [];
     if (!lines.length) continue;
     gapLines += lines.length;
     const exclusive = executions.size === 1;
@@ -76,12 +105,12 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
   return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
 }
 
-function replayCandidates(sourcesByRoute, held, limit, failures) {
+function replayCandidates(sourcesByRoute, { held, limit, failures, focus }) {
   const rows = [], union = new Map();
   for (const [execution, sources] of sourcesByRoute) {
     const available = new Map();
     for (const [path, lines] of sources) {
-      const eligible = [...lines].filter(line => !held?.get(path)?.has(line));
+      const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && (!focus || focus.intersects(path, line)));
       if (eligible.length) { addLines(available, path, eligible); addLines(union, path, eligible); }
     }
     if (available.size) rows.push({ execution, available, ...summarize(available) });
@@ -107,7 +136,7 @@ function replayCandidates(sourcesByRoute, held, limit, failures) {
   return { count, gapLines: summarize(union).gapLines, items };
 }
 
-function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit }) {
+function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
@@ -169,33 +198,36 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
     ...(extensions && { extensionCandidates: extensions }),
-    ...(replays && { replayCandidates: replayCandidates(replays.eligible, held, limit),
-      failedReplays: replayCandidates(replays.failed, held, limit, replays.failures) }),
+    ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, limit, focus }),
+      failedReplays: replayCandidates(replays.failed, { held, limit, focus, failures: replays.failures }) }),
+    ...(sourceFocus && { sourceFocus }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, limit = 15 }) {
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
+  const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;
   const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot,
     extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
-  const scope = gapFiles(measured);
-  const decisions = binding && proposalWorklist({ binding, measured, ...scope, capabilitiesSha256: catalog.capabilitiesSha256, limit });
+  const scope = gapFiles(measured, focus);
+  const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;
-  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit });
+  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus });
 }
 
-function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit }) {
+function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit, focus }) {
   const assigned = new Map(), byPlan = new Map(), held = new Map();
   const heldStatuses = new Set(['blocked', 'needs-cli-action']);
   const statuses = new Map(binding.plans.map(({ id, behavior }) => [id, behavior.next]));
   const unscored = { staleOrInvalid: 0, unavailableOrUninstrumented: 0 };
   for (const prediction of binding.behaviorRanges) {
     const { path, start, end, fileSha256 } = prediction.source;
+    if (focus && !focus.intersects(path, start, end)) continue;
     const measuredFile = current.get(path);
     if (!prediction.scoreEligible) { unscored.staleOrInvalid++; continue; }
     if (measuredFile?.sha256 !== fileSha256) { unscored.unavailableOrUninstrumented++; continue; }
