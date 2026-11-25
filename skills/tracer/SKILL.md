@@ -274,7 +274,8 @@ the intended build and production entry point before adding an action.
 Before proposing a new test for a requested source range or claiming code is already covered, query the existing real captures with `tracer measure where --capture-set /external/captures.json --source PATH:START-END`. For a whole capture scope, run `tracer measure union --capture-set /external/captures.json --json` first. Use the resulting observations and bound scenario labels to reuse existing execution, then choose supported routes for actual gaps. Prefer the concise plaintext lookup, grouped by journey/outcome with merged ranges and interval counts. Use `--json` for programmatic inspection and keep detailed interval/action payloads in external artifacts instead of dumping them into the conversation. This required lookup adds no manual-link or assertion-review gate and grants no permission to force production branches.
 
 Repeat `--source` in one `measure where` call when checking several ranges in
-one capture set. This shares input validation and preserves each lookup result.
+one capture set. Tracer validates the shared captures once and retains counter
+values for the requested files while preserving complete evidence identities.
 
 Keep a reusable external capture-set file such as `{"version":1,"inputRoots":["first/source","second/source"],"outcomes":"outcomes.json","scope":"source-lines"}`. Paths inside it resolve relative to its directory. `outcomes` is optional, with producer-declared statuses and digest-bound evidence. Scope keeps its strict/source-lines meanings. Use the spec to avoid reconstructing long input-root argument lists. Direct repeatable `--input-root` remains supported by union. Without a capture set, `tracer measure where --source PATH:START-END` checks the selected root's conventional measurement dataset, returning unknown ranges when usable instrumentation is absent. Keep capture-set inputs separate from direct roots/outcomes/scope options.
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1018,6 +1018,55 @@ test('batched source lookup shares evidence reads while preserving each standalo
   const bad = first.run([...base, '--source', selectors[0], '--source', 'src/app.py:999', '--json'], 1);
   assert.equal(bad.stdout, '');
   assert.match(bad.stderr, /outside the current file/);
+});
+
+test('batched source lookup fits a bounded heap with many unrelated counters', t => {
+  const f = project(t);
+  const unrelated = 'large unrequested file\n'.repeat(20000);
+  f.put('src/other.py', unrelated);
+  f.jsonFile('sources.json', { files: [
+    { path: 'src/app.py', sha256: sha(source) }, { path: 'src/other.py', sha256: sha(unrelated) },
+  ] });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const otherRecord = `SF:/capture/src/other.py\n${Array.from({ length: 20000 }, (_, index) => `DA:${index + 1},0`).join('\n')}\nend_of_record\n`;
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,1') + otherRecord);
+  f.put('after.lcov', f.record('DA:1,2\nDA:2,1') + otherRecord);
+  f.refresh();
+  f.json(...f.args);
+  const roots = Array.from({ length: 40 }, (_, index) => `capture-${index}`);
+  for (const root of roots) {
+    f.put(join(root, 'src/app.py'), source);
+    mkdirSync(join(f.root, root, dirname(dataPath)), { recursive: true });
+    linkSync(join(f.root, dataPath), join(f.root, root, dataPath));
+    execFileSync('git', ['init', '-q', join(f.root, root)]);
+  }
+  f.jsonFile('captures.json', { version: 1, inputRoots: roots });
+  const base = ['measure', 'where', '--capture-set', 'captures.json'];
+  const selectors = ['src/app.py:1', 'src/app.py:2'];
+  const args = [...base, ...selectors.flatMap(selector => ['--source', selector]), '--json'];
+  const result = spawnSync(process.execPath, ['--max-old-space-size=48', cli, '--root', f.root, ...args], {
+    cwd: f.root, encoding: 'utf8', timeout: 30000,
+    env: { ...process.env, TRACER_NO_UPDATE: '1', HOME: f.root, CODEX_HOME: join(f.root, '.codex') },
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  const { reports } = JSON.parse(result.stdout);
+  assert.equal(reports[0].intervals.duplicates, roots.length - 1);
+  assert.equal(reports[0].families[0].scopeFiles, 2);
+  assert.deepEqual(reports, selectors.map(selector => f.json(...base, '--source', selector)));
+
+  const changedDataset = join(roots[1], dataPath);
+  f.jsonFile('captures.json', { version: 1, inputRoots: roots.slice(0, 2) });
+  const data = JSON.parse(readFileSync(join(f.root, changedDataset)));
+  const [interval] = data.intervals;
+  interval.files.find(file => file.path === 'src/other.py').rows[0][2] = 1;
+  rmSync(join(f.root, changedDataset));
+  f.jsonFile(changedDataset, data);
+  assert.match(f.run(args, 1).stderr, /payload digest mismatch/i);
+  const { payloadSha256, ...payload } = interval;
+  interval.payloadSha256 = sha(JSON.stringify(payload));
+  f.jsonFile(changedDataset, data);
+  assert.match(f.run(args, 1).stderr, /Conflicting duplicate interval/);
 });
 
 test('direct coverage worklist reuses current witnessed links without preparing a proposal', t => {

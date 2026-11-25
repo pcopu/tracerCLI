@@ -313,6 +313,14 @@ function summarizeInterval(interval, scopes) {
   return { id: interval.id, manifest: interval.manifest, identity, files };
 }
 
+function selectLookupFiles(interval, paths, scopes) {
+  // Duplicate checks and source families still describe the complete interval.
+  const identity = intervalIdentity(interval);
+  identity.scope = intervalScope(interval, scopes);
+  const files = interval.files.filter(file => paths.has(file.path));
+  return { id: interval.id, manifest: interval.manifest, identity, files };
+}
+
 function* increasedLines({ lines, increased }) {
   for (let index = 0; index < lines.length; index++) if (increased[index]) yield lines[index];
 }
@@ -346,6 +354,9 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
     }
     const snapshot = reused ?? { ...store.readMap({ withHash: true }), checked: new Map() };
     if (!reused && retainFiles) snapshot.data.intervals = snapshot.data.intervals.map(interval => summarizeInterval(interval, scopes));
+    if (!reused && lookupPath && shared?.lookupPaths) {
+      snapshot.data.intervals = snapshot.data.intervals.map(interval => selectLookupFiles(interval, shared.lookupPaths, scopes));
+    }
     snapshots?.set(store.root, snapshot);
     const { data, datasetSha256, checked } = snapshot;
     if (isReference && !data.intervals.length) fail('The reference measurement dataset must contain at least one interval.');
@@ -543,7 +554,8 @@ export function whereMeasured(root, { source, captureSet } = {}, shared) {
 
 export function whereMeasuredBatch(root, { sources, captureSet }) {
   if (sources.length < 2 || sources.length > 32) fail('Batched source lookup requires 2-32 --source selectors.');
-  const shared = measurementSnapshot();
+  const lookupPaths = new Set(sources.map(source => parseRange(source, false).path));
+  const shared = { ...measurementSnapshot(), lookupPaths };
   const reports = sources.map(source => whereMeasured(root, { source, captureSet }, shared));
   const store = new MeasuredStore(root);
   for (const { source } of reports) {
