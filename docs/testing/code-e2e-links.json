@@ -72,8 +72,8 @@
       "id": "01e23517dc00d2b2",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 441,
-        "end": 452,
+        "start": 451,
+        "end": 462,
         "sha256": "80c0a81fc864bd233efaaaaba49f51d72eff6ea20653a17372f1db5eda53b6ab"
       },
       "actions": [
@@ -336,6 +336,25 @@
       "why": "The public packet command supplies the exact candidate identity used by collision tests without changing the sidecar."
     },
     {
+      "id": "04a6190ee96ff1c7",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 343,
+        "end": 347,
+        "sha256": "624c2bbaf5bc026d4ab5c6cd9f98f9ec92a5566812265a30503f2569b7adaa10"
+      },
+      "actions": [
+        "tracer worklist with compatible captures and selectors for a covered and an uncovered branch"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 2363,
+        "end": 2374,
+        "sha256": "d7f0171a6e2138cd3e9bf2c5e6277bed80b98caca0386ff15f2bc6b9d59ffae6"
+      },
+      "why": "Declared condition branches get distinct counts from their exact selected lines and retain their independent case outcomes."
+    },
+    {
       "id": "0504d84943994570",
       "source": {
         "path": "bin/tracer.mjs",
@@ -466,9 +485,9 @@
       "id": "0769f0badacd1efd",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 660,
-        "end": 668,
-        "sha256": "55c1a657c851816e6fba880b79c85935d4567b8671e94b054704e2b4a7008d3f"
+        "start": 670,
+        "end": 679,
+        "sha256": "38ed89be86ad5bdae836d58513cf824f892b70f562870a1dbc1e19e3968c4d76"
       },
       "actions": [
         "tracer worklist --routes discovery.json --capture-set captures.json --reference-root . --source src/app.py:2",
@@ -978,8 +997,8 @@
       "id": "11deca609e93c532",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 422,
-        "end": 486,
+        "start": 432,
+        "end": 496,
         "sha256": "04ff5a04512b24ef0328b64e6b724606c1af025a2a7605ff97d720937e4f34c6"
       },
       "actions": [
@@ -1018,8 +1037,8 @@
       "id": "12bdd57c2fae1428",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 611,
-        "end": 613,
+        "start": 621,
+        "end": 623,
         "sha256": "751a4e069ac32a8efed6036ae82bd27aaeb6b430747223d691cef1df566d8dc0"
       },
       "actions": [
@@ -1064,8 +1083,8 @@
       "id": "13de528705715899",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 551,
-        "end": 582,
+        "start": 561,
+        "end": 592,
         "sha256": "d3d82c50d44537c77b41ab2dcd7c0fdbb1a6ccb94170ea7af1adb99ab853a1e4"
       },
       "actions": [
@@ -1403,8 +1422,8 @@
       "id": "1a8e5bca6cf7722c",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 732,
-        "end": 743,
+        "start": 743,
+        "end": 754,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -2221,8 +2240,8 @@
       "id": "304334ecffacc0ce",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 41,
-        "end": 43,
+        "start": 44,
+        "end": 46,
         "sha256": "e0031eb1dfb6c990d052e3f33a8c73fd72882e286ba2cea5f9b658ea09aad98a"
       },
       "actions": [
@@ -3492,8 +3511,8 @@
       "id": "44e751fa671f95f4",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 61,
-        "end": 64,
+        "start": 64,
+        "end": 67,
         "sha256": "6fa901f1cf3a2f169bc6d42e5985f52b5f67666210d03c4c2284bfb6c48a647a"
       },
       "actions": [
@@ -3501,8 +3520,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2387,
-        "end": 2390,
+        "start": 2411,
+        "end": 2414,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An available existing extension lead receives inspect-existing-case guidance so the fixture and observable assertion are reviewed before a run."
@@ -3679,8 +3698,8 @@
       "id": "4895821b32ced41d",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 622,
-        "end": 646,
+        "start": 632,
+        "end": 656,
         "sha256": "2ef7be3c47e2385adf64b7aba07b0fb5ad1d3b43fb308e1075bf0c47335dc940"
       },
       "actions": [
@@ -5137,8 +5156,8 @@
       "id": "6eddc42534e5bbf8",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 52,
-        "end": 52,
+        "start": 55,
+        "end": 55,
         "sha256": "119a6c7bda35d09e77be3886a053a0a07f53da333499e21cd19fba0221b471a5"
       },
       "actions": [
@@ -5146,8 +5165,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2387,
-        "end": 2390,
+        "start": 2411,
+        "end": 2414,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An existing passing neighboring scenario remains a concrete extension lead when discovery has no action declaration."
@@ -5236,8 +5255,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 277,
-        "end": 347,
-        "sha256": "86daa3714ecfb4a73dd7ff157ae1c1ce6620a7b0ef69cbcb7ca0fa7a78136098"
+        "end": 357,
+        "sha256": "7b3b173a21d2e6d904d0fa02f38940414e7135b31fd64983f016954dc42ec034"
       },
       "actions": [
         "tracer worklist --routes discovery.json --capture-set captures.json --reference-root . --source src/lease.py:2 --function-map functions.json"
@@ -5254,8 +5273,8 @@
       "id": "713c75f7116213a8",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 453,
-        "end": 458,
+        "start": 463,
+        "end": 468,
         "sha256": "67a2188d2e6f1bdeaacf915fea3267d555fa16e116f17b21d3d40401ca68c0a1"
       },
       "actions": [
@@ -5444,8 +5463,8 @@
       "id": "73b9916ede249511",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 35,
-        "end": 37,
+        "start": 37,
+        "end": 39,
         "sha256": "ddb4aa7f96aeb91244ef0c1859bee92c90110a9648a74bc98cf9292b113e2630"
       },
       "actions": [
@@ -5453,8 +5472,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2377,
-        "end": 2386,
+        "start": 2401,
+        "end": 2410,
         "sha256": "4d06090863f60b20c45df8106082baf390b1f1926a501349541fa4a95aaf96ae"
       },
       "why": "A complete compatible passing union directs evidence reuse before case selection, both when action declarations are available and when they are absent."
@@ -5710,8 +5729,8 @@
       "id": "798c072498d49a5a",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 433,
-        "end": 475,
+        "start": 443,
+        "end": 485,
         "sha256": "606809aaec7a8cd576034486c35d8468fe3c64bc7bdcc792c5d5c908a40b6bfd"
       },
       "actions": [
@@ -5814,8 +5833,8 @@
       "id": "7c923ab382733f6d",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 18,
-        "end": 26,
+        "start": 20,
+        "end": 28,
         "sha256": "b5d9e8a7effb3d6ac2f2d106f81432d5dfa41727193307b69739c6b166af21f5"
       },
       "actions": [
@@ -6349,6 +6368,25 @@
       "why": "Source edits/deletion remove current credit while preserving historical counters and evidence bytes."
     },
     {
+      "id": "88dc0867a23e17de",
+      "source": {
+        "path": "src/coverage-guidance.mjs",
+        "start": 34,
+        "end": 43,
+        "sha256": "4213c94ba75e0fbe8ac45210c002cc35e44e3011af99be8fdefb80840197496a"
+      },
+      "actions": [
+        "tracer worklist with a covered pinned branch and a separate uncovered selected range"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 2376,
+        "end": 2381,
+        "sha256": "eb6e4c9cd878a0b63d2ee9602e9df470998129b688a2b3fb012b9df828f12834"
+      },
+      "why": "The covered condition keeps its reuse note and the unresolved range keeps its own next lead."
+    },
+    {
       "id": "8986de67be565b1f",
       "source": {
         "path": "src/scenarios.mjs",
@@ -6636,8 +6674,8 @@
       "id": "8fc7e970227bbb00",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 65,
-        "end": 67,
+        "start": 68,
+        "end": 70,
         "sha256": "350f4226755a54ac1ca369b51add2072541bd59e59fc1fbe3251e3b462054a33"
       },
       "actions": [
@@ -6705,8 +6743,8 @@
       "id": "90af163ab5adbf52",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 551,
-        "end": 582,
+        "start": 561,
+        "end": 592,
         "sha256": "d3d82c50d44537c77b41ab2dcd7c0fdbb1a6ccb94170ea7af1adb99ab853a1e4"
       },
       "actions": [
@@ -6888,9 +6926,9 @@
       "id": "9646e64362cf0af4",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 27,
-        "end": 40,
-        "sha256": "d09752995fdb2e2ba2f304790c6dfcca97a27eecb73ca2baab7195991cc8e93c"
+        "start": 29,
+        "end": 43,
+        "sha256": "40880615e4fc73d2601094f7c166ea5376f70feda5fa36f04bc2d774cb6ddaa6"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root .",
@@ -7308,8 +7346,8 @@
       "id": "9c4a6c17469ef282",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 470,
-        "end": 473,
+        "start": 480,
+        "end": 483,
         "sha256": "6ce2d7a114db05f745af42e433c0181499f3a13bf0ae2237b82a12c1ca3e600e"
       },
       "actions": [
@@ -7756,8 +7794,8 @@
       "id": "a9c56ad42074bf69",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 517,
-        "end": 544,
+        "start": 527,
+        "end": 554,
         "sha256": "a6eb3abab8e0c7dc60f6f1fba0fcfc75548499a8c5406032d0baea2628078370"
       },
       "actions": [
@@ -7838,8 +7876,8 @@
       "id": "aab6d4387b01e543",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 68,
-        "end": 69,
+        "start": 71,
+        "end": 72,
         "sha256": "977d72df7b2180994cc196f19dafcb7ea81d6f4ae8d20a2d09a1c741e9082681"
       },
       "actions": [
@@ -9659,9 +9697,9 @@
       "id": "cacf75c19007ee19",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 661,
-        "end": 668,
-        "sha256": "d95aa67de06db1bf90a683af1b8ce34baa8156b62f9e7620b18eba4a86415298"
+        "start": 671,
+        "end": 679,
+        "sha256": "15ca17e3e54f88655274e7e7d4776c8c966e0632f74cda41a2cfcfd8f6313c18"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root .",
@@ -9839,8 +9877,8 @@
       "source": {
         "path": "src/coverage-guidance.mjs",
         "start": 2,
-        "end": 12,
-        "sha256": "dafd672e23d2d3f14d9540b6255d1801d151931df4b7a19260c7125016e32d83"
+        "end": 14,
+        "sha256": "8f33848903fc1eb3f685504f34e124198c258fd6b931554eca0e4cf5da0aacd4"
       },
       "actions": [
         "tracer worklist --routes discovery.json --action edit-line",
@@ -9859,8 +9897,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 2340,
-        "end": 2382,
-        "sha256": "e92ddb73cb824266ee042d25d53a01108ae3403bc436df6801d6c2ef22414d00"
+        "end": 2406,
+        "sha256": "eebc6084d1715fc6ce6fceb3cf1ef3cea660bc68eb4abe8561aa00ee24079131"
       },
       "why": "Discovery and retained synthetic intervals distinguish case reuse, a missing state to extend, absent instrumentation, an unavailable command, failed versus mixed outcomes and a completed focused union. These are guidance decisions, not new execution evidence."
     },
@@ -10424,8 +10462,8 @@
       "id": "dbcca94d94ddac76",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 673,
-        "end": 730,
+        "start": 684,
+        "end": 741,
         "sha256": "25609abdb513b2252bcc1a07b859136d74e16063b4b51687413bb22955416f2f"
       },
       "actions": [
@@ -10650,8 +10688,8 @@
       "id": "dfeaf459b91e3a17",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 480,
-        "end": 483,
+        "start": 490,
+        "end": 493,
         "sha256": "a36fc96892ca37734d5b0a8d9ba5056998ad5814780ff76aebdcc142c498a39b"
       },
       "actions": [
@@ -10825,8 +10863,8 @@
       "id": "e51aa9827e31e277",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 57,
-        "end": 58,
+        "start": 60,
+        "end": 61,
         "sha256": "3235da698f9b96b2ce449087ef47e03a1ee29fb4d83096210c29a5f5e76e6836"
       },
       "actions": [
@@ -11198,8 +11236,8 @@
       "id": "ec71705bbd34dad5",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 368,
-        "end": 385,
+        "start": 378,
+        "end": 395,
         "sha256": "6d4b95a5521f509bf00cdc6be0577f0550668a099f0aaa63e74dc9827865e864"
       },
       "actions": [
@@ -11236,8 +11274,8 @@
       "id": "eef33363c0dfc82b",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 477,
-        "end": 484,
+        "start": 487,
+        "end": 494,
         "sha256": "1b2e3844fb82d3e48efe6a902c98a76a4b847511954e6c67c03160ed2aa0edb6"
       },
       "actions": [
@@ -11699,8 +11737,8 @@
       "id": "f85eddbbaab5f2ba",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 75,
-        "end": 81,
+        "start": 78,
+        "end": 84,
         "sha256": "2d5f348555da83ca7060b266af3c5b61cb062cea810fe0767a029f6ee648b004"
       },
       "actions": [
@@ -11723,8 +11761,8 @@
       "id": "f967f4ead7fa804a",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 70,
-        "end": 72,
+        "start": 73,
+        "end": 75,
         "sha256": "79f04935cefc5fa832367ebea8d1a9dd370baa3ca18fb6dfea0c7950ddc50fa3"
       },
       "actions": [
@@ -11732,8 +11770,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2392,
-        "end": 2400,
+        "start": 2416,
+        "end": 2424,
         "sha256": "bf03ba5ff70b0d108371249d14d7e79b0d211c2119f99a8d67ca4f82bfee9c30"
       },
       "why": "A stale entry-point pin produces no action-case match and requires caller/discovery review without inventing a selector or silently refreshing the pin."
@@ -12023,9 +12061,9 @@
       "id": "feff1ad4f3f2898d",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 349,
-        "end": 515,
-        "sha256": "391b095e9f09a8d663b07b9daa17c9ad58a93921ca7081dda431dfca689d570f"
+        "start": 359,
+        "end": 525,
+        "sha256": "b75b351b0ccc15d1be3e95ef9944da9afc868290b474a32266ab5e594c3a690d"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -12239,8 +12277,8 @@
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 277,
-        "end": 347,
-        "sha256": "86daa3714ecfb4a73dd7ff157ae1c1ce6620a7b0ef69cbcb7ca0fa7a78136098"
+        "end": 357,
+        "sha256": "7b3b173a21d2e6d904d0fa02f38940414e7135b31fd64983f016954dc42ec034"
       },
       "actions": [
         "run worklist with a capture set and an exact downstream source focus and no function map",

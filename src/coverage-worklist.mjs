@@ -274,20 +274,23 @@ function functionScenarioExtensions(measured, journeys, current, held, pending, 
     notice: 'Each function is shown with passing scenario anchors and discovered actions from those intervals. Inspect the condition before extending a case.' };
 }
 
-function reviewCaseActions(catalog, { actions, evidence, matchSource, limit }) {
+function reviewCaseActions(catalog, { actions, evidence, matchSource, measureBranch = matchSource?.branchGapLines, limit }) {
   const items = [];
   for (const { id, command, trigger, cases } of actions) {
-    const exactCases = matchSource && cases.filter(matchSource.branch);
+    const conditions = cases.map(row => ({ ...row, conditionGapLines: measureBranch?.(row) }));
+    const exactCases = matchSource && conditions.filter(row => row.conditionGapLines !== undefined)
+      .sort((a, b) => b.conditionGapLines - a.conditionGapLines);
     const matches = matchSource && !exactCases.length && cases.map(row => matchSource.entryPoint(row.entryPoint)).filter(Boolean);
     const match = exactCases?.length ? { kind: 'condition-branch', branch: exactCases[0].branch }
       : matches && (matches.find(row => row.kind === 'entry-point') ?? matches[0]);
     if (matchSource && !match) continue;
-    const selectedCases = exactCases?.length ? exactCases : cases;
+    const selectedCases = exactCases?.length ? exactCases : conditions;
     const commandAvailable = catalog.capabilitiesSha256 && catalog.measurementActions.has(command);
     items.push({ id, command, ...(trigger && { trigger }), ...(match && { match }),
       ...(catalog.capabilitiesSha256 && { commandAvailable }), caseCount: selectedCases.length,
-      cases: selectedCases.slice(0, limit).map(({ condition, selector, journey, branch }) => {
-        const row = { condition, selector, argv: ['test', '--case', selector], ...(branch && { branch }) };
+      cases: selectedCases.slice(0, limit).map(({ condition, selector, journey, branch, conditionGapLines }) => {
+        const row = { condition, selector, argv: ['test', '--case', selector], ...(branch && { branch }),
+          ...(conditionGapLines !== undefined && { conditionGapLines }) };
         if (!evidence) return row;
         const recorded = evidence.get(journey);
         const passed = recorded?.passed ?? 0, failed = recorded?.failed ?? 0;
@@ -299,14 +302,17 @@ function reviewCaseActions(catalog, { actions, evidence, matchSource, limit }) {
       }) });
   }
   if (matchSource) {
-    const priority = row => row.match.kind === 'condition-branch' ? 0 : 1;
+    function priority(row) {
+      if (row.match.kind !== 'condition-branch') return 1;
+      return row.cases[0].conditionGapLines > 0 ? 0 : 2;
+    }
     items.sort((a, b) => priority(a) - priority(b));
   }
   return { count: items.length, items: items.slice(0, limit),
     notice: 'Actions and conditions are declared by discovery. Counters and outcomes describe retained case intervals.' };
 }
 
-function matchCaseSource(tracer, state, measured, focus) {
+function matchCaseSource(tracer, state, measured, focus, current) {
   const { functions } = measured;
   const key = (path, start, end) => JSON.stringify([path, start, end]);
   const owners = new Set(), callers = new Map(), selected = new Map();
@@ -334,7 +340,11 @@ function matchCaseSource(tracer, state, measured, focus) {
     && tracer.snapshot(span, state).sha256 === span.sha256;
   const contains = ({ path, start, end }) => selected.get(path)?.some(line => start <= line && line <= end);
   return {
-    branch: ({ entryPoint, branch }) => branch && contains(branch) && verified(branch) && verified(entryPoint),
+    branchGapLines({ entryPoint, branch }) {
+      if (!branch || !contains(branch) || !verified(branch) || !verified(entryPoint)) return undefined;
+      const { path, start, end } = branch;
+      return current.get(path).lines.filter(line => start <= line && line <= end).length;
+    },
     entryPoint(entryPoint) {
       if (!verified(entryPoint)) return undefined;
       const { path, start, end } = entryPoint;
@@ -351,7 +361,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const actionCases = focus && catalog.actionCases.size && reviewCaseActions(catalog, {
     actions: catalog.actionCases.values(), evidence: measured.caseEvidence, limit,
-    matchSource: matchCaseSource(tracer, state, measured, focus),
+    matchSource: matchCaseSource(tracer, state, measured, focus, current),
   });
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
   for (const execution of catalog.executions) {
@@ -665,7 +675,8 @@ function buildCoverageWorklist(tracer, { file, routesFile, capabilitiesFile, cap
     unavailable: fileSummary(scope.unavailable, limit), ...(scope.sourceFocus && { sourceFocus: scope.sourceFocus }),
     ...(decisions && { decisions: { queues: decisions.report.queues,
       heldGapLines: [...decisions.held.values()].reduce((sum, lines) => sum + lines.size, 0) } }),
-    actionCases: reviewCaseActions(catalog, { actions: caseActions, evidence: measured.caseEvidence, limit }) };
+    actionCases: reviewCaseActions(catalog, { actions: caseActions, evidence: measured.caseEvidence, limit,
+      measureBranch: focus && matchCaseSource(tracer, tracer.inventory(), measured, focus, scope.current).branchGapLines }) };
   if (!direct) return decisions.report;
   return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel, actionTarget, actionTargetSha256 });
 }

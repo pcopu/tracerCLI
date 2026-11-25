@@ -231,6 +231,10 @@ short working note; they do not require a new manual map or an approval step.
 for supported native receipts, or the adapter's retained capture set.
 When compatible passing evidence covers the entire selected scope,
 `nextStep` directs reuse even if declared cases are still listed.
+For a current, hash-verified condition branch, `conditionGapLines` counts
+missing passing lines in the branch's intersection with the selected
+instrumented source. A covered condition points to reuse even if another
+selected range has gaps. The case's recorded outcome remains separate.
 
 Declared cases retain their exact selector, condition and `argv`, with an
 additional `next` field:
@@ -238,7 +242,7 @@ additional `next` field:
 | `next` | Agent action |
 | --- | --- |
 | `review-and-run-existing-case` | Inspect the fixture and assertion, choose the condition matching the branch, and capture that existing case. Missing evidence does not choose the condition. |
-| `extend-existing-case` | The case passed but the focused measured scope still has gaps. Add the missing condition and assertion before running again. |
+| `extend-existing-case` | The case passed and its pinned branch or provisional source focus still has gaps. Add the missing condition and assertion before running again. |
 | `repair-existing-case` | Inspect the failure and fix the existing case or product behavior while preserving its oracle. |
 | `review-case-outcomes` | Passing and failed intervals coexist. Inspect their identities and chronology; a historical failure may already be repaired. |
 | `reuse-passing-evidence` | Reuse compatible observations before repeating an unchanged case. A complete focused union does not change an individual case's outcome. |

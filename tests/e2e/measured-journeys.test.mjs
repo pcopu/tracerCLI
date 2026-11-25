@@ -2360,6 +2360,30 @@ test('worklist guides branch-state case reuse, extension and repair without exec
   assert.deepEqual(protectedFiles.map(file => [file, f.hash(file)]), before);
   assert.equal(existsSync(join(f.root, 'app-launched')), false);
 
+  scenario.groupActions.available[0].branch = { path, start: 1, end: 1, sha256: sha('first\n') };
+  scenario.groupActions.locked[0].branch = { path, start: 2, end: 2, sha256: sha('second\n') };
+  f.jsonFile('discovery.json', discovery);
+  const twoConditions = ['--source', `${path}:1`, '--source', `${path}:2`];
+  for (const actionFilter of [[], ['--action', action.id]]) {
+    const mixed = f.json(...measured, ...twoConditions, ...actionFilter);
+    assert.equal(mixed.sourceFocus.gapLines, 1);
+    assert.equal(mixed.nextStep.kind, 'use-action-cases');
+    assert.deepEqual(Object.fromEntries(cases(mixed).map(row => [row.condition, [row.conditionGapLines, row.next]])), {
+      'lease-available': [0, 'reuse-passing-evidence'],
+      'lease-held-by-peer': [1, 'review-and-run-existing-case'],
+    });
+  }
+  const heldCondition = scenario.groupActions.locked;
+  delete scenario.groupActions.locked;
+  f.jsonFile('discovery.json', discovery);
+  const unrelatedGap = f.json(...measured, ...twoConditions);
+  assert.equal(cases(unrelatedGap)[0].next, 'reuse-passing-evidence');
+  assert.equal(unrelatedGap.nextStep.kind, 'inspect-existing-case', 'The covered pinned condition must not own an unrelated gap');
+  scenario.groupActions.locked = heldCondition;
+  delete scenario.groupActions.available[0].branch;
+  delete scenario.groupActions.locked[0].branch;
+  f.jsonFile('discovery.json', discovery);
+
   f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['snapshot'] });
   assert.deepEqual(next(f.json(...lookup, '--action', 'edit-line', '--capabilities', 'capabilities.json')),
     ['review-cli-action', 'review-cli-action']);

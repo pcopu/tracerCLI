@@ -3,6 +3,8 @@ function caseNext(action, row, focus, unavailable) {
   if (action.commandAvailable === false) return 'review-cli-action';
   if (row.evidence?.status === 'failed') return 'repair-existing-case';
   if (row.evidence?.status === 'mixed') return 'review-case-outcomes';
+  if (row.conditionGapLines === 0) return 'reuse-passing-evidence';
+  if (row.conditionGapLines > 0 && row.evidence?.status === 'passed') return 'extend-existing-case';
   if (focus && !unavailable && !focus.unknown.length && focus.gapLines === 0) return 'reuse-passing-evidence';
   if (row.evidence?.status === 'passed') {
     if (focus && (unavailable || focus.unknown.length)) return 'resolve-measurement';
@@ -35,7 +37,8 @@ export function guideCoverageWorklist(report) {
   } else if (complete) {
     kind = 'reuse-passing-evidence'; from = focus ? 'sourceFocus' : 'coverage.passedOnlyKnown';
     instruction = 'Reuse the compatible passing observations for this measured scope. Choose another remaining gap; do not rerun an unchanged case solely to add the same lines.';
-  } else if (actionCases?.count) {
+  } else if (actionCases?.count && (report.kind === 'action-case-worklist'
+      || actionCases.items.some(action => action.cases.some(row => row.conditionGapLines !== 0)))) {
     kind = 'use-action-cases'; from = 'actionCases.items';
     instruction = 'Read the production branch and choose the declared condition that reaches it. Inspect that existing case\'s fixture and assertion, then follow its next field. A source match or unknown outcome does not select the condition for you.';
   } else if (report.failedReplays?.count) {

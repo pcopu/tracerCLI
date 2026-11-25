@@ -32,6 +32,9 @@ complete a manual map or an approval gate.
 2. Read `nextStep.from` and preserve any recorded blocker. When the measured
    scope is complete, reuse the passing observations and select another gap.
    For an open gap, start with eligible matching `actionCases` when available.
+   With several selected ranges, check each pinned case's `conditionGapLines`
+   before extending it. A gap elsewhere in the selection can have a different
+   trigger; reuse the evidence for an already-covered condition.
    The worklist can also point to an existing scenario, control window, caller
    or entry point. Check the actual CLI catalog and the case's setup and oracle.
    Continue independent supported work while a restricted range is held.
