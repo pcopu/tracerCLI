@@ -29,11 +29,12 @@ complete a manual map or an approval gate.
 1. Query retained evidence first. Reuse compatible passing observations. If
    source or instrumentation is unavailable, resolve that measurement input
    while continuing independent supported work; do not call unknown code a gap.
-2. Read `nextStep.from` and preserve any recorded blocker. When eligible
-   `actionCases` match the source, inspect them first; otherwise inspect the
-   existing scenario, control-window, caller or entry-point leads. Check the
-   actual CLI catalog and the case's setup and oracle. Continue independent
-   supported work while a restricted range is held.
+2. Read `nextStep.from` and preserve any recorded blocker. When the measured
+   scope is complete, reuse the passing observations and select another gap.
+   For an open gap, start with eligible matching `actionCases` when available.
+   The worklist can also point to an existing scenario, control window, caller
+   or entry point. Check the actual CLI catalog and the case's setup and oracle.
+   Continue independent supported work while a restricted range is held.
 3. For `review-and-run-existing-case`, run the case whose fixture actually
    satisfies the branch. For `extend-existing-case`, change the missing state
    and assertion in that existing journey. For `repair-existing-case`, fix its

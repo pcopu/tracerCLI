@@ -2221,8 +2221,8 @@
       "id": "304334ecffacc0ce",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 38,
-        "end": 40,
+        "start": 41,
+        "end": 43,
         "sha256": "e0031eb1dfb6c990d052e3f33a8c73fd72882e286ba2cea5f9b658ea09aad98a"
       },
       "actions": [
@@ -3501,8 +3501,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2385,
-        "end": 2388,
+        "start": 2387,
+        "end": 2390,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An available existing extension lead receives inspect-existing-case guidance so the fixture and observable assertion are reviewed before a run."
@@ -5146,8 +5146,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2385,
-        "end": 2388,
+        "start": 2387,
+        "end": 2390,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An existing passing neighboring scenario remains a concrete extension lead when discovery has no action declaration."
@@ -5444,8 +5444,8 @@
       "id": "73b9916ede249511",
       "source": {
         "path": "src/coverage-guidance.mjs",
-        "start": 41,
-        "end": 43,
+        "start": 35,
+        "end": 37,
         "sha256": "ddb4aa7f96aeb91244ef0c1859bee92c90110a9648a74bc98cf9292b113e2630"
       },
       "actions": [
@@ -5453,11 +5453,11 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2382,
-        "end": 2384,
-        "sha256": "38e373fe0c7dbeaf453a8c0652dd378f4f243e3ecb8d4364fb1f6e93a2a118dd"
+        "start": 2377,
+        "end": 2386,
+        "sha256": "4d06090863f60b20c45df8106082baf390b1f1926a501349541fa4a95aaf96ae"
       },
-      "why": "When action declarations are removed and the compatible passing union already observes the focused line, guidance reuses that evidence."
+      "why": "A complete compatible passing union directs evidence reuse before case selection, both when action declarations are available and when they are absent."
     },
     {
       "id": "73c2b711db6fb5cf",
@@ -6889,8 +6889,8 @@
       "source": {
         "path": "src/coverage-guidance.mjs",
         "start": 27,
-        "end": 37,
-        "sha256": "a27d39be95b56d75c9efe5c78f3c678e345d3b01d4fb9bada3b53d1034354bde"
+        "end": 40,
+        "sha256": "d09752995fdb2e2ba2f304790c6dfcca97a27eecb73ca2baab7195991cc8e93c"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root .",
@@ -9859,8 +9859,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 2340,
-        "end": 2380,
-        "sha256": "57aa40871ed67b59a97a986538bc398764474e854c1760d401efe0f2cef16977"
+        "end": 2382,
+        "sha256": "e92ddb73cb824266ee042d25d53a01108ae3403bc436df6801d6c2ef22414d00"
       },
       "why": "Discovery and retained synthetic intervals distinguish case reuse, a missing state to extend, absent instrumentation, an unavailable command, failed versus mixed outcomes and a completed focused union. These are guidance decisions, not new execution evidence."
     },
@@ -11732,8 +11732,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2390,
-        "end": 2398,
+        "start": 2392,
+        "end": 2400,
         "sha256": "bf03ba5ff70b0d108371249d14d7e79b0d211c2119f99a8d67ca4f82bfee9c30"
       },
       "why": "A stale entry-point pin produces no action-case match and requires caller/discovery review without inventing a selector or silently refreshing the pin."

@@ -2376,6 +2376,8 @@ test('worklist guides branch-state case reuse, extension and repair without exec
   f.jsonFile('outcomes.json', { version: 1, intervals: [passed, outcome(second, 'locked', 'passed')] });
   const closed = f.json(...measured, '--source', `${path}:2`);
   assert.equal(closed.sourceFocus.gapLines, 0);
+  assert.equal(closed.nextStep.kind, 'reuse-passing-evidence');
+  assert.equal(closed.nextStep.from, 'sourceFocus');
   assert.deepEqual(next(closed), ['reuse-passing-evidence', 'reuse-passing-evidence']);
   assert.deepEqual(next(f.json(...measured, '--action', 'edit-line', '--source', `${path}:2`)), next(closed));
 

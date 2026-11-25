@@ -229,6 +229,8 @@ and the existing case with its observable assertion. These facts belong in a
 short working note; they do not require a new manual map or an approval step.
 `afterRun` directs the agent to compare real passing gains with `measure batch`
 for supported native receipts, or the adapter's retained capture set.
+When compatible passing evidence covers the entire selected scope,
+`nextStep` directs reuse even if declared cases are still listed.
 
 Declared cases retain their exact selector, condition and `argv`, with an
 additional `next` field:

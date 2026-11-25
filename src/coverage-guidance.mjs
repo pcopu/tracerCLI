@@ -32,15 +32,15 @@ export function guideCoverageWorklist(report) {
   let kind, from, instruction;
   if (allHeld) {
     ({ kind, from, instruction } = heldNext);
+  } else if (complete) {
+    kind = 'reuse-passing-evidence'; from = focus ? 'sourceFocus' : 'coverage.passedOnlyKnown';
+    instruction = 'Reuse the compatible passing observations for this measured scope. Choose another remaining gap; do not rerun an unchanged case solely to add the same lines.';
   } else if (actionCases?.count) {
     kind = 'use-action-cases'; from = 'actionCases.items';
     instruction = 'Read the production branch and choose the declared condition that reaches it. Inspect that existing case\'s fixture and assertion, then follow its next field. A source match or unknown outcome does not select the condition for you.';
   } else if (report.failedReplays?.count) {
     kind = 'repair-existing-case'; from = 'failedReplays.items';
     instruction = 'Inspect the retained failure and repair the existing case or product defect while preserving its behavior assertion. Keep unrelated runnable cases moving.';
-  } else if (complete) {
-    kind = 'reuse-passing-evidence'; from = focus ? 'sourceFocus' : 'coverage.passedOnlyKnown';
-    instruction = 'Reuse the compatible passing observations for this measured scope. Choose another remaining gap; do not rerun an unchanged case solely to add the same lines.';
   } else if (report.replayCandidates?.count) {
     kind = 'run-existing-case'; from = 'replayCandidates.items';
     instruction = 'Inspect the exact existing selector and its state, then replay it on the verified reference build. Retained older observations guide selection without filling current gaps.';
