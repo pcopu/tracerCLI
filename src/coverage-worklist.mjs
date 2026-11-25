@@ -93,7 +93,7 @@ function marginalCandidates(rows, limit) {
   return selected;
 }
 
-function extensionCandidates(surroundingIntervals, journeys, current, assigned, pending, limit) {
+function extensionCandidates(surroundingIntervals, journeys, current, assigned, pending, limit, batch) {
   const byGap = new Map(), byExecution = new Map();
   for (const example of surroundingIntervals) {
     const { path, range, journey } = example, key = JSON.stringify([path, range]);
@@ -126,10 +126,31 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     examples: candidate.exclusiveExamples.concat(candidate.sharedExamples).slice(0, 3) }));
   rows.sort((a, b) => b.exclusiveGapLines - a.exclusiveGapLines || b.gapLines - a.gapLines || a.routeIds[0].localeCompare(b.routeIds[0]));
   const ready = rows.filter(row => !row.restrictions.length), restricted = rows.filter(row => row.restrictions.length);
+  if (batch) for (const row of ready) batch.push(row);
   const count = ready.length;
   const publicRow = ({ files, ...row }) => row;
   return { count, gapLines, exclusiveGapLines, items: marginalCandidates(ready, limit).map(publicRow),
     restricted: { count: restricted.length, gapLines: restrictedGapLines, items: restricted.slice(0, limit).map(publicRow) } };
+}
+
+function nativeCaseBatch(candidates, { limit, held, pending, startup = false }) {
+  const bySelector = new Map();
+  for (const { argv, routeIds, files } of candidates) {
+    // Only use argv from the validated native discovery catalog.
+    const [, , id, , group] = argv;
+    const selector = group ? `${id}#${group}` : id;
+    if (!bySelector.has(selector)) bySelector.set(selector, { selector, routeIds, files: new Map() });
+    const target = bySelector.get(selector).files;
+    for (const [path, lines] of files) {
+      const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && !pending?.get(path)?.has(line));
+      if (eligible.length) addLines(target, path, eligible);
+    }
+  }
+  const rows = [...bySelector.values()].sort((a, b) => a.selector.localeCompare(b.selector));
+  const cases = marginalCandidates(rows, limit).map(({ files, ...row }) => ({ ...row, ...summarize(files) }));
+  return { argv: cases.length ? ['test', ...(startup ? ['--coverage-startup'] : []),
+    ...cases.flatMap(({ selector }) => ['--case', selector])] : [],
+    candidateGapLines: cases.reduce((count, row) => count + row.marginalGapLines, 0), cases };
 }
 
 function replayCandidates(sourcesByRoute, { held, pending, limit, failures, focus }) {
@@ -298,23 +319,31 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const runtime = runtimeReview(tracer, data, state, measured.files, current, assigned, focus, limit);
   const pending = runtime?.pending;
   if (held) for (const [path, lines] of held) addLines(assigned, path, lines);
-  const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals, catalog.journeys, current, assigned, pending, limit);
+  const batches = catalog.launchActions && {
+    session: [...workByRoute].map(([{ argv, routeIds }, { files }]) => ({ argv, routeIds, files })),
+    startup: [],
+  };
+  const extensions = measured.surroundingIntervals && extensionCandidates(measured.surroundingIntervals,
+    catalog.journeys, current, assigned, pending, limit, batches?.session);
   const startup = catalog.launchActions && measured.startupIntervals
-    && extensionCandidates(measured.startupIntervals, catalog.journeys, current, assigned, pending, limit);
+    && extensionCandidates(measured.startupIntervals, catalog.journeys, current, assigned, pending, limit, batches?.startup);
   const actionReview = actionId === undefined ? undefined
     : reviewAction(actionId, catalog, actionLabel, measured, sourceFocus, limit);
-  const edgeCandidates = measured.functionEdges && extensionCandidates(measured.functionEdges.scenario, catalog.journeys, current, assigned, pending, limit);
+  const edgeCandidates = measured.functionEdges && extensionCandidates(measured.functionEdges.scenario,
+    catalog.journeys, current, assigned, pending, limit, batches?.session);
   const startupEdgeCandidates = catalog.launchActions && measured.functionEdges
-    && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit);
+    && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit, batches?.startup);
   if (actionReview) {
     if (actionTarget !== undefined) actionReview.target = actionTarget;
     if (actionTargetSha256 !== undefined) actionReview.targetSha256 = actionTargetSha256;
     const intervals = actionReview.restrictions.length ? [] : measured.actionIntervals ?? [];
-    actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit);
+    const exactBatch = batches && [];
+    actionReview.extensionCandidates = extensionCandidates(intervals, catalog.journeys, current, held, pending, limit, exactBatch);
     if (measured.functionEdges) {
       const exactEdges = actionReview.restrictions.length ? [] : measured.functionEdges.action;
-      actionReview.functionEdgeCandidates = extensionCandidates(exactEdges, catalog.journeys, current, held, pending, limit);
+      actionReview.functionEdgeCandidates = extensionCandidates(exactEdges, catalog.journeys, current, held, pending, limit, exactBatch);
     }
+    if (exactBatch) actionReview.nativeBatch = nativeCaseBatch(exactBatch, { limit, held, pending });
   }
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {
@@ -330,6 +359,11 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     ...(focus && { focusedWitnessRoutes: { count: witnessRows.length, items: witnessRows.slice(0, limit) } }),
     ...(extensions && { extensionCandidates: extensions }),
     ...(startup && { startupCandidates: startup }),
+    ...(batches && { nativeBatches: {
+      notice: 'Extend the selected scenarios for the missing conditions, then append pinned capture options to argv. Scores count candidate lines once per batch.',
+      session: nativeCaseBatch(batches.session, { limit, held, pending }),
+      startup: nativeCaseBatch(batches.startup, { limit, held, pending, startup: true }),
+    } }),
     ...(actionReview && { actionReview }),
     ...(measured.recordedActions && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),

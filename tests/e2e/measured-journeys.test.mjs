@@ -1344,6 +1344,9 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   assert.equal(result.routesSha256, f.hash('discovery.json'));
   assert.equal(result.extensionCandidates.count, 1);
   assert.deepEqual(result.extensionCandidates.items[0].argv, ['test', '--scenario', 'journeys/review', '--group', 'alternate']);
+  assert.deepEqual(result.nativeBatches.session.argv, ['test', '--case', 'journeys/review#alternate']);
+  assert.deepEqual(result.nativeBatches.session.cases.map(({ selector, marginalGapLines }) => [selector, marginalGapLines]),
+    [['journeys/review#alternate', 1]]);
   assert.equal(result.extensionCandidates.items[0].examples[0].journey, path + '#alternate');
   f.run(['link', 'src/app.py:2', '--step', `${path}:1`, '--action', 'Review selected item', '--why', 'Checks the visible result']);
   const grouped = f.json(...args);
@@ -1499,6 +1502,10 @@ test('native worklist separates launch evidence from recorded CLI actions and jo
   assert.deepEqual(report.extensionCandidates.items.map(({ routeIds, gapLines }) => [routeIds, gapLines]), [[[edit.id], 3]]);
   assert.deepEqual(report.extensionCandidates.items[0].sources[0].gapRanges, [[2, 2], [4, 4], [11, 11]]);
   assert.equal(report.startupCandidates.gapLines, 2);
+  assert.deepEqual(report.nativeBatches.session.argv, ['test', '--case', edit.id]);
+  assert.deepEqual(report.nativeBatches.startup.argv, ['test', '--coverage-startup', '--case', launch.id]);
+  assert.equal(report.nativeBatches.session.candidateGapLines, 3);
+  assert.equal(report.nativeBatches.startup.candidateGapLines, 2);
   assert.deepEqual(report.startupCandidates.items[0].sources[0].gapRanges, [[7, 7], [9, 9]]);
   assert.equal(report.startupCandidates.items[0].examples[0].intervalId, startup.id);
   assert.equal(report.unassigned.gapLines, 5, 'Planning does not give coverage credit');
@@ -1506,10 +1513,19 @@ test('native worklist separates launch evidence from recorded CLI actions and jo
   assert.deepEqual(actions[0].actionIds, ['menu-action', 'script-entries']);
   const actionArgs = [...args, '--source', 'src/app.py:2-11', '--capabilities', 'capabilities.json', '--action'];
   assert.equal(f.json(...actionArgs, 'script-entries').actionReview.extensionCandidates.gapLines, 3);
-  assert.equal(f.json(...actionArgs, 'export-project').actionReview.extensionCandidates.gapLines, 0);
+  const absentAction = f.json(...actionArgs, 'export-project').actionReview;
+  assert.equal(absentAction.extensionCandidates.gapLines, 0);
+  assert.deepEqual(absentAction.nativeBatch.argv, [], 'An empty shortlist cannot run the entire suite');
   const focused = f.json(...args, '--source', 'src/app.py:4');
   assert.equal(focused.extensionCandidates.gapLines, 1);
   assert.equal(focused.startupCandidates.gapLines, 0);
+  for (const route of [edit, launch]) {
+    f.run(['link', 'src/app.py:2', '--step', route.path + ':1', '--action', 'Use a discovered action',
+      '--why', 'Check the outcome of the same source behavior']);
+  }
+  const overlap = f.json(...args).nativeBatches.session;
+  assert.deepEqual(overlap.argv, ['test', '--case', edit.id], 'Combine witnessed and neighboring evidence before choosing cases');
+  assert.equal(overlap.candidateGapLines, 3, 'The duplicate witness cannot add a case or duplicate a line');
 });
 
 test('focused worklist uses declared native group support witnesses beside uncovered lines', t => {

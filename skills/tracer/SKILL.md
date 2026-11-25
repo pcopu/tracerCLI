@@ -185,6 +185,13 @@ Reuse valid captures before rerunning unchanged scenarios. For unavailable instr
 
 ## Run a repeatable capture batch
 
+For Scriv discovery, use `worklist.nativeBatches.session` to turn the exact
+witnessed and measured scenario leads into one ordered shortlist. With an
+explicit action use `actionReview.nativeBatch`. The `startup` shortlist
+uses its own capture mode. Read the case sources, extend the real condition
+in those scenarios, then reuse the emitted `argv` with the pinned capture
+options. Empty `argv` means the worklist found no runnable case.
+
 When several selected Scriv routes use the same signed build and capture
 options, pass each as `--case ID#GROUP` or `--case ID` to one `tracer app --
 test` invocation. Use the exact scenario IDs and named groups from

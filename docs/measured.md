@@ -229,6 +229,11 @@ tracer measure batch --baseline-capture-set /external/baseline/captures.json \
   --output /external/next-batch
 ```
 
+For a native source worklist, `nativeBatches` reports exact `--case` arguments
+and each selected case's marginal candidate lines. Session and startup
+captures have separate lists. Run the scenarios after adding the missing
+conditions, then use the resulting receipts to measure actual changes.
+
 Repeat `--receipt` to include several completed runs. Tracer binds each
 measured interval to its import receipt and its declared scenario, group, and
 outcome. It checks the run, build, probe, source and receipt digests before
