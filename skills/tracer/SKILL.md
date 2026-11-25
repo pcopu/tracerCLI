@@ -56,6 +56,9 @@ complete a manual map or an approval gate.
    scope is complete or only specific unresolved blockers remain.
 
 Maintain action/condition declarations beside the runnable cases as they change.
+Pin the real entry point and the production branch reached by each distinct
+condition when you have reviewed both ranges. A source-focused worklist can
+then return the exact case even when several conditions reuse the same action.
 Refresh discovery after adding a group. Preserve meaningful assertions and all
 measurement denominators; neither a declaration nor a line hit proves every
 branch or the behavior's correctness. Read `docs/route-bindings.md` for the

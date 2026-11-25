@@ -265,16 +265,21 @@ Native discovery can include `groupActions` keyed by the listed group name.
 Each entry names an action `id`, its CLI `command`, and the `condition` the
 case exercises. An optional `trigger` describes the actual public control or
 shortcut. An optional `entryPoint` pins a production function with its source
-`path`, `start`, `end`, and SHA-256 of the exact range bytes. Define these
-alongside the runnable cases.
+`path`, `start`, `end`, and SHA-256 of the exact range bytes. An optional
+`branch` uses the same fields to pin the production range the named condition
+reaches, such as a completion handler in another file. A branch declaration
+requires an entry point. Define both alongside the runnable cases.
 
 `tracer worklist --routes CATALOG --action edit-line` returns the named cases
 and ready-to-use `test --case` arguments directly from discovery. Supply the
 reference and capture set to include retained outcomes, observed source ranges
 and whether the passing interval recorded the declared CLI command. With a
-source-focused worklist, `actionCases` matches the selected gap to a current
-declared function or its compiler-resolved callee. Shared functions can have
-several candidates. Captures still describe case intervals.
+source-focused worklist, a current branch and entry-point pair can match a
+selected instrumented range directly, without a compiler call map. A
+`condition-branch` match shows the cases whose declared branches intersect
+the focus. If none match for an action, the worklist falls back to its current
+entry point or compiler-resolved callee. Captures still describe case
+intervals, and declarations do not contribute passing lines.
 With a pinned function map containing compiler calls, `dispatchBatch` can
 also nominate an unobserved callee when the same exact control window observed
 its caller's body. The example gives the call site, observed caller line and

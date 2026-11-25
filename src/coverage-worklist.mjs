@@ -274,17 +274,20 @@ function functionScenarioExtensions(measured, journeys, current, held, pending, 
     notice: 'Each function is shown with passing scenario anchors and discovered actions from those intervals. Inspect the condition before extending a case.' };
 }
 
-function reviewCaseActions(catalog, { actions, evidence, matchEntry, limit }) {
+function reviewCaseActions(catalog, { actions, evidence, matchSource, limit }) {
   const items = [];
   for (const { id, command, trigger, cases } of actions) {
-    const matches = matchEntry && cases.map(row => matchEntry(row.entryPoint)).filter(Boolean);
-    const match = matches && (matches.find(row => row.kind === 'entry-point') ?? matches[0]);
-    if (matchEntry && !match) continue;
+    const exactCases = matchSource && cases.filter(matchSource.branch);
+    const matches = matchSource && !exactCases.length && cases.map(row => matchSource.entryPoint(row.entryPoint)).filter(Boolean);
+    const match = exactCases?.length ? { kind: 'condition-branch', branch: exactCases[0].branch }
+      : matches && (matches.find(row => row.kind === 'entry-point') ?? matches[0]);
+    if (matchSource && !match) continue;
+    const selectedCases = exactCases?.length ? exactCases : cases;
     const commandAvailable = catalog.capabilitiesSha256 && catalog.measurementActions.has(command);
     items.push({ id, command, ...(trigger && { trigger }), ...(match && { match }),
-      ...(catalog.capabilitiesSha256 && { commandAvailable }), caseCount: cases.length,
-      cases: cases.slice(0, limit).map(({ condition, selector, journey }) => {
-        const row = { condition, selector, argv: ['test', '--case', selector] };
+      ...(catalog.capabilitiesSha256 && { commandAvailable }), caseCount: selectedCases.length,
+      cases: selectedCases.slice(0, limit).map(({ condition, selector, journey, branch }) => {
+        const row = { condition, selector, argv: ['test', '--case', selector], ...(branch && { branch }) };
         if (!evidence) return row;
         const recorded = evidence.get(journey);
         const passed = recorded?.passed ?? 0, failed = recorded?.failed ?? 0;
@@ -295,11 +298,15 @@ function reviewCaseActions(catalog, { actions, evidence, matchEntry, limit }) {
           sources: observed.sources.slice(0, limit).map(({ path, gapRanges }) => ({ path, observedRanges: gapRanges })) } };
       }) });
   }
+  if (matchSource) {
+    const priority = row => row.match.kind === 'condition-branch' ? 0 : 1;
+    items.sort((a, b) => priority(a) - priority(b));
+  }
   return { count: items.length, items: items.slice(0, limit),
     notice: 'Actions and conditions are declared by discovery. Counters and outcomes describe retained case intervals.' };
 }
 
-function matchCaseEntryPoint(tracer, state, measured, focus) {
+function matchCaseSource(tracer, state, measured, focus) {
   const { functions } = measured;
   const key = (path, start, end) => JSON.stringify([path, start, end]);
   const owners = new Set(), callers = new Map(), selected = new Map();
@@ -323,14 +330,19 @@ function matchCaseEntryPoint(tracer, state, measured, focus) {
       if (!callers.has(id)) callers.set(id, { kind: 'compiler-call', caller, callee: { path, range: targetRange } });
     }
   }
-  return entryPoint => {
-    if (!entryPoint) return undefined;
-    const { path, start, end, sha256 } = entryPoint;
-    if (!state.files.has(path) || end > state.files.get(path).length || tracer.snapshot(entryPoint, state).sha256 !== sha256) return undefined;
-    const id = key(path, start, end);
-    const exactFunction = functions?.files.get(path)?.some(range => range[0] === start && range[1] === end);
-    const direct = exactFunction ? owners.has(id) : selected.get(path)?.some(line => start <= line && line <= end);
-    return direct ? { kind: 'entry-point', entryPoint } : callers.get(id);
+  const verified = span => span && state.files.has(span.path) && span.end <= state.files.get(span.path).length
+    && tracer.snapshot(span, state).sha256 === span.sha256;
+  const contains = ({ path, start, end }) => selected.get(path)?.some(line => start <= line && line <= end);
+  return {
+    branch: ({ entryPoint, branch }) => branch && contains(branch) && verified(branch) && verified(entryPoint),
+    entryPoint(entryPoint) {
+      if (!verified(entryPoint)) return undefined;
+      const { path, start, end } = entryPoint;
+      const id = key(path, start, end);
+      const exactFunction = functions?.files.get(path)?.some(range => range[0] === start && range[1] === end);
+      const direct = exactFunction ? owners.has(id) : contains(entryPoint);
+      return direct ? { kind: 'entry-point', entryPoint } : callers.get(id);
+    },
   };
 }
 
@@ -339,7 +351,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const actionCases = focus && catalog.actionCases.size && reviewCaseActions(catalog, {
     actions: catalog.actionCases.values(), evidence: measured.caseEvidence, limit,
-    matchEntry: matchCaseEntryPoint(tracer, state, measured, focus),
+    matchSource: matchCaseSource(tracer, state, measured, focus),
   });
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
   for (const execution of catalog.executions) {

@@ -31,20 +31,26 @@ function regularFile(root, file) {
   }
   return path;
 }
+function nativeActionSpan(span, label) {
+  object(span, ['path', 'start', 'end', 'sha256']);
+  safePath(span.path);
+  const { start, end, sha256 } = span;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start
+      || typeof sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(sha256)) fail(`Invalid native group action ${label}.`);
+}
+
 function addNativeCaseActions(actionCases, entries, selector, journey) {
   list(entries);
   const declared = new Set();
   for (const entry of entries) {
-    object(entry, ['id', 'command', 'condition'], ['trigger', 'entryPoint']);
-    const { id, command, condition, trigger, entryPoint } = entry;
+    object(entry, ['id', 'command', 'condition'], ['trigger', 'entryPoint', 'branch']);
+    const { id, command, condition, trigger, entryPoint, branch } = entry;
     if (![id, command, condition].every(part => typeof part === 'string' && actionSlug.test(part))) fail('Invalid native group action.');
     if (trigger !== undefined) { text(trigger); if (trigger.length > 128) fail('Invalid native group action trigger.'); }
-    if (entryPoint !== undefined) {
-      object(entryPoint, ['path', 'start', 'end', 'sha256']);
-      safePath(entryPoint.path);
-      const { start, end, sha256 } = entryPoint;
-      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start
-        || typeof sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(sha256)) fail('Invalid native group action entry point.');
+    if (entryPoint !== undefined) nativeActionSpan(entryPoint, 'entry point');
+    if (branch !== undefined) {
+      if (entryPoint === undefined) fail('Native group action branch requires an entry point.');
+      nativeActionSpan(branch, 'branch');
     }
     const key = JSON.stringify([id, condition]);
     if (declared.has(key)) fail('Duplicate native group action condition.');
@@ -52,7 +58,7 @@ function addNativeCaseActions(actionCases, entries, selector, journey) {
     if (!actionCases.has(id)) actionCases.set(id, { id, command, trigger, cases: [] });
     const action = actionCases.get(id);
     if (action.command !== command || action.trigger !== trigger) fail('Conflicting native group action definition.');
-    action.cases.push({ condition, selector, journey, ...(entryPoint && { entryPoint }) });
+    action.cases.push({ condition, selector, journey, ...(entryPoint && { entryPoint }), ...(branch && { branch }) });
   }
 }
 
