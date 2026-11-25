@@ -76,7 +76,7 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
   return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
 }
 
-function replayCandidates(sourcesByRoute, held, limit) {
+function replayCandidates(sourcesByRoute, held, limit, failures) {
   const rows = [], union = new Map();
   for (const [execution, sources] of sourcesByRoute) {
     const available = new Map();
@@ -101,13 +101,14 @@ function replayCandidates(sourcesByRoute, held, limit) {
     const [row] = rows.splice(index, 1);
     for (const [path, lines] of row.available) addLines(covered, path, lines);
     const { execution: { routeIds, argv }, sources, gapLines } = row;
-    items.push({ routeIds, argv, sources, gapLines, marginalGapLines: marginal });
+    items.push({ routeIds, argv, sources, gapLines, marginalGapLines: marginal,
+      ...(failures && { failure: failures.get(row.execution) }) });
   }
   return { count, gapLines: summarize(union).gapLines, items };
 }
 
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit }) {
-  const held = decisions?.held;
+  const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
   for (const execution of catalog.executions) {
@@ -168,7 +169,8 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
     ...(extensions && { extensionCandidates: extensions }),
-    ...(measured.replaySources && { replayCandidates: replayCandidates(measured.replaySources, held, limit) }),
+    ...(replays && { replayCandidates: replayCandidates(replays.eligible, held, limit),
+      failedReplays: replayCandidates(replays.failed, held, limit, replays.failures) }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }

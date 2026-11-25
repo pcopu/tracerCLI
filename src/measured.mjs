@@ -581,10 +581,16 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
     .map(({ path, passedOnlyKnown }) => [path, { reference: referenceFilesByPath.get(path).file,
       gaps: new Set(passedOnlyKnown.gapRanges.flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, index) => start + index))),
       seen: new Set(), mappings: new Map() }]));
-  const passing = [];
+  const passing = [], failures = new Map();
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), execution = journeys.get(declaration?.journey);
-    if (declaration?.status !== 'passed' || !execution || execution.restrictions.length) continue;
+    if (!execution || execution.restrictions.length) continue;
+    if (declaration.status === 'failed') {
+      if (record.provenanceId === loaded.scopeId && record.validFiles.size && !failures.has(execution)) {
+        failures.set(execution, { intervalId: record.id, journey: declaration.journey, evidence: declaration.evidence });
+      }
+      continue;
+    }
     passing.push({ record, execution });
     for (const captured of record.captureFiles) {
       const target = targets.get(captured.path);
@@ -592,7 +598,7 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
     }
   }
 
-  const candidates = new Map();
+  const eligible = new Map(), failed = new Map();
   for (const { record, execution } of passing) for (const captured of record.captureFiles) {
     const { path, sha256 } = captured, target = targets.get(path);
     if (!target || target.seen.has(execution) || !record.validFiles.has(path)) continue;
@@ -626,13 +632,14 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
     for (const [line, before, after] of captured.rows) {
       const currentLine = sameBytes ? line : mapping.get(line);
       if (after <= before || !target.gaps.has(currentLine)) continue;
-      if (!candidates.has(execution)) candidates.set(execution, new Map());
-      const sources = candidates.get(execution);
+      const queue = failures.has(execution) ? failed : eligible;
+      if (!queue.has(execution)) queue.set(execution, new Map());
+      const sources = queue.get(execution);
       if (!sources.has(path)) sources.set(path, new Set());
       sources.get(path).add(currentLine);
     }
   }
-  return candidates;
+  return { eligible, failed, failures };
 }
 
 export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys }, shared = measurementSnapshot()) {

@@ -1280,6 +1280,20 @@ test('worklist ranks fresh replays from retained passing evidence without credit
   const limited = f.json(...args, '--replay', '--limit', '1');
   assert.equal(limited.replayCandidates.gapLines, 4);
   assert.equal(limited.replayCandidates.items.length, 1);
+
+  const currentFailure = capture('alpha', [3], 'failed');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [...outcomes, currentFailure] });
+  const reviewed = f.json(...args, '--replay');
+  assert.deepEqual(reviewed.coverage.passedOnlyKnown, report.coverage.passedOnlyKnown);
+  assert.deepEqual(reviewed.replayCandidates.items.map(row => row.argv), [['test', 'beta'], ['test', 'table']]);
+  assert.equal(reviewed.failedReplays.gapLines, 2);
+  assert.deepEqual(reviewed.failedReplays.items[0].routeIds, ['alpha', 'alpha-alias']);
+  assert.equal(reviewed.failedReplays.items[0].failure.journey, 'alpha');
+  assert.equal(reviewed.failedReplays.items[0].failure.evidence.sha256, currentFailure.evidence.sha256);
+  const recovered = capture('alpha', [4, 12]);
+  f.jsonFile('outcomes.json', { version: 1, intervals: [...outcomes, currentFailure, recovered] });
+  assert.equal(f.json(...args, '--replay').failedReplays.count, 0);
+
   old.put(path, previous + 'stale snapshot\n');
   assert.equal(f.json(...args, '--replay').replayCandidates.gapLines, 1);
 });

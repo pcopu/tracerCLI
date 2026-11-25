@@ -206,6 +206,9 @@ unique, exact source lines with both neighboring lines unchanged. For unchanged
 bytes with different instrumented lines, it uses the original coordinates.
 Each prior source snapshot and outcome must pass the ordinary evidence checks.
 A selector with a passing compatible capture for the same file is skipped.
+If a selector already failed in the exact reference scope, its remaining
+candidate ranges appear in `failedReplays` with the failed interval and
+receipt. Inspect the failure before running that selector again.
 Current reviewed holds supplied through `--file` also apply to replay leads.
 
 The total counts candidate lines once. Each item gives exact `argv`, candidate

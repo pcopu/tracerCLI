@@ -10779,8 +10779,8 @@
       "id": "7b89b1b6532597ab",
       "source": {
         "path": "src/measured.mjs",
-        "start": 724,
-        "end": 734,
+        "start": 731,
+        "end": 741,
         "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
       },
       "actions": [
@@ -10855,8 +10855,8 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 190,
-        "end": 240,
+        "start": 192,
+        "end": 242,
         "sha256": "36da6a16e429a9753563b941b0ba0033404546806bc77ac235b7e6cdab6afaa5"
       },
       "actions": [
@@ -10875,8 +10875,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 242,
-        "end": 253,
+        "start": 244,
+        "end": 255,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -10934,9 +10934,9 @@
       "id": "b5f5d9570d1fd4d6",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 109,
-        "end": 174,
-        "sha256": "231e33a1bc39fa86f9dceef96e0a4534fa7f38f94361e89c4f693c51c4cb27cc"
+        "start": 110,
+        "end": 176,
+        "sha256": "b2e63dfefe4581d49156c69377bba1d9c50c8e18a935dfab7034ec4c6279588e"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -11014,8 +11014,8 @@
       "id": "1ab3a6285d69c2ea",
       "source": {
         "path": "src/measured.mjs",
-        "start": 787,
-        "end": 836,
+        "start": 794,
+        "end": 843,
         "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
       },
       "actions": [
@@ -11034,8 +11034,8 @@
       "id": "30bea507a9bd7019",
       "source": {
         "path": "src/measured.mjs",
-        "start": 838,
-        "end": 879,
+        "start": 845,
+        "end": 886,
         "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
       },
       "actions": [
@@ -11054,8 +11054,8 @@
       "id": "55a535312b44b050",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 155,
-        "end": 165,
+        "start": 156,
+        "end": 166,
         "sha256": "7115fba002a65f153bc28ee3d642db4f40c8b34e56af22f758c69b2b90ee9512"
       },
       "actions": [
@@ -11093,8 +11093,8 @@
       "source": {
         "path": "src/measured.mjs",
         "start": 570,
-        "end": 636,
-        "sha256": "a8afae916c0115f75f5933c5f416e146f2852c839e1308e509f06b217f09395b"
+        "end": 643,
+        "sha256": "b6ab89423f36c426281d36f7de06bbec6a5fb8a2d5fabb98b314dedb488ee821"
       },
       "actions": [
         "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
@@ -11102,18 +11102,18 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1257,
-        "end": 1284,
-        "sha256": "59e0ba754974289db38b08d8245e0b120006d26bdbf884184ff48604431ae78e"
+        "end": 1298,
+        "sha256": "e0619faf741d3911e917d63a8d3f334220f6cf300dd61a6a385b22079692b00c"
       },
-      "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts."
+      "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
     },
     {
       "id": "0dc104fa30534f2d",
       "source": {
         "path": "src/coverage-worklist.mjs",
         "start": 79,
-        "end": 107,
-        "sha256": "fa1a96c23813e64273efb60b238ee981c2ee2fd45f133f3f6f35937eecd3910b"
+        "end": 108,
+        "sha256": "1650943e1d141d4fed9a20c899c76f26317d32aafcd876887f37a09332280f15"
       },
       "actions": [
         "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
@@ -11121,10 +11121,10 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1270,
-        "end": 1284,
-        "sha256": "a33a1cacb791a5354b2d3ac54012cbd75ceb592535421732b7733c84f69d827b"
+        "end": 1298,
+        "sha256": "9902c5da71a56faa5238bf05765df1e1a454ce4b8a381b95f62d47475a87580f"
       },
-      "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit."
+      "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
     }
   ],
   "ignoredSources": [
