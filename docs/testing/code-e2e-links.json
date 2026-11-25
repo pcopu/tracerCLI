@@ -156,8 +156,8 @@
       "id": "034ef98f10850ec5",
       "source": {
         "path": "src/measured.mjs",
-        "start": 570,
-        "end": 669,
+        "start": 577,
+        "end": 676,
         "sha256": "5e31a9f637b518464e12d61247b7f6e97584900b64dc60606053555be35264d7"
       },
       "actions": [
@@ -165,8 +165,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1382,
-        "end": 1443,
+        "start": 1421,
+        "end": 1482,
         "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
@@ -405,8 +405,8 @@
       "id": "0693dac9e4e72bf8",
       "source": {
         "path": "src/measured.mjs",
-        "start": 148,
-        "end": 155,
+        "start": 155,
+        "end": 162,
         "sha256": "6ecab41b4b4d9b4f663232fcb068ac8d5b1499b16bcdef88ccf66ff75cdb492a"
       },
       "actions": [
@@ -638,8 +638,8 @@
       "id": "0ca067862256f30d",
       "source": {
         "path": "src/measured.mjs",
-        "start": 103,
-        "end": 103,
+        "start": 110,
+        "end": 110,
         "sha256": "21ea32bba51028d6da57865cd4c96c9654f616cfd70bb80b639120886f65eb64"
       },
       "actions": [
@@ -763,8 +763,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1395,
-        "end": 1443,
+        "start": 1434,
+        "end": 1482,
         "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
@@ -896,8 +896,8 @@
       "id": "11c7c528ba57c04b",
       "source": {
         "path": "src/measured.mjs",
-        "start": 193,
-        "end": 199,
+        "start": 200,
+        "end": 206,
         "sha256": "71566ce6ee5a09af83d5202c1c47bb1a78b1deaa4bbb3379e765316889d7f95f"
       },
       "actions": [
@@ -1224,8 +1224,8 @@
       "id": "1ab3a6285d69c2ea",
       "source": {
         "path": "src/measured.mjs",
-        "start": 837,
-        "end": 886,
+        "start": 844,
+        "end": 893,
         "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
       },
       "actions": [
@@ -1234,8 +1234,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1242,
-        "end": 1277,
+        "start": 1281,
+        "end": 1316,
         "sha256": "80640713bd85b27effc4c0275e947be648548a65a3bef648f622399d3262ba04"
       },
       "why": "The added outcome is bound to the receipt and exact measured run."
@@ -1244,8 +1244,8 @@
       "id": "1b02e4e25a6b1c78",
       "source": {
         "path": "src/measured.mjs",
-        "start": 99,
-        "end": 100,
+        "start": 106,
+        "end": 107,
         "sha256": "50c76c721cd196365b486b2047a001d6504c5988f6f4ce872a8e435a4d455395"
       },
       "actions": [
@@ -1304,8 +1304,8 @@
       "id": "1ce1fd2739b87bb2",
       "source": {
         "path": "src/measured.mjs",
-        "start": 107,
-        "end": 118,
+        "start": 114,
+        "end": 125,
         "sha256": "5ea229bed58b7c525ead1b4d474ba0e934be9790eafe57fc3a028b2cd68287f9"
       },
       "actions": [
@@ -1344,8 +1344,8 @@
       "id": "1deecddecf1f8cc3",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 194,
-        "end": 205,
+        "start": 201,
+        "end": 212,
         "sha256": "f901448b62f73b4f107c03320d0028420722e5e94eab15ae1fcbbd1b5924b9be"
       },
       "actions": [
@@ -1365,8 +1365,8 @@
       "id": "1e8056852711cbcf",
       "source": {
         "path": "src/measured.mjs",
-        "start": 262,
-        "end": 267,
+        "start": 269,
+        "end": 274,
         "sha256": "4046f3e1b332236e16d76b570faf8a3b7d4697c4db65ac9f1011b1b1a9991b50"
       },
       "actions": [
@@ -1686,8 +1686,8 @@
       "id": "27fbff878feafb9c",
       "source": {
         "path": "src/measured.mjs",
-        "start": 192,
-        "end": 202,
+        "start": 199,
+        "end": 209,
         "sha256": "42453325b260af05bf4456516324156447b8fdfd629ee49b1111ac860ee5cbf7"
       },
       "actions": [
@@ -2028,8 +2028,8 @@
       "id": "30bea507a9bd7019",
       "source": {
         "path": "src/measured.mjs",
-        "start": 888,
-        "end": 929,
+        "start": 895,
+        "end": 936,
         "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
       },
       "actions": [
@@ -2038,8 +2038,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1259,
-        "end": 1291,
+        "start": 1298,
+        "end": 1330,
         "sha256": "1aadc34de86151cb9cfd30b90acbef6356fe921d42c575f0242f17e7dfe8ff97"
       },
       "why": "A saved batch report reproduces exact measured comparison and protects the baseline and source."
@@ -2181,8 +2181,8 @@
       "id": "3285558de9c2d921",
       "source": {
         "path": "src/measured.mjs",
-        "start": 236,
-        "end": 237,
+        "start": 243,
+        "end": 244,
         "sha256": "fe380d1b9c26a1a1ac4cf41a40ef303fbc4b28db61430a248abb63c4a148b26a"
       },
       "actions": [
@@ -2203,8 +2203,8 @@
       "id": "33579cb5158f24cd",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 168,
-        "end": 184,
+        "start": 175,
+        "end": 191,
         "sha256": "a6cd5fef39183834de211b5d2d917b4b02685d45408d9370c3b131887c29646e"
       },
       "actions": [
@@ -2232,8 +2232,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1119,
-        "end": 1144,
+        "start": 1158,
+        "end": 1183,
         "sha256": "7963a2d2f15bb4f9787c585265cba463f5e534a2803aa1712aa2a1b62b4f64c3"
       },
       "why": "One supported prior scenario is more actionable than several candidates around the same uncovered range."
@@ -2400,8 +2400,8 @@
       "id": "34ec6d64c431520a",
       "source": {
         "path": "src/measured.mjs",
-        "start": 61,
-        "end": 98,
+        "start": 68,
+        "end": 105,
         "sha256": "afe90ff70322298fc312dc36dd19c2d443036725801099eb2372c9cb8ac708d8"
       },
       "actions": [
@@ -2468,8 +2468,8 @@
       "id": "38d9581a3f833c40",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 162,
-        "end": 165,
+        "start": 169,
+        "end": 172,
         "sha256": "7459d4dedcaaa7b37af4fdfd3c5d72bdfc05d1048b34ba64ded86c843ed8f25d"
       },
       "actions": [
@@ -2594,8 +2594,8 @@
       "id": "3ac3e09d411a3472",
       "source": {
         "path": "src/measured.mjs",
-        "start": 156,
-        "end": 187,
+        "start": 163,
+        "end": 194,
         "sha256": "3637f6ef005b2cc35a1082c57fa46d55a6f3343d461a31864c9380da8c64cf92"
       },
       "actions": [
@@ -2741,8 +2741,8 @@
       "id": "3d064f4aad47a94c",
       "source": {
         "path": "src/measured.mjs",
-        "start": 207,
-        "end": 209,
+        "start": 214,
+        "end": 216,
         "sha256": "fad7fd5735f6b919320d1e8e544c57b970d10f81247de0ead6a29b260f65fd03"
       },
       "actions": [
@@ -2772,8 +2772,8 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 332,
-        "end": 383,
+        "start": 331,
+        "end": 382,
         "sha256": "cf4463ef0b41bef4b52a7bbd0503f09fe290d76c78aafef4c5efe3ca6242da5a"
       },
       "actions": [
@@ -3451,8 +3451,8 @@
       "id": "49499f237ca5a545",
       "source": {
         "path": "src/measured.mjs",
-        "start": 192,
-        "end": 199,
+        "start": 199,
+        "end": 206,
         "sha256": "a3bc1d8259d3b4f63c6387f532a8e7562d8e49abe34a735387620bd6acb4741c"
       },
       "actions": [
@@ -3754,8 +3754,8 @@
       "id": "5153154411310178",
       "source": {
         "path": "src/measured.mjs",
-        "start": 96,
-        "end": 96,
+        "start": 103,
+        "end": 103,
         "sha256": "11d5a02b750b7795033d74b2791abd76642998b7f8ce31d69d01467638b58db4"
       },
       "actions": [
@@ -3799,12 +3799,31 @@
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
     {
+      "id": "548606e0451cfcaf",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 219,
+        "end": 220,
+        "sha256": "e22e6d722abd37f78c8d572c1769886dd10b5739d80be2bfcddfe415eb29b0b3"
+      },
+      "actions": [
+        "tracer measure report with a scoped action label and the original repeated action sequence"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1127,
+        "end": 1132,
+        "sha256": "b478dc1537f49af78f1ce2c4effbf914e4202907110c73c0d37ca6927ced77f5"
+      },
+      "why": "Exact label search finds one matching manifest. Exact ordered sequence still finds every interval. Duplicate labels are rejected during import."
+    },
+    {
       "id": "54f68aafcbfb0c0f",
       "source": {
         "path": "src/measured.mjs",
-        "start": 204,
-        "end": 228,
-        "sha256": "b99ec044fc72e8bb2b2645e665b11bb9cfd680d67739c43d47cb41c9c3d60347"
+        "start": 211,
+        "end": 235,
+        "sha256": "d77cb2b057446f2a16d7062041662e12fa7fa92f8e5bfba3785973aa3de4fb83"
       },
       "actions": [
         "tracer measure import --before before.lcov --after after.lcov --manifest manifest.json --sources sources.json --strip-prefix /capture/ --json",
@@ -3832,8 +3851,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1323,
-        "end": 1358,
+        "start": 1362,
+        "end": 1397,
         "sha256": "123b29a3a9fa39219a538ce2bb919b40ff8af861a3afd41acc39b65f46420345"
       },
       "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
@@ -3994,8 +4013,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1146,
-        "end": 1155,
+        "start": 1185,
+        "end": 1194,
         "sha256": "42dba4f8e0a18843379c1c43c1b181bc2dd7769e8c758454832ffc094f55225a"
       },
       "why": "Two selectors nominate the same gap lines. The shortlist returns just one of them and the selector with distinct candidate lines, with clipping before ranking."
@@ -4108,8 +4127,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 385,
-        "end": 396,
+        "start": 384,
+        "end": 395,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -4599,8 +4618,8 @@
       "id": "66fad4baec739828",
       "source": {
         "path": "src/measured.mjs",
-        "start": 112,
-        "end": 117,
+        "start": 119,
+        "end": 124,
         "sha256": "0dc7af7af9386e372a04ef94ac665547e0078f692dad8aa8b5d1ceaa87a3d3ec"
       },
       "actions": [
@@ -4721,8 +4740,8 @@
       "id": "682e8dfa8b9ee023",
       "source": {
         "path": "src/measured.mjs",
-        "start": 386,
-        "end": 395,
+        "start": 393,
+        "end": 402,
         "sha256": "f7de3e1daa17784fb1080e2c4e2182d919c1d164a9d41f66e02ca8227b184e0c"
       },
       "actions": [
@@ -5106,8 +5125,8 @@
       "source": {
         "path": "src/measured.mjs",
         "start": 33,
-        "end": 55,
-        "sha256": "1518b9f998fa863c669470bc6d245f149557c053c1752d15227ea037214c4442"
+        "end": 62,
+        "sha256": "e69dc4f0babde1b9d2981d262676877f05191a85577bcedff3b8f011334d16a4"
       },
       "actions": [
         "tracer measure import --before before.lcov --after after.lcov --manifest manifest.json --sources sources.json --strip-prefix /capture/"
@@ -5154,8 +5173,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1157,
-        "end": 1182,
+        "start": 1196,
+        "end": 1221,
         "sha256": "1224d6b1efb7c1296fcc5af7ee22a8c95dba0d4095f560e962c42c0b69a17f13"
       },
       "why": "Reviewed missing callers are held out of extension suggestions, while runtime observations, a current route witness and stale pins remain visible."
@@ -5239,8 +5258,8 @@
       "id": "788bf5217865dce1",
       "source": {
         "path": "src/measured.mjs",
-        "start": 71,
-        "end": 93,
+        "start": 78,
+        "end": 100,
         "sha256": "6b1c7fdb935a32c2fea0d801b241144e0afd7dfd174634f3df83321654181b6f"
       },
       "actions": [
@@ -5323,8 +5342,8 @@
       "id": "7b03d6f8e2503cda",
       "source": {
         "path": "src/measured.mjs",
-        "start": 101,
-        "end": 102,
+        "start": 108,
+        "end": 109,
         "sha256": "a89688b074bbcbb898a6ab21195f2c866543b3d42c3da3d5a3c6e8a356e0fefc"
       },
       "actions": [
@@ -5342,8 +5361,8 @@
       "id": "7b89b1b6532597ab",
       "source": {
         "path": "src/measured.mjs",
-        "start": 774,
-        "end": 784,
+        "start": 781,
+        "end": 791,
         "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
       },
       "actions": [
@@ -5492,8 +5511,8 @@
       "id": "7ecddb9cd0a4ea5d",
       "source": {
         "path": "src/measured.mjs",
-        "start": 342,
-        "end": 351,
+        "start": 349,
+        "end": 358,
         "sha256": "c703bbb92d3dfabd4c2749fb257f05301b1834afa384a4c16ef0a2e3bd5394a6"
       },
       "actions": [
@@ -5709,8 +5728,8 @@
       "id": "84139e66ef3d06d5",
       "source": {
         "path": "src/measured.mjs",
-        "start": 56,
-        "end": 60,
+        "start": 63,
+        "end": 67,
         "sha256": "d38053ac31c508e5e0b9280e9a62f69d260a51ff736d958db2ffeb18cfb9ecb5"
       },
       "actions": [
@@ -5806,8 +5825,8 @@
       "id": "8708683b29371c51",
       "source": {
         "path": "src/measured.mjs",
-        "start": 61,
-        "end": 98,
+        "start": 68,
+        "end": 105,
         "sha256": "afe90ff70322298fc312dc36dd19c2d443036725801099eb2372c9cb8ac708d8"
       },
       "actions": [
@@ -5905,8 +5924,8 @@
       "id": "87f2bf47a69820fe",
       "source": {
         "path": "src/measured.mjs",
-        "start": 219,
-        "end": 235,
+        "start": 226,
+        "end": 242,
         "sha256": "8c1d6ffcd66b37a8fae1b9a14e9fa3b5fb39a88fad2aee9597d517db7ef8d977"
       },
       "actions": [
@@ -6213,8 +6232,8 @@
       "id": "907a471d03a99436",
       "source": {
         "path": "src/measured.mjs",
-        "start": 359,
-        "end": 361,
+        "start": 366,
+        "end": 368,
         "sha256": "865fc8fb0a13a24f9b6f44ea03629f0d672dba3607edc60dd0f1460f54d40463"
       },
       "actions": [
@@ -6309,8 +6328,8 @@
       "id": "94765782c43b6e91",
       "source": {
         "path": "src/measured.mjs",
-        "start": 348,
-        "end": 351,
+        "start": 355,
+        "end": 358,
         "sha256": "887cd5d41143bb153590a3f3ef5becf61689e3ab39518bbc19816c84473cf8f5"
       },
       "actions": [
@@ -6504,8 +6523,8 @@
       "id": "989c4d59075ed83b",
       "source": {
         "path": "src/measured.mjs",
-        "start": 215,
-        "end": 230,
+        "start": 222,
+        "end": 237,
         "sha256": "01ff650e57b3876650c27ffe25c0a17a1e49ed60e89c6aa9fb5bfef8ad97b79f"
       },
       "actions": [
@@ -7061,8 +7080,8 @@
       "id": "a7dd62880b5fad63",
       "source": {
         "path": "src/measured.mjs",
-        "start": 184,
-        "end": 186,
+        "start": 191,
+        "end": 193,
         "sha256": "2900afb684d3e2509216cf0a973cf91476b9fe0ceffcb115a56af21694b45d2e"
       },
       "actions": [
@@ -7353,8 +7372,8 @@
       "id": "ac1e6aa7355c53c1",
       "source": {
         "path": "src/measured.mjs",
-        "start": 395,
-        "end": 399,
+        "start": 402,
+        "end": 406,
         "sha256": "336ef8db269988811ed91014fc416f183cebbb9a02062e26c8c0340544196d28"
       },
       "actions": [
@@ -7488,8 +7507,8 @@
       "id": "afc08ee21a9da87b",
       "source": {
         "path": "src/measured.mjs",
-        "start": 174,
-        "end": 178,
+        "start": 181,
+        "end": 185,
         "sha256": "983d9263113334474c510a56afdfd4f5ceeb829d14e39ae6abdf6a39466bbd11"
       },
       "actions": [
@@ -8318,6 +8337,25 @@
       "why": "A callback exception persists as action-callback-failed without exposing error content; existing false/throw/runtime journeys separately establish expectation failure. Enclosing boundary included, not every possible callback claimed."
     },
     {
+      "id": "bf203ac42028bb03",
+      "source": {
+        "path": "src/route-bindings.mjs",
+        "start": 97,
+        "end": 104,
+        "sha256": "6d1f0acc2b30d4ddc4af9161017ae3229e5c8b037c3b3301a473c824043d1548"
+      },
+      "actions": [
+        "tracer worklist --action script-scenes with native capabilities and outcome-bound scope labels"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1120,
+        "end": 1126,
+        "sha256": "c74568d70d2dbf9d06a649200e0d48c02b19937541ba6cd4e38086eb33069e8b"
+      },
+      "why": "The exact discovered scope selects only its recorded passing group. The generic command still selects other scoped groups and old receipts."
+    },
+    {
       "id": "bf9412c86d4421fe",
       "source": {
         "path": "src/catalog.mjs",
@@ -8635,8 +8673,8 @@
       "id": "c58724c79bd3fdbc",
       "source": {
         "path": "src/measured.mjs",
-        "start": 104,
-        "end": 105,
+        "start": 111,
+        "end": 112,
         "sha256": "d6c89325acfd4c5a5f460616fe969688e63f33635827e193521367a09e838c4d"
       },
       "actions": [
@@ -9110,8 +9148,8 @@
       "id": "cdf853610fb7a3e1",
       "source": {
         "path": "src/measured.mjs",
-        "start": 148,
-        "end": 155,
+        "start": 155,
+        "end": 162,
         "sha256": "6ecab41b4b4d9b4f663232fcb068ac8d5b1499b16bcdef88ccf66ff75cdb492a"
       },
       "actions": [
@@ -9373,8 +9411,8 @@
       "id": "d66d0ae35ec0d3de",
       "source": {
         "path": "src/measured.mjs",
-        "start": 122,
-        "end": 133,
+        "start": 129,
+        "end": 140,
         "sha256": "4530479179178d90e75361d671f5bd5b948e1feb6bb42cdd3b61ce2cb4d15fb1"
       },
       "actions": [
@@ -9435,8 +9473,8 @@
       "id": "d7dd2aeca4ee290b",
       "source": {
         "path": "src/measured.mjs",
-        "start": 671,
-        "end": 679,
+        "start": 678,
+        "end": 686,
         "sha256": "758738b7c9e83aee3e73f95a9f45284166f6c207b23fbb620ff8630d9003e4be"
       },
       "actions": [
@@ -9525,8 +9563,8 @@
       "id": "d8d411cb313c61f0",
       "source": {
         "path": "src/measured.mjs",
-        "start": 582,
-        "end": 603,
+        "start": 589,
+        "end": 610,
         "sha256": "52e9ff1964e8d2a00ad6f5e62c4e16a584d2bff52f01cb565b9c6fa588c17fc5"
       },
       "actions": [
@@ -9534,8 +9572,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1412,
-        "end": 1438,
+        "start": 1451,
+        "end": 1477,
         "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
@@ -9544,8 +9582,8 @@
       "id": "d90b0dd6bb2afb56",
       "source": {
         "path": "src/measured.mjs",
-        "start": 411,
-        "end": 423,
+        "start": 418,
+        "end": 430,
         "sha256": "cca7349912db25051dd9a039c0a29d25c699328e4fa428b4af63f5ad6c9f43dd"
       },
       "actions": [
@@ -9649,8 +9687,8 @@
       "id": "db4dad596547757b",
       "source": {
         "path": "src/measured.mjs",
-        "start": 129,
-        "end": 147,
+        "start": 136,
+        "end": 154,
         "sha256": "4e72dbe6ed88b1b8245f8404243b695401f7d3531929547b8989f12d304a0830"
       },
       "actions": [
@@ -9735,8 +9773,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1208,
-        "end": 1217,
+        "start": 1247,
+        "end": 1256,
         "sha256": "c57812c79c4c955da7d5fd403807305b55ed6e5eda23b98820de9c65515959df"
       },
       "why": "Only the exact captured alternate group supplies adjacent counter evidence in selector review; the passing gap is unchanged."
@@ -10008,8 +10046,8 @@
       "id": "e4957054852e86f8",
       "source": {
         "path": "src/measured.mjs",
-        "start": 547,
-        "end": 569,
+        "start": 554,
+        "end": 576,
         "sha256": "1b702a16031549bbe1c6eea5a8add8e004818e8b09549c8c55902e4498dd5f92"
       },
       "actions": [
@@ -10018,8 +10056,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1111,
-        "end": 1128,
+        "start": 1150,
+        "end": 1167,
         "sha256": "5471c9fb99ccc0c9bf56ef7d730828075d7848537e34c0adbd430cccdf4fa0f8"
       },
       "why": "A capture on either side or a failing interval cannot by itself supply a passing scenario lead."
@@ -10116,8 +10154,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1196,
-        "end": 1228,
+        "start": 1235,
+        "end": 1267,
         "sha256": "0d8297af172c362f85bbf71e09e50d980193e3c5b8bb9143e41801b55434c706"
       },
       "why": "Native discovery can supply recorded journey labels directly while preserving its original restrictions."
@@ -10280,8 +10318,8 @@
       "id": "ebac59ed43257c78",
       "source": {
         "path": "src/measured.mjs",
-        "start": 188,
-        "end": 203,
+        "start": 195,
+        "end": 210,
         "sha256": "ec19b8ef213ccea5ed41b27c022f8d0139d87036092849c10da1d6c47ae7d5d6"
       },
       "actions": [
@@ -10300,8 +10338,8 @@
       "id": "ec134f4e838420b7",
       "source": {
         "path": "src/measured.mjs",
-        "start": 479,
-        "end": 483,
+        "start": 486,
+        "end": 490,
         "sha256": "8feffc0c71c14a6c74e4acf62a6a6b514bbae2a7a3535c474cea83dfdf8509b1"
       },
       "actions": [
@@ -10422,9 +10460,9 @@
       "id": "ef6089bb60507254",
       "source": {
         "path": "src/measured.mjs",
-        "start": 212,
-        "end": 218,
-        "sha256": "049b0b48aa43c71fefdf3ad92d10e76995cdf737edb8ed24deb552865be5a107"
+        "start": 219,
+        "end": 225,
+        "sha256": "1923e2cc52b17c04749d55c1041d1d19e148009838640356529ac02f051a86f9"
       },
       "actions": [
         "tracer measure import --before before.lcov --after after.lcov --manifest manifest.json --sources sources.json --strip-prefix /capture/ --json",
@@ -10645,8 +10683,8 @@
       "id": "f4547f128dd3bf95",
       "source": {
         "path": "src/measured.mjs",
-        "start": 238,
-        "end": 242,
+        "start": 245,
+        "end": 249,
         "sha256": "afdb7a6756f551934ef6ec2e12654c8a0730306e8c7f602f0db8c920a40d4bfc"
       },
       "actions": [
@@ -10807,16 +10845,16 @@
       "source": {
         "path": "src/route-bindings.mjs",
         "start": 83,
-        "end": 98,
-        "sha256": "0ee208eb7da83c63aa8ad28947feb5f0a4cba4a6480aa8b6a3bd9e2b37239eba"
+        "end": 105,
+        "sha256": "ddcd26d386ffeaeb253aa933c97c06c72103a01e8f3e7f3532e43d207beb49f2"
       },
       "actions": [
         "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1323,
-        "end": 1341,
+        "start": 1362,
+        "end": 1380,
         "sha256": "2cc3ad0c625d44acebfb42ff87b06cd8603382625a3262b284a1e16f2f6d9fed"
       },
       "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
@@ -10971,8 +11009,8 @@
       "id": "fc3342bd1230df58",
       "source": {
         "path": "src/measured.mjs",
-        "start": 485,
-        "end": 489,
+        "start": 492,
+        "end": 496,
         "sha256": "9ea2720a4163f5b9a50e208569e87453b1a38d9ebd03fda666fe351488057271"
       },
       "actions": [
@@ -10997,8 +11035,8 @@
       "id": "fc3fdec1c6dea5e8",
       "source": {
         "path": "src/measured.mjs",
-        "start": 513,
-        "end": 522,
+        "start": 520,
+        "end": 529,
         "sha256": "c5686c637926de755cad9ea4a6582694de3b5ba021596599dd5b6191bc7b0d12"
       },
       "actions": [
@@ -11241,8 +11279,8 @@
       "id": "ffdde2da93e4bbdc",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 122,
-        "end": 129,
+        "start": 129,
+        "end": 136,
         "sha256": "3e2b3ec565245790677634ab67c40b1dc29a8d102b5d0e7a0e2bdea94cd0b456"
       },
       "actions": [

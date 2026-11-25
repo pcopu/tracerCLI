@@ -31,9 +31,13 @@ function readInput(path) {
   return { bytes, content, sha256: sha(bytes) };
 }
 function validateManifest(value) {
-  keys(value, ['version', 'runId', 'actions', 'counterMode', 'counterReset', 'before', 'after', 'sourceManifestSha256', 'probeSha256', 'tools', 'limitations'], 'measurement manifest');
+  keys(value, ['version', 'runId', 'actions', 'actionLabels', 'counterMode', 'counterReset', 'before', 'after', 'sourceManifestSha256', 'probeSha256', 'tools', 'limitations'], 'measurement manifest');
   if (value.version !== 1 || !text(value.runId) || value.runId.length > 200 || value.counterMode !== 'cumulative' || value.counterReset !== false) fail('Require manifest version 1, a runId, cumulative counters and counterReset: false.');
   validateActions(value.actions);
+  if (Object.hasOwn(value, 'actionLabels')) {
+    validateActions(value.actionLabels);
+    if (new Set(value.actionLabels).size !== value.actionLabels.length) fail('Require unique action labels.');
+  }
   if (!hex(value.sourceManifestSha256) || !hex(value.probeSha256)) fail('Require pinned source-manifest and probe SHA256 identities.');
   if (!Array.isArray(value.tools) || !value.tools.length) fail('Require capture/export tool identities.');
   const names = new Set();
@@ -52,6 +56,9 @@ function validateManifest(value) {
   }
   if (value.before.buildSha256 !== value.after.buildSha256 || value.before.toolchainSha256 !== value.after.toolchainSha256) fail('Before and after build/tool identities differ.');
   return value;
+}
+function hasAction(record, label) {
+  return record.actions.includes(label) || record.actionLabels?.includes(label);
 }
 function validatePrefix(prefix) {
   if (prefix === undefined) return '';
@@ -209,7 +216,7 @@ export function reportMeasured(root, query) {
   else if (query?.kind === 'action' && !text(query.value)) fail('Action must be a nonempty single-line description.');
   const intervals = [];
   for (const interval of data.intervals) {
-    if (query?.kind === 'action' && !interval.manifest.actions.includes(query.value)) continue;
+    if (query?.kind === 'action' && !hasAction(interval.manifest, query.value)) continue;
     if (query?.kind === 'sequence' && JSON.stringify(interval.manifest.actions) !== JSON.stringify(query.value)) continue;
     const files = [];
     for (const file of interval.files) {
@@ -371,7 +378,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
         for (const file of interval.files.filter(file => !lookupPath || file.path === lookupPath)) for (const [line, before, after] of file.rows) if (after > before) observed.add(`${file.path}\0${line}`);
       }
       records.set(occurrence, { id: occurrence, aliases: [id], digest, observed, provenanceId: currentScopeId, origins: [origins.length - 1],
-        ...(retainFiles ? { captureFiles: interval.files, validFiles, actions: interval.manifest.actions } : {}),
+        ...(retainFiles ? { captureFiles: interval.files, validFiles, actions: interval.manifest.actions, actionLabels: interval.manifest.actionLabels } : {}),
         ...(lookupPath ? { lookupFile, snapshotError, actions: interval.manifest.actions, validOrigins: lookupFile && !snapshotError ? [origins.length - 1] : [] } : {}) });
     }
     if (invalidFiles?.size) origin.invalidSnapshotFiles = [...invalidFiles.values()];
@@ -696,7 +703,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
-    const actionExecution = actionQuery && outcome === 'passed' && record.actions.includes(actionQuery.label)
+    const actionExecution = actionQuery && outcome === 'passed' && hasAction(record, actionQuery.label)
       && actionQuery.journeys.get(declaration.journey);
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;

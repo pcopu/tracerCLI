@@ -1093,6 +1093,45 @@ test('worklist finds discovered actions and the exact existing scenarios that re
   assert.match(f.run([...args.slice(0, -2), '--capabilities', 'capabilities.json', '--action', 'open'], 1).stderr, /--action requires --source/);
 });
 
+test('worklist maps a discovered Scriv menu scope by its exact recorded label', t => {
+  const f = project(t), path = 'tests/e2e/journeys/menu.mjs';
+  f.put(path, '// Synthetic discovered fixture.\n');
+  f.jsonFile('routes.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    scenarios: [{ id: 'journeys/menu', path, groups: ['scene', 'other', 'legacy'] }] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['menu-action'],
+    semanticMenuActionScopes: ['script-scenes', 'script-entries', 'audio-anchor'] });
+  const action = 'scriv menu-action', label = 'scriv menu-action --scope script-scenes';
+  const declarations = [];
+  for (const [group, actionLabel] of [['scene', label], ['other', 'scriv menu-action --scope script-entries'], ['legacy', null]]) {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = group;
+    f.manifest.actions = [action, action];
+    if (actionLabel) f.manifest.actionLabels = [actionLabel]; else delete f.manifest.actionLabels;
+    f.save();
+    const { id } = f.json(...f.args);
+    declarations.push({ id, journey: path + '#' + group, status: 'passed' });
+  }
+  f.jsonFile('evidence.json', {});
+  const evidence = { path: 'evidence.json', sha256: f.hash('evidence.json') };
+  f.jsonFile('outcomes.json', { version: 1, intervals: declarations.map(row => ({ ...row, evidence })) });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const args = ['worklist', '--routes', 'routes.json', '--capabilities', 'capabilities.json',
+    '--capture-set', 'captures.json', '--reference-root', '.', '--source', 'src/app.py', '--action'];
+  const { actionReview, coverage } = f.json(...args, 'script-scenes');
+  assert.equal(actionReview.next, 'extend-scenario');
+  assert.equal(actionReview.measurementAction, label);
+  assert.deepEqual(actionReview.routes.map(row => row.argv.at(-1)), ['scene']);
+  assert.deepEqual(f.json(...args, 'menu-action').actionReview.routes.map(row => row.argv.at(-1)).sort(), ['legacy', 'other', 'scene']);
+  assert.equal(f.json(...args, 'audio-anchor').actionReview.next, 'find-or-add-scenario');
+  assert.deepEqual(f.json(...args, 'menu-action').coverage, coverage);
+  const selected = f.json('measure', 'report', '--action', label).intervals;
+  assert.deepEqual(selected.map(row => row.manifest.actions), [[action, action]]);
+  assert.equal(f.json('measure', 'report', '--sequence', JSON.stringify([action, action])).intervals.length, 3);
+  f.manifest.actionLabels = [label, label];
+  f.save();
+  assert.match(f.run(f.args, 1).stderr, /unique action labels/);
+});
+
 test('direct worklist finds scenario extension leads from one passing interval around the same gap', t => {
   const f = project(t);
   f.put('src/app.py', source + 'fifth\nsixth\nseventh\n');

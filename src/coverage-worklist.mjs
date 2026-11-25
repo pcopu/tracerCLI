@@ -312,8 +312,7 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   if (actionId !== undefined && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
   let actionLabel;
   if (actionId !== undefined) {
-    if (!catalog.commandIds) actionLabel = catalog.actions.get(actionId)?.id;
-    else if (catalog.commandIds.has(actionId)) actionLabel = `scriv ${actionId}`;
+    actionLabel = catalog.measurementActions ? catalog.measurementActions.get(actionId) : catalog.actions.get(actionId)?.id;
   }
   const actionQuery = actionLabel && { label: actionLabel, focus, journeys: catalog.journeys };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);

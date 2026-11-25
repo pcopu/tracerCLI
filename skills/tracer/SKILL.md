@@ -97,7 +97,9 @@ Verify the route, then measure gains with a retained baseline.
 
 When you know the caller and discovered CLI action, use `worklist --action ID
 --source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
-also supply the app's saved `--capabilities` output. Start with the exact
+also supply the app's saved `--capabilities` output. Use the advertised scope
+ID for a menu behavior, such as `--action script-entries`. Older captures can
+still match the broad `menu-action` command. Start with the exact
 scenario group in `actionReview.routes` that has observed lines in that caller.
 Use the whole caller range to find a scenario that ran it. Read its scenario
 and actual control before extending it. Counts describe the interval containing

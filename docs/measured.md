@@ -20,7 +20,7 @@ Input paths are relative to the invoking working directory or absolute. They mus
 
 ## Manifest v1
 
-`interval.json` has exactly these fields. Replace placeholder hashes with actual lowercase SHA-256 values; this illustrative JSON is not import-ready.
+`interval.json` has these required fields and an optional `actionLabels` array. Replace placeholder hashes with actual lowercase SHA-256 values; this illustrative JSON is not import-ready.
 
 ```json
 {
@@ -51,6 +51,12 @@ Input paths are relative to the invoking working directory or absolute. They mus
   }
 }
 ```
+
+A producer can also supply `actionLabels`, a nonempty array of unique exact
+labels derived from the recorded interaction. For example, Scriv can bind
+`scriv menu-action --scope script-entries` to an interval that contains a
+completed menu command in its advertised Scripts entry scope. Labels work
+with exact `--action` lookups. Sequence queries still use `actions`.
 
 `actions` preserves exact order and repeated actions. These are supplied descriptions of the recorded sequence, never executable commands. One action selector returns its whole interval, not per-action attribution.
 

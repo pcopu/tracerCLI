@@ -83,7 +83,7 @@ function readCatalogDocument(root, file) {
 function nativeActionIds(input) {
   if (input?.protocol !== 1 || input.driver !== 'UIKit controls') fail('Expected Scriv UIKit CLI capabilities protocol 1.');
   list(input.commands);
-  const ids = new Set(), commandIds = new Set();
+  const ids = new Set(), measurementActions = new Map();
   for (const key of ['commands', 'publicDelegateCommands', 'publicTextInputCommands', 'semanticApplicationCommands',
     'semanticGestureCommands', 'semanticMenuActionScopes', 'syntheticFixtureCommands']) {
     if (!Object.hasOwn(input, key)) continue;
@@ -91,10 +91,17 @@ function nativeActionIds(input) {
     for (const id of input[key]) {
       text(id);
       ids.add(id);
-      if (key !== 'semanticMenuActionScopes') commandIds.add(id);
+      if (key !== 'semanticMenuActionScopes') measurementActions.set(id, `scriv ${id}`);
     }
   }
-  return { ids, commandIds };
+  if (measurementActions.has('menu-action')) {
+    for (const scope of input.semanticMenuActionScopes ?? []) {
+      if (/^[a-z][a-z0-9-]{0,63}$/.test(scope) && !measurementActions.has(scope)) {
+        measurementActions.set(scope, `scriv menu-action --scope ${scope}`);
+      }
+    }
+  }
+  return { ids, measurementActions };
 }
 
 export function readRoutes(root, file, { capabilitiesFile } = {}) {
@@ -148,15 +155,15 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
       actions.set(action.id, action);
     }
   }
-  let capabilitiesSha256, commandIds;
+  let capabilitiesSha256, measurementActions;
   if (capabilitiesFile !== undefined) {
     const { input, sha256 } = readCatalogDocument(root, capabilitiesFile);
     capabilitiesSha256 = sha256;
     const discovered = nativeActionIds(input);
     actions = new Map([...discovered.ids].map(id => [id, actions?.get(id) ?? { id }]));
-    commandIds = discovered.commandIds;
+    measurementActions = discovered.measurementActions;
   }
-  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, commandIds };
+  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions };
 }
 
 function sourcePrediction({ row, current, errors }) {
