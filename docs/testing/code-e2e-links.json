@@ -333,7 +333,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The complete independently authored literal help contract includes the proposal lifecycle command, asserted via all three top-level help routes with unchanged project/home state. Existing narrower proposal witness only checked planning prose and is replaced after semantic review. Manual association only, not execution evidence."
     },
@@ -2174,7 +2174,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 144,
-        "sha256": "09dcd78de36e6e62c36e95e149d4891df9295bdfeba2a2c5f6862fba606fa7d1"
+        "sha256": "cf00f91ee3454c12b609247bd939b5666d7a1dee6037e103eb5b0789c92ea66b"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -2499,7 +2499,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 144,
-        "sha256": "09dcd78de36e6e62c36e95e149d4891df9295bdfeba2a2c5f6862fba606fa7d1"
+        "sha256": "cf00f91ee3454c12b609247bd939b5666d7a1dee6037e103eb5b0789c92ea66b"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -3638,7 +3638,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -4267,7 +4267,7 @@
         "path": "bin/tracer.mjs",
         "start": 137,
         "end": 138,
-        "sha256": "4840de0ecd44d973bccbff52eac337a623ecdcc2da930de208bc70238c260a08"
+        "sha256": "692a72107dcbbea135b63962de58e9b128b84cb8c29af545095babdcd0a2426b"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -6603,7 +6603,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The complete help contract asserts the public audit queue modes and flags, including audit --help, outside a project without side effects."
     },
@@ -6728,7 +6728,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 145,
-        "sha256": "3f954d18ecf52a83968db8274d79d03c0464ee80d7ac38482db74bc2ef7b93f8"
+        "sha256": "201f140049ee5e8dabf1646a066be2f753c3aa339d759430035789841871065a"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -7097,7 +7097,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -7431,7 +7431,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state."
     },
@@ -10061,7 +10061,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "ecaffc0f93052d38aad8a7cf283a1f2009a42bd34b4c520e583a0ed54d0b9c44"
+        "sha256": "33bfefb4a5babf8a5e933a83f39bd6188b1a915b07b8ca9f14764a3bd6c67eb1"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state. Maintenance review: Complete independent literal help fixture now includes suggest-moves and union with explicit scope modes. Exact output equality/unchanged state assertions remain."
     },
@@ -10779,8 +10779,8 @@
       "id": "7b89b1b6532597ab",
       "source": {
         "path": "src/measured.mjs",
-        "start": 655,
-        "end": 665,
+        "start": 724,
+        "end": 734,
         "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
       },
       "actions": [
@@ -10855,8 +10855,8 @@
       "id": "3d3088ebac6ffa22",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 158,
-        "end": 208,
+        "start": 190,
+        "end": 240,
         "sha256": "36da6a16e429a9753563b941b0ba0033404546806bc77ac235b7e6cdab6afaa5"
       },
       "actions": [
@@ -10875,8 +10875,8 @@
       "id": "5aa4aa7da45a6385",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 210,
-        "end": 221,
+        "start": 242,
+        "end": 253,
         "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
       },
       "actions": [
@@ -10897,7 +10897,7 @@
         "path": "bin/tracer.mjs",
         "start": 146,
         "end": 159,
-        "sha256": "d9026923a9f784c0751876db3e27e8649cec0c72f502f138050e140e2df51bf9"
+        "sha256": "95f80f12911fc4b5157598d5ea581e098c9be21bea854d3b318066fdbb890115"
       },
       "actions": [
         "tracer proposal worklist with exact current route catalog and reference capture"
@@ -10934,9 +10934,9 @@
       "id": "b5f5d9570d1fd4d6",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 79,
-        "end": 143,
-        "sha256": "6c8cf357ed294a89d8dc6860ca5bd39fade443337e9dae24c2f1413a837c3b89"
+        "start": 109,
+        "end": 174,
+        "sha256": "231e33a1bc39fa86f9dceef96e0a4534fa7f38f94361e89c4f693c51c4cb27cc"
       },
       "actions": [
         "tracer worklist with a capture set, discovered selectors and current witnessed links",
@@ -11014,8 +11014,8 @@
       "id": "1ab3a6285d69c2ea",
       "source": {
         "path": "src/measured.mjs",
-        "start": 718,
-        "end": 767,
+        "start": 787,
+        "end": 836,
         "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
       },
       "actions": [
@@ -11034,8 +11034,8 @@
       "id": "30bea507a9bd7019",
       "source": {
         "path": "src/measured.mjs",
-        "start": 769,
-        "end": 810,
+        "start": 838,
+        "end": 879,
         "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
       },
       "actions": [
@@ -11054,8 +11054,8 @@
       "id": "55a535312b44b050",
       "source": {
         "path": "src/coverage-worklist.mjs",
-        "start": 125,
-        "end": 135,
+        "start": 155,
+        "end": 165,
         "sha256": "7115fba002a65f153bc28ee3d642db4f40c8b34e56af22f758c69b2b90ee9512"
       },
       "actions": [
@@ -11087,6 +11087,44 @@
         "sha256": "559be276c631c0d595a2df46605d4898c0efad7628f62a4eb41569c22279ac84"
       },
       "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
+    },
+    {
+      "id": "034ef98f10850ec5",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 570,
+        "end": 636,
+        "sha256": "a8afae916c0115f75f5933c5f416e146f2852c839e1308e509f06b217f09395b"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1257,
+        "end": 1284,
+        "sha256": "59e0ba754974289db38b08d8245e0b120006d26bdbf884184ff48604431ae78e"
+      },
+      "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts."
+    },
+    {
+      "id": "0dc104fa30534f2d",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 79,
+        "end": 107,
+        "sha256": "fa1a96c23813e64273efb60b238ee981c2ee2fd45f133f3f6f35937eecd3910b"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1270,
+        "end": 1284,
+        "sha256": "a33a1cacb791a5354b2d3ac54012cbd75ceb592535421732b7733c84f69d827b"
+      },
+      "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit."
     }
   ],
   "ignoredSources": [

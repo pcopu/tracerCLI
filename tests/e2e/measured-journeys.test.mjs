@@ -1232,3 +1232,54 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.equal(sharedWitness.routes[0].gapLines, 1);
   assert.equal(sharedWitness.decisions.classifiedGapLines, 1);
 });
+
+test('worklist ranks fresh replays from retained passing evidence without crediting changed source', t => {
+  const old = project(t), alternate = project(t), f = project(t), path = 'src/app.py';
+  const previous = 'start\nalpha\nrecover one\nomega\nmiddle\nrepeat\nrepeat\nrepeat\nrepeat\nbefore\nrecover two\nafter\nrecover three\nlast\nfinish\n';
+  const updated = 'new header\n' + previous.replace('middle\n', 'new middle\n');
+  function prepare(project, text, lines) {
+    project.put(path, text);
+    project.jsonFile('sources.json', { files: [{ path, sha256: project.hash(path) }] });
+    project.manifest.sourceManifestSha256 = project.manifest.before.sourceManifestSha256
+      = project.manifest.after.sourceManifestSha256 = project.hash('sources.json');
+    project.put('before.lcov', project.record(lines.map(line => `DA:${line},0`).join('\n')));
+    return (journey, increased, status = 'passed') => {
+      project.manifest.runId = project.manifest.before.runId = project.manifest.after.runId = journey;
+      project.put('after.lcov', project.record(lines.map(line => `DA:${line},${Number(increased.includes(line))}`).join('\n')));
+      project.refresh();
+      const { id } = project.json(...project.args);
+      const evidence = `${status}.json`;
+      project.jsonFile(evidence, { status });
+      return { id, journey, status, evidence: { path: join(project.root, evidence), sha256: project.hash(evidence) } };
+    };
+  }
+  const oldCapture = prepare(old, previous, Array.from({ length: 15 }, (_, i) => i + 1));
+  const capture = prepare(f, updated, Array.from({ length: 16 }, (_, i) => i + 1));
+  const alternateCapture = prepare(alternate, updated, [1, 5, 16]);
+  const outcomes = [oldCapture('alpha', [3, 7, 11]), oldCapture('beta', [3, 13]),
+    oldCapture('failed', [14], 'failed'), oldCapture('restricted', [2]), oldCapture('rerun', [15]), capture('rerun', [2]),
+    alternateCapture('table', [5])];
+  f.jsonFile('outcomes.json', { version: 1, intervals: outcomes });
+  f.jsonFile('captures.json', { version: 1, inputRoots: [old.root, alternate.root, '.'], outcomes: 'outcomes.json' });
+  f.put('tests/flow.mjs', '// Scenario witness\n');
+  const route = (id, journey, extra = {}) => ({ id, argv: ['test', journey], paths: ['tests/flow.mjs'], journeys: [journey], ...extra });
+  f.jsonFile('routes.json', { version: 1, routes: ['alpha', 'beta', 'failed', 'rerun', 'table'].map(id => route(id, id)).concat(
+    route('alpha-alias', 'alpha'), route('restricted', 'restricted', { restriction: 'No permitted device' })) });
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const direct = f.json(...args), report = f.json(...args, '--replay');
+  assert.deepEqual(report.coverage, direct.coverage);
+  assert.deepEqual(report.unassigned, direct.unassigned);
+  assert.equal(report.coverage.passedOnlyKnown.observedLines, 1);
+  assert.equal(report.replayCandidates.gapLines, 4);
+  assert.deepEqual(report.replayCandidates.items.map(({ argv, routeIds, gapLines, marginalGapLines, sources }) =>
+    [argv, routeIds, gapLines, marginalGapLines, sources[0].gapRanges]), [
+    [['test', 'alpha'], ['alpha', 'alpha-alias'], 2, 2, [[4, 4], [12, 12]]],
+    [['test', 'beta'], ['beta'], 2, 1, [[4, 4], [14, 14]]],
+    [['test', 'table'], ['table'], 1, 1, [[5, 5]]],
+  ]);
+  const limited = f.json(...args, '--replay', '--limit', '1');
+  assert.equal(limited.replayCandidates.gapLines, 4);
+  assert.equal(limited.replayCandidates.items.length, 1);
+  old.put(path, previous + 'stale snapshot\n');
+  assert.equal(f.json(...args, '--replay').replayCandidates.gapLines, 1);
+});

@@ -76,6 +76,36 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
   return { count: rows.length, gapLines, exclusiveGapLines, items: rows.slice(0, limit) };
 }
 
+function replayCandidates(sourcesByRoute, held, limit) {
+  const rows = [], union = new Map();
+  for (const [execution, sources] of sourcesByRoute) {
+    const available = new Map();
+    for (const [path, lines] of sources) {
+      const eligible = [...lines].filter(line => !held?.get(path)?.has(line));
+      if (eligible.length) { addLines(available, path, eligible); addLines(union, path, eligible); }
+    }
+    if (available.size) rows.push({ execution, available, ...summarize(available) });
+  }
+  const covered = new Map(), items = [];
+  const score = ({ available }) => [...available].reduce((sum, [path, lines]) =>
+    sum + [...lines].filter(line => !covered.get(path)?.has(line)).length, 0);
+  const count = rows.length;
+  rows.sort((a, b) => a.execution.routeIds[0].localeCompare(b.execution.routeIds[0]));
+  while (rows.length && items.length < limit) {
+    let index = -1, marginal = 0;
+    for (const [i, row] of rows.entries()) {
+      const additional = score(row);
+      if (additional > marginal) { index = i; marginal = additional; }
+    }
+    if (index < 0) break;
+    const [row] = rows.splice(index, 1);
+    for (const [path, lines] of row.available) addLines(covered, path, lines);
+    const { execution: { routeIds, argv }, sources, gapLines } = row;
+    items.push({ routeIds, argv, sources, gapLines, marginalGapLines: marginal });
+  }
+  return { count, gapLines: summarize(union).gapLines, items };
+}
+
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit }) {
   const held = decisions?.held;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
@@ -138,17 +168,19 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     routeCount: routes.length, routes: routes.slice(0, limit),
     selectorReview: { count: selectorReview.length, items: selectorReview.slice(0, limit) },
     ...(extensions && { extensionCandidates: extensions }),
+    ...(measured.replaySources && { replayCandidates: replayCandidates(measured.replaySources, held, limit) }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, limit = 15 }) {
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, extensionJourneys: direct ? catalog.journeys : undefined });
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot,
+    extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
   const scope = gapFiles(measured);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;

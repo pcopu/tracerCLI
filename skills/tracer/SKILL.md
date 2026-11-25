@@ -47,6 +47,13 @@ scenario leads. A current reviewed blocker or missing action can hold a range
 out of the scenario queue. Shared code stays eligible through other plans.
 Start with the largest actionable group and keep the original denominator.
 
+After a rebuild, add `--replay` and use a capture set containing both the new
+reference and retained earlier results. `replayCandidates` ranks the existing
+CLI selectors that previously observed still-missing behavior, deduplicated by
+marginal candidate lines. Run the leading selectors on the verified build and
+use `measure batch` to record fresh gains. Earlier observations only guide
+selection when source or instrumentation changed.
+
 Add exact outcome `journeys` labels to discovered routes to find existing
 scenarios worth extending. `extensionCandidates` shows passing intervals with
 observations on both sides of a gap. Start with gaps that have one candidate

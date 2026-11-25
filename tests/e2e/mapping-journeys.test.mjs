@@ -743,7 +743,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   proposal prepare|check|report --file PROPOSAL [--json]
   proposal bind --file PROPOSAL --routes CATALOG [--json]
   worklist --routes CATALOG --capture-set FILE --reference-root DIR
-           [--file PROPOSAL] [--capabilities FILE] [--limit N] [--json]
+           [--file PROPOSAL] [--capabilities FILE] [--replay] [--limit N] [--json]
   proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR
                     [--capabilities FILE] [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]

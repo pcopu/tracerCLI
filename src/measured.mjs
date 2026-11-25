@@ -567,7 +567,75 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath)
   return examples;
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys }, shared = measurementSnapshot()) {
+function uniqueLineContexts(lines) {
+  const contexts = new Map();
+  for (const [index, line] of lines.entries()) {
+    const key = JSON.stringify([lines[index - 1], line, lines[index + 1]]);
+    contexts.set(key, contexts.has(key) ? 0 : index + 1);
+  }
+  return contexts;
+}
+
+function replayPassingSources(store, files, referenceFilesByPath, loaded, journeys, shared) {
+  const targets = new Map(files.filter(file => file.status === 'current' && file.passedOnlyKnown.gapLines)
+    .map(({ path, passedOnlyKnown }) => [path, { reference: referenceFilesByPath.get(path).file,
+      gaps: new Set(passedOnlyKnown.gapRanges.flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, index) => start + index))),
+      seen: new Set(), mappings: new Map() }]));
+  const passing = [];
+  for (const record of loaded.records.values()) {
+    const declaration = loaded.declarations.get(record.id), execution = journeys.get(declaration?.journey);
+    if (declaration?.status !== 'passed' || !execution || execution.restrictions.length) continue;
+    passing.push({ record, execution });
+    for (const captured of record.captureFiles) {
+      const target = targets.get(captured.path);
+      if (target && !fileEvidenceMismatch(record, captured, target.reference)) target.seen.add(execution);
+    }
+  }
+
+  const candidates = new Map();
+  for (const { record, execution } of passing) for (const captured of record.captureFiles) {
+    const { path, sha256 } = captured, target = targets.get(path);
+    if (!target || target.seen.has(execution) || !record.validFiles.has(path)) continue;
+    // The source can still match when the DA line universe changed. These
+    // counters also need a fresh capture before they can count in this scope.
+    const sameBytes = sha256 === target.reference.sha256;
+    if (!sameBytes && !target.mappings.has(sha256)) {
+      let earlier;
+      for (const i of record.origins) {
+        const root = loaded.origins[i].root;
+        try {
+          const snapshot = shared.stores.get(root) ?? new MeasuredStore(root);
+          const lines = snapshot.readLines(path);
+          if (sha(lines.join('')) === sha256) { earlier = lines; break; }
+        } catch { /* Another validated origin may still have the source. */ }
+      }
+      if (!earlier) continue;
+      if (!target.contexts) {
+        const current = store.readLines(path);
+        if (sha(current.join('')) !== target.reference.sha256) fail(`Current source changed during replay planning: ${path}`);
+        target.contexts = uniqueLineContexts(current);
+      }
+      const mapping = new Map();
+      for (const [context, oldLine] of uniqueLineContexts(earlier)) {
+        const currentLine = target.contexts.get(context);
+        if (oldLine && target.gaps.has(currentLine)) mapping.set(oldLine, currentLine);
+      }
+      target.mappings.set(sha256, mapping);
+    }
+    const mapping = target.mappings.get(sha256);
+    for (const [line, before, after] of captured.rows) {
+      const currentLine = sameBytes ? line : mapping.get(line);
+      if (after <= before || !target.gaps.has(currentLine)) continue;
+      if (!candidates.has(execution)) candidates.set(execution, new Map());
+      const sources = candidates.get(execution);
+      if (!sources.has(path)) sources.set(path, new Set());
+      sources.get(path).add(currentLine);
+    }
+  }
+  return candidates;
+}
+
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
@@ -649,6 +717,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(extensionJourneys?.size && { surroundingIntervals: surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath) }),
+    ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
 }
 

@@ -190,3 +190,27 @@ gaps with one candidate selector and sorts those selectors first. The report
 keeps the gap in `unassigned` until it has a current witness or a scored plan.
 The anchor examples retain their full surrounding gap for context. Candidate
 `sources` contain the exact lines still suggested for extension.
+
+## Recover coverage on a rebuilt source tree
+
+```sh
+tracer worklist --replay --routes /external/scriv-discovery.json \
+  --capture-set /external/captures.json --reference-root /external/new-build/analysis/source
+```
+
+Use the current capture set that includes both the new reference and retained
+captures from earlier builds. `replayCandidates` ranks already-discovered
+scenarios whose earlier passing intervals nominate current gaps. It matches the
+exact journey label to an unrestricted selector. On changed files it matches
+unique, exact source lines with both neighboring lines unchanged. For unchanged
+bytes with different instrumented lines, it uses the original coordinates.
+Each prior source snapshot and outcome must pass the ordinary evidence checks.
+A selector with a passing compatible capture for the same file is skipped.
+Current reviewed holds supplied through `--file` also apply to replay leads.
+
+The total counts candidate lines once. Each item gives exact `argv`, candidate
+source ranges and `marginalGapLines` beyond earlier selections. A selector that
+would add no further candidate lines is omitted from the ranked list. The
+reported denominator and passing counts still come from exact compatible
+observations. Run the selected groups against the current build and import
+fresh receipts before measuring gains.
