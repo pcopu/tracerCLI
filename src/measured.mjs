@@ -371,7 +371,7 @@ function loadMeasuredRecords(root, options, { lookupPath, referenceRoot, retainF
         for (const file of interval.files.filter(file => !lookupPath || file.path === lookupPath)) for (const [line, before, after] of file.rows) if (after > before) observed.add(`${file.path}\0${line}`);
       }
       records.set(occurrence, { id: occurrence, aliases: [id], digest, observed, provenanceId: currentScopeId, origins: [origins.length - 1],
-        ...(retainFiles ? { captureFiles: interval.files, validFiles } : {}),
+        ...(retainFiles ? { captureFiles: interval.files, validFiles, actions: interval.manifest.actions } : {}),
         ...(lookupPath ? { lookupFile, snapshotError, actions: interval.manifest.actions, validOrigins: lookupFile && !snapshotError ? [origins.length - 1] : [] } : {}) });
     }
     if (invalidFiles?.size) origin.invalidSnapshotFiles = [...invalidFiles.values()];
@@ -668,7 +668,18 @@ function replayPassingSources(store, files, referenceFilesByPath, loaded, journe
   return { eligible, failed, failures };
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys }, shared = measurementSnapshot()) {
+function recordActionSource(sources, execution, { path, rows }, example, focus) {
+  if (!sources.has(execution)) sources.set(execution, { files: new Map(), example });
+  if (!focus.intersects(path, 1, Infinity)) return;
+  const entry = sources.get(execution), lines = rows.filter(([line, before, after]) =>
+    after > before && focus.intersects(path, line)).map(([line]) => line);
+  if (!lines.length) return;
+  if (!entry.files.size) entry.example = example;
+  if (!entry.files.has(path)) entry.files.set(path, new Set());
+  for (const line of lines) entry.files.get(path).add(line);
+}
+
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
@@ -681,9 +692,12 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   }
 
   const outcomeCounts = { passed: 0, failed: 0, unknown: 0 }, outOfReference = new Map(), extensionRecords = new Map();
+  const actionSources = actionQuery && new Map();
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
+    const actionExecution = actionQuery && outcome === 'passed' && record.actions.includes(actionQuery.label)
+      && actionQuery.journeys.get(declaration.journey);
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
     for (const captured of record.captureFiles) {
@@ -700,6 +714,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         entry.intervals++; target.incompatible.set(key, entry); continue;
       }
       if (!target.comparable) continue;
+      if (actionExecution) recordActionSource(actionSources, actionExecution, captured,
+        { journey: declaration.journey, intervalId: record.id }, actionQuery.focus);
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
         extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id, rows: captured.rows });
@@ -749,6 +765,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     allObserved: totals(files.reduce((sum, file) => sum + file.observedLines, 0)),
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
+    ...(actionSources && { actionSources }),
     ...(extensionJourneys?.size && { surroundingIntervals: surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath) }),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };

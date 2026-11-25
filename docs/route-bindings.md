@@ -184,6 +184,33 @@ producer-declared journey labels from the capture set's outcome file. Use the
 label for the specific scenario group. Aliases with identical arguments can
 share a label. Tracer rejects a label tied to different argument lists.
 
+Once you know the production caller and its CLI action, use the action ID and
+the caller's source range to find a scenario to extend.
+
+```sh
+tracer worklist --routes /external/scriv-discovery.json \
+  --capabilities /external/scriv-capabilities.json --action export-project \
+  --source apps/catalyst/ScrivUIKit/Automation/ScrivCLIExport.swift \
+  --capture-set /external/captures.json --reference-root /external/reference/source
+```
+
+`actionReview` compares the exact action with retained passing intervals and
+their discovered selectors. It ranks scenarios that observed lines in the
+selected source first and includes an example interval ID and observed ranges.
+Scenarios that recorded the action elsewhere remain candidates for review.
+A fully observed focus with a matching scenario reports `no-passing-gaps`.
+When there is no retained passing match, look for an existing unmeasured
+scenario or write one. If discovery does not list the action, check the
+production caller and build capabilities before adding a CLI action. Restricted
+selectors stay in a separate list.
+
+Scriv command evidence uses the exact `scriv COMMAND` capture label. Menu
+scope entries in Scriv capabilities describe targets for the `menu-action`
+command. For version-1 route catalogs, use the exact measured action string as
+`actions[].id`. A passing interval containing an action and source counters
+establishes co-occurrence. Review the caller and scenario before assigning
+causality, and measure the new condition to establish its gain.
+
 With these labels, `extensionCandidates` ranks selectors that have a passing
 interval with counter increases on both neighboring instrumented lines of an
 unassigned gap. Each example includes its interval ID, journey label and anchor

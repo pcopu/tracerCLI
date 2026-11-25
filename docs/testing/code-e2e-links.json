@@ -153,6 +153,25 @@
       "why": "Artifact and audit size constants bound the public read-only workflow."
     },
     {
+      "id": "034ef98f10850ec5",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 570,
+        "end": 669,
+        "sha256": "5e31a9f637b518464e12d61247b7f6e97584900b64dc60606053555be35264d7"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1382,
+        "end": 1443,
+        "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
+      },
+      "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
+    },
+    {
       "id": "03897cd9ee3e4a10",
       "source": {
         "path": "src/tracer.mjs",
@@ -333,7 +352,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The complete independently authored literal help contract includes the proposal lifecycle command, asserted via all three top-level help routes with unchanged project/home state. Existing narrower proposal witness only checked planning prose and is replaced after semantic review. Manual association only, not execution evidence."
     },
@@ -732,6 +751,25 @@
       "why": "A loopback Node inspector breakpoint schedules a genuine concurrent fixture write immediately before exclusive config creation. The unchanged CLI refuses EEXIST, preserves exact config/map bytes, then accepts a reviewed retry; no filesystem or production API is mocked."
     },
     {
+      "id": "0dc104fa30534f2d",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 134,
+        "end": 151,
+        "sha256": "540e31d100ddfbb91ca673c798c22de0ed72122df687f030dc467e3990aee6f8"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1395,
+        "end": 1443,
+        "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
+      },
+      "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
+    },
+    {
       "id": "0dd12a52708a072f",
       "source": {
         "path": "bin/tracer.mjs",
@@ -1124,6 +1162,25 @@
       "why": "A configured missing executable produces the expected actionable error; no fallback command is guessed."
     },
     {
+      "id": "192394c0b887d523",
+      "source": {
+        "path": "src/proposals.mjs",
+        "start": 62,
+        "end": 69,
+        "sha256": "79a1c38e7eca9d7042d76306ec17408316adea607afe3f8a8858fbe9d586f3f4"
+      },
+      "actions": [
+        "tracer proposal bind --file proposal.json --routes routes.json --json"
+      ],
+      "step": {
+        "path": "tests/e2e/route-binding-journeys.test.mjs",
+        "start": 196,
+        "end": 206,
+        "sha256": "19db9671696d1f477f3dced803e4dec41f0c80e653fe1b96900e628aab19c011"
+      },
+      "why": "Public CLI rejects traversal in entry paths, empty action identifiers and restrictions, and an ambiguous discovered action identifier."
+    },
+    {
       "id": "1945bd76ac8154bc",
       "source": {
         "path": "src/tracer.mjs",
@@ -1162,6 +1219,26 @@
         "sha256": "a65d1c3baf3d3e968694b0d47d99d9c155fff76b9f997c717b65ce514d5172ed"
       },
       "why": "Malformed fixture app argv/schema and redirected project files are rejected before execution. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
+    },
+    {
+      "id": "1ab3a6285d69c2ea",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 837,
+        "end": 886,
+        "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
+      },
+      "actions": [
+        "import native coverage and run measure batch with its completed Scriv receipt",
+        "check scenario group, capture provenance, and mismatched outcome rejection"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1242,
+        "end": 1277,
+        "sha256": "80640713bd85b27effc4c0275e947be648548a65a3bef648f622399d3262ba04"
+      },
+      "why": "The added outcome is bound to the receipt and exact measured run."
     },
     {
       "id": "1b02e4e25a6b1c78",
@@ -1267,8 +1344,8 @@
       "id": "1deecddecf1f8cc3",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 188,
-        "end": 199,
+        "start": 194,
+        "end": 205,
         "sha256": "f901448b62f73b4f107c03320d0028420722e5e94eab15ae1fcbbd1b5924b9be"
       },
       "actions": [
@@ -1948,6 +2025,26 @@
       "why": "The packet binds exact map/proposal bytes and current included gap scope while source snippets retain exact source pins."
     },
     {
+      "id": "30bea507a9bd7019",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 888,
+        "end": 929,
+        "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
+      },
+      "actions": [
+        "run measure batch and replay the generated capture set through measure gaps",
+        "verify passing additions, preserved failed observations, and output refusal"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1259,
+        "end": 1291,
+        "sha256": "1aadc34de86151cb9cfd30b90acbef6356fe921d42c575f0242f17e7dfe8ff97"
+      },
+      "why": "A saved batch report reproduces exact measured comparison and protects the baseline and source."
+    },
+    {
       "id": "30c0bfb19696ab96",
       "source": {
         "path": "scripts/project-cli.mjs",
@@ -2103,6 +2200,45 @@
       "why": "Both empty and populated report envelopes expose their kind, notice, fixed limitations and intervals without creating or rewriting evidence during reads."
     },
     {
+      "id": "33579cb5158f24cd",
+      "source": {
+        "path": "src/route-bindings.mjs",
+        "start": 168,
+        "end": 184,
+        "sha256": "a6cd5fef39183834de211b5d2d917b4b02685d45408d9370c3b131887c29646e"
+      },
+      "actions": [
+        "tracer proposal bind --file proposal.json --routes routes.json --json"
+      ],
+      "step": {
+        "path": "tests/e2e/route-binding-journeys.test.mjs",
+        "start": 163,
+        "end": 195,
+        "sha256": "c3f968e35b1b327bba6b0ce105e9393342f25f62e9961c24dda5d35d62322233"
+      },
+      "why": "The public binding report distinguishes discovered actions, scenarios, missing entry points and restrictions, retaining ordered actions and shared source ranges."
+    },
+    {
+      "id": "3367a09dd1f0bb94",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 95,
+        "end": 132,
+        "sha256": "4c0ba6ecf591eed5df2c445cc98f83ebe581e5a2f93f836c7b52dbd56ec1877a"
+      },
+      "actions": [
+        "tracer worklist with discovered selectors and exact recorded journey labels",
+        "verify one-selector priority, deduplicated shared gaps and inherited restrictions"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1119,
+        "end": 1144,
+        "sha256": "7963a2d2f15bb4f9787c585265cba463f5e534a2803aa1712aa2a1b62b4f64c3"
+      },
+      "why": "One supported prior scenario is more actionable than several candidates around the same uncovered range."
+    },
+    {
       "id": "33ad7c17843f1ec0",
       "source": {
         "path": "src/tracer.mjs",
@@ -2174,7 +2310,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 145,
-        "sha256": "68eec553d683a91c5218d90fa4fe99f7edfcfc945fab048c0f1173679f90b0a2"
+        "sha256": "d6543afa1e49ea461a19cef5617d7c2e40376e6dd10d7595ad34913f0bfd9fe5"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -2332,8 +2468,8 @@
       "id": "38d9581a3f833c40",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 156,
-        "end": 159,
+        "start": 162,
+        "end": 165,
         "sha256": "7459d4dedcaaa7b37af4fdfd3c5d72bdfc05d1048b34ba64ded86c843ed8f25d"
       },
       "actions": [
@@ -2499,7 +2635,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 145,
-        "sha256": "68eec553d683a91c5218d90fa4fe99f7edfcfc945fab048c0f1173679f90b0a2"
+        "sha256": "d6543afa1e49ea461a19cef5617d7c2e40376e6dd10d7595ad34913f0bfd9fe5"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -2631,6 +2767,26 @@
         "sha256": "6f0226cae7e263d87673e83f7c898b26d68b33e41ace59261adb8479529cd9c5"
       },
       "why": "Invalid empty action sequences, blank action descriptions and unsafe source selectors are rejected before creating an evidence dataset."
+    },
+    {
+      "id": "3d3088ebac6ffa22",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 332,
+        "end": 383,
+        "sha256": "cf4463ef0b41bef4b52a7bbd0503f09fe290d76c78aafef4c5efe3ca6242da5a"
+      },
+      "actions": [
+        "tracer proposal worklist with a pinned proposal, discovered routes and a reference capture set",
+        "compare ranked action queues, deduplicated selectors, restricted alternatives and unique passing gaps"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 940,
+        "end": 955,
+        "sha256": "2b5b03466f2ae1da5673d161d98a5e294cc049ddb86de4f540e44fc66d238257"
+      },
+      "why": "A shared gap appears once under its CLI selector and blocked alternatives stay outside its selectable route list."
     },
     {
       "id": "3db2ffab33f602d7",
@@ -3638,7 +3794,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -3662,6 +3818,25 @@
         "sha256": "5cf72af101d6932f3f9ea4a2e7dc5bfda1f3514c5ed1ebcb864cb14783e2ddb8"
       },
       "why": "Navigate source/action/sequence while retaining whole-interval attribution and separating unchanged lines."
+    },
+    {
+      "id": "55a535312b44b050",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 258,
+        "end": 270,
+        "sha256": "48f634e49053bf6bbeabf10333fa216f664e2aeba26b4fa4d76014bd1b1d0832"
+      },
+      "actions": [
+        "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1323,
+        "end": 1358,
+        "sha256": "123b29a3a9fa39219a538ce2bb919b40ff8af861a3afd41acc39b65f46420345"
+      },
+      "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
     },
     {
       "id": "57e3b3859160bc21",
@@ -3807,6 +3982,25 @@
       "why": "The public pinned import/report journey loads crypto, filesystem, path and Tracer dependencies, then verifies stored provenance and actual LCOV deltas; imports themselves are structural associations. Maintenance review: Pinned import/report journey still loads crypto/filesystem/path/Tracer imports. dirname was added for union; this remains a structural module-loading association, not branch execution."
     },
     {
+      "id": "5993e3818c8e37cd",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 77,
+        "end": 92,
+        "sha256": "b742daa09b93618783e9c9b807b6fd62b9c1ec35203648cedef7305e7ab24ed5"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --limit 2"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1146,
+        "end": 1155,
+        "sha256": "42dba4f8e0a18843379c1c43c1b181bc2dd7769e8c758454832ffc094f55225a"
+      },
+      "why": "Two selectors nominate the same gap lines. The shortlist returns just one of them and the selector with distinct candidate lines, with clipping before ranking."
+    },
+    {
       "id": "59bf800d0d67c014",
       "source": {
         "path": "src/proposals.mjs",
@@ -3909,6 +4103,26 @@
         "sha256": "7f00f50bbed761d6dad6b5321615bd2b1de11ca984212329bf005c61527073e1"
       },
       "why": "The real interactive init invocation exits successfully after the last answer, demonstrating terminal cleanup rather than a pending readline handle; the harness asserts the subprocess exit code."
+    },
+    {
+      "id": "5aa4aa7da45a6385",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 385,
+        "end": 396,
+        "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
+      },
+      "actions": [
+        "run tracer proposal worklist for a current and a changed source tree",
+        "check that current unmatched lines stay visible and stale reference lines are unavailable"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 952,
+        "end": 963,
+        "sha256": "66e3d33fa4ae0a7697ca77125a44a6f43250bc40341091315c38e330199f1ebc"
+      },
+      "why": "The current source and the reference instrumentation remain separate when reporting unmatched gaps."
     },
     {
       "id": "5b22203d3aecb358",
@@ -4267,7 +4481,7 @@
         "path": "bin/tracer.mjs",
         "start": 137,
         "end": 138,
-        "sha256": "4c236e59b1573c2d8b18252cc51954fb296f31c72df6721df67a292f4427c103"
+        "sha256": "85ddc78c666635a664919deb824eb2944df9f2448f9be085700bc9e1fdc4e0ad"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -4502,6 +4716,25 @@
         "sha256": "b3d3aaf021e842fbab24bc7dad973bb2043d0de8d68ffe310231c40e3526486b"
       },
       "why": "The installed ESM/bin/export declarations are inspected, both actual executable aliases run, and the exported file exists; this is not a direct production-API test."
+    },
+    {
+      "id": "682e8dfa8b9ee023",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 386,
+        "end": 395,
+        "sha256": "f7de3e1daa17784fb1080e2c4e2182d919c1d164a9d41f66e02ca8227b184e0c"
+      },
+      "actions": [
+        "Revalidate a stale snapshot and refuse a conflicting evidence digest in a later stage"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 900,
+        "end": 908,
+        "sha256": "dc8e4f26a33405c29eee99cba8f5dc64b82d1f16ccfe41cc00a0e6dbeb2b9084"
+      },
+      "why": "Each new invocation verifies changed source bytes. A later incorrect producer-evidence declaration is refused before any series report is emitted."
     },
     {
       "id": "687bc0f2e6aecaf0",
@@ -4908,6 +5141,26 @@
       "why": "The fixture supplies invalid UTF-8 and then NUL-containing instruction bytes. Both CLI attempts fail, preserve the exact bytes and custom skill, and leave project config, map and registry unchanged."
     },
     {
+      "id": "754996828ac4d6ee",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 153,
+        "end": 184,
+        "sha256": "6b4c73f3f3cbb3faf047cdb0897bcf552132233946fea7f440e91104ace8585d"
+      },
+      "actions": [
+        "tracer dead-code src/app.py:4 --why candidate --evidence reviewed",
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root ."
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1157,
+        "end": 1182,
+        "sha256": "1224d6b1efb7c1296fcc5af7ee22a8c95dba0d4095f560e962c42c0b69a17f13"
+      },
+      "why": "Reviewed missing callers are held out of extension suggestions, while runtime observations, a current route witness and stale pins remain visible."
+    },
+    {
       "id": "75508184ce27c4db",
       "source": {
         "path": "src/scenario-runtime.mjs",
@@ -5084,6 +5337,25 @@
         "sha256": "7ce96041c85eb66dcdab806f00064ff658ef2fd60e9381a8c24d9e96cbed27af"
       },
       "why": "New measurement writes use compact JSON plus exactly one newline; byte size is smaller than the former indented encoding."
+    },
+    {
+      "id": "7b89b1b6532597ab",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 774,
+        "end": 784,
+        "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
+      },
+      "actions": [
+        "Compare baseline, first and next capture sets with the same reference"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 880,
+        "end": 898,
+        "sha256": "e55800de7308a9dd3b2bf25a102b0a449bcaba91763b69c8ecae9a87011d0c1a"
+      },
+      "why": "The public series reports equal separate comparisons in order, retain duplicate accounting and show the expected new passing lines. Oversized series are refused."
     },
     {
       "id": "7c729a89b43ebeaf",
@@ -6362,6 +6634,25 @@
       "why": "When multiple agent configurations exist, choose the explicitly typed Claude response, install only that agent skill after yes, and preserve both instruction files when instruction consent is declined."
     },
     {
+      "id": "998eb7b7c663eacb",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 147,
+        "end": 161,
+        "sha256": "d3f49e104b9bbcf84ea90416fae2018319fb7ce46abfde15ea7d78c6c00fc459"
+      },
+      "actions": [
+        "tracer proposal worklist with exact current route catalog and reference capture"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 940,
+        "end": 955,
+        "sha256": "2b5b03466f2ae1da5673d161d98a5e294cc049ddb86de4f540e44fc66d238257"
+      },
+      "why": "The public command returns a read-only coverage worklist."
+    },
+    {
       "id": "9994a70eca10ac0f",
       "source": {
         "path": "src/proposals.mjs",
@@ -6603,7 +6894,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The complete help contract asserts the public audit queue modes and flags, including audit --help, outside a project without side effects."
     },
@@ -6728,7 +7019,7 @@
         "path": "bin/tracer.mjs",
         "start": 135,
         "end": 146,
-        "sha256": "6980db79d1137ed92f70229d163f9dad57e874f15613f4e9afea4f4762e7ecd4"
+        "sha256": "d1941bd8a42c967164fc6e622205b4be621d0e2655dfdc7cfa5cacd12f5cbf6c"
       },
       "actions": [
         "tracer proposal prepare --file draft.json",
@@ -7097,7 +7388,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state."
     },
@@ -7315,6 +7606,25 @@
       "why": "Managed automatic updates require descendant history, preserve the triggering command, and execute new code only on the next invocation."
     },
     {
+      "id": "b0dadb7226cc91df",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 284,
+        "end": 304,
+        "sha256": "9c5b791378137d08f605c8eda525c44cbeb3ec08d6b5f8ccd0575d5becd0cc62"
+      },
+      "actions": [
+        "tracer worklist with a discovered action, source selection and retained captures"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1079,
+        "end": 1092,
+        "sha256": "155cb292d899427928f143c5ecdd90a1679bfd4cf69c8d5ff0f3cc07c2494337"
+      },
+      "why": "The public journey checks the next decision for a matching scenario, absent passing action, unknown command and restricted route, using both native capabilities and a version-1 route catalog."
+    },
+    {
       "id": "b0e5fe11aaf85702",
       "source": {
         "path": "src/agent-setup.mjs",
@@ -7431,7 +7741,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The entire help text, including all scenario modes, selectors and required reviewed/hash flags, is asserted exactly outside Git without changing project or user state."
     },
@@ -7513,6 +7823,26 @@
         "sha256": "ab618284afd70bb9f17c41fed9d719e01c22906179f6575e0d1c69e50d733317"
       },
       "why": "Orphan snapshots are reused only on exact full-contract/files/assertions identity while preserving their original whole-proposal provenance. The fixture models interrupted state rather than claiming every disk failure was injected."
+    },
+    {
+      "id": "b5f5d9570d1fd4d6",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 200,
+        "end": 282,
+        "sha256": "c2d87257b5fae1b5c33f900a132697fef7c57911429d4df03b33a6956b6acc79"
+      },
+      "actions": [
+        "tracer worklist with a capture set, discovered selectors and current witnessed links",
+        "inspect reused links, unmatched source ranges, restricted selector alternatives and unchanged map"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1014,
+        "end": 1038,
+        "sha256": "0a79d17b3ddd55604fc27cb6bdbfad7d679ec5656180b3577a8f85ecae3d58a1"
+      },
+      "why": "Current witnesses lead to candidate CLI selectors while stale or ambiguous links stay out of direct route selection."
     },
     {
       "id": "b6008427dd2973fc",
@@ -8799,6 +9129,25 @@
       "why": "A current pinned import becomes stale after source edits or deletion; reports exclude current observations, retain historical increases and preserve the dataset bytes."
     },
     {
+      "id": "cf2b9bdefc6b68cf",
+      "source": {
+        "path": "bin/tracer.mjs",
+        "start": 222,
+        "end": 224,
+        "sha256": "a8b2aa395d2e1383490ec732a30e7219846c8634fd035dc7d0b19bd262ac1e11"
+      },
+      "actions": [
+        "Request both a gap series and a standalone capture set"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 895,
+        "end": 896,
+        "sha256": "098033237a89a9dfe2cb3d25f05fe6c48cae765983c25d2ee19afab535d753be"
+      },
+      "why": "The public CLI refuses ambiguous inputs after also printing the series summary for the valid command."
+    },
+    {
       "id": "d07372ba976114b4",
       "source": {
         "path": "src/tracer.mjs",
@@ -9083,6 +9432,25 @@
       "why": "Supported agent locations stay separate and ambiguous automatic selection fails rather than guessing. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
     },
     {
+      "id": "d7dd2aeca4ee290b",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 671,
+        "end": 679,
+        "sha256": "758738b7c9e83aee3e73f95a9f45284166f6c207b23fbb620ff8630d9003e4be"
+      },
+      "actions": [
+        "tracer worklist with a discovered open action and an exact source range"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1074,
+        "end": 1078,
+        "sha256": "328c1c55653c70bbd867d96026d207878109bb57247ab11294ae3be48b57c4de"
+      },
+      "why": "The public journey requires observed source from the exact passing group, deduplicated lines, no credit from a failed run or a lookalike action, and separate retention of a group with no observed line in the focus."
+    },
+    {
       "id": "d836e57c5948905c",
       "source": {
         "path": "src/proposals.mjs",
@@ -9152,6 +9520,25 @@
         "sha256": "7f00f50bbed761d6dad6b5321615bd2b1de11ca984212329bf005c61527073e1"
       },
       "why": "Read actual terminal answers, trimming surrounding whitespace and normalizing case, while keeping skill installation and instruction consent separate; assertions inspect state before each answer. The reviewed range also includes the enclosing structural boundary; this is navigation, not a branch-execution claim."
+    },
+    {
+      "id": "d8d411cb313c61f0",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 582,
+        "end": 603,
+        "sha256": "52e9ff1964e8d2a00ad6f5e62c4e16a584d2bff52f01cb565b9c6fa588c17fc5"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1412,
+        "end": 1438,
+        "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
+      },
+      "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
     },
     {
       "id": "d90b0dd6bb2afb56",
@@ -9336,6 +9723,25 @@
       "why": "Successful mutations write the subclass serialization, preserving legacy bytes on read/duplicate import and compacting only when a new interval is successfully persisted."
     },
     {
+      "id": "dcdc0c5c602d9851",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 186,
+        "end": 197,
+        "sha256": "eb23cc27a7a40b766df5b35fc96b612dfc9db448bed145b09c3b41ef616724d0"
+      },
+      "actions": [
+        "tracer worklist --routes discovery.json --capture-set captures.json --reference-root ."
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1208,
+        "end": 1217,
+        "sha256": "c57812c79c4c955da7d5fd403807305b55ed6e5eda23b98820de9c65515959df"
+      },
+      "why": "Only the exact captured alternate group supplies adjacent counter evidence in selector review; the passing gap is unchanged."
+    },
+    {
       "id": "de65c3255da2f298",
       "source": {
         "path": "src/tracer.mjs",
@@ -9417,6 +9823,25 @@
         "sha256": "401a65cc830ee8d159fa792a3679c0cf08b42d5d4aa5dfc39de1813770c9f6e3"
       },
       "why": "Public action discovery must expose the named scenarios group along with all other groups; this declaration is not a claim that discovery itself executes tests."
+    },
+    {
+      "id": "df34762847760576",
+      "source": {
+        "path": "src/coverage-worklist.mjs",
+        "start": 21,
+        "end": 62,
+        "sha256": "0f16ba0c5e5adf7673c2fac4009ceb0dc0901aeda2f2b4b02d95c0a7b83d210a"
+      },
+      "actions": [
+        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --source src/app.py:2-3 --source src/app.py:2 --source src/unmeasured.py"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1026,
+        "end": 1037,
+        "sha256": "e66237e414445ba159d1a6beccf84ad7e4cdc9f7bf8e7b0355ae152144ff244f"
+      },
+      "why": "Clip ranked source gaps to deduplicated exact selectors, retain project coverage and report a source without reference instrumentation."
     },
     {
       "id": "df4eea51fac758de",
@@ -9580,6 +10005,26 @@
       "why": "Exact source/action/witness identity and full content checks distinguish idempotent imports from conflicting existing rows."
     },
     {
+      "id": "e4957054852e86f8",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 547,
+        "end": 569,
+        "sha256": "1b702a16031549bbe1c6eea5a8add8e004818e8b09549c8c55902e4498dd5f92"
+      },
+      "actions": [
+        "import passing and failing intervals with identical source and instrumentation",
+        "run tracer worklist and match both neighboring counters within one passing interval"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1111,
+        "end": 1128,
+        "sha256": "5471c9fb99ccc0c9bf56ef7d730828075d7848537e34c0adbd430cccdf4fa0f8"
+      },
+      "why": "A capture on either side or a failing interval cannot by itself supply a passing scenario lead."
+    },
+    {
       "id": "e518c297dee2db02",
       "source": {
         "path": "src/update.mjs",
@@ -9656,6 +10101,26 @@
         "sha256": "1709ef7744fd42067dd053e9bcf0982d68272e58f452950786fb3990ad6c1ce8"
       },
       "why": "Prepare and check return pinned catalog integrity without app execution or map writes, as asserted in the lifecycle journey."
+    },
+    {
+      "id": "e6ca1297ed2aa4de",
+      "source": {
+        "path": "src/route-bindings.mjs",
+        "start": 33,
+        "end": 71,
+        "sha256": "6e2a67f3361db77619ba656e7c3ef626e034957ca8aeb49ba62151ab69a471d6"
+      },
+      "actions": [
+        "tracer worklist with unmodified native scenario discovery and group-specific captures",
+        "check exact selector arguments, blocked route details, and rejection of malformed discovery"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1196,
+        "end": 1228,
+        "sha256": "0d8297af172c362f85bbf71e09e50d980193e3c5b8bb9143e41801b55434c706"
+      },
+      "why": "Native discovery can supply recorded journey labels directly while preserving its original restrictions."
     },
     {
       "id": "e7386f5ffd1cf8b3",
@@ -10061,7 +10526,7 @@
         "path": "tests/e2e/mapping-journeys.test.mjs",
         "start": 704,
         "end": 784,
-        "sha256": "e5048882ad62a63723ab59a00533a5831375a1b40af5e251408bad6b0a1faaf4"
+        "sha256": "1e2553b46b16e835d82e63303c9c3ab29e309ef2ab3626f9dd2d4049e272bfd8"
       },
       "why": "The complete help contract, including every command, global flag, consent boundary and manual-only limitation, is asserted exactly outside Git with unchanged project and user state. Maintenance review: Complete independent literal help fixture now includes suggest-moves and union with explicit scope modes. Exact output equality/unchanged state assertions remain."
     },
@@ -10338,6 +10803,25 @@
       "why": "Repeated cancellation of a signal-resistant fixture child escalates to SIGKILL without abandoning it."
     },
     {
+      "id": "f83939734ffcfc43",
+      "source": {
+        "path": "src/route-bindings.mjs",
+        "start": 83,
+        "end": 98,
+        "sha256": "0ee208eb7da83c63aa8ad28947feb5f0a4cba4a6480aa8b6a3bd9e2b37239eba"
+      },
+      "actions": [
+        "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1323,
+        "end": 1341,
+        "sha256": "2cc3ad0c625d44acebfb42ff87b06cd8603382625a3262b284a1e16f2f6d9fed"
+      },
+      "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
+    },
+    {
       "id": "f840a27ec2174b92",
       "source": {
         "path": "bin/tracer.mjs",
@@ -10508,6 +10992,26 @@
         "sha256": "a50dd60fed34ceaee75024fc689e658a36940729c58c9d26d0c2a96c471df629"
       },
       "why": "Actual public where query independently expects observed1-3, unknown4, passing-only1and3, exact per-scenario interval actions, clipped2-3 and grouped shared-route output. This range claims current-source instrumentation/hit classification. Synthetic producer outcomes stay separate from assertion proof, and no configured app is executed. Reviewed source-to-independent-public-query assertion mapping only. Manual links establish neither captured execution nor assertion adequacy of producer outcomes."
+    },
+    {
+      "id": "fc3fdec1c6dea5e8",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 513,
+        "end": 522,
+        "sha256": "c5686c637926de755cad9ea4a6582694de3b5ba021596599dd5b6191bc7b0d12"
+      },
+      "actions": [
+        "lookup three source ranges separately with tracer measure where",
+        "repeat the same selectors in one measure where call and compare the complete reports"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 976,
+        "end": 987,
+        "sha256": "d68c0a30b6553a3411a8a24b0e920e86ec66c5a442f3ec994e1c16a950454195"
+      },
+      "why": "The batched reports preserve input order, all evidence and atomic rejection."
     },
     {
       "id": "fd8e7563f57f6781",
@@ -10737,8 +11241,8 @@
       "id": "ffdde2da93e4bbdc",
       "source": {
         "path": "src/route-bindings.mjs",
-        "start": 118,
-        "end": 125,
+        "start": 122,
+        "end": 129,
         "sha256": "3e2b3ec565245790677634ab67c40b1dc29a8d102b5d0e7a0e2bdea94cd0b456"
       },
       "actions": [
@@ -10755,472 +11259,6 @@
         "sha256": "d6c673ad5a939b5d565f5dfe5a6d6c1dbb4aa228231b8785026680313834b2b7"
       },
       "why": "Independently authored argv arrays retain empty/whitespace/word boundaries, merge duplicate IDs and paths, distinguish different argument boundaries and keep alias restrictions effective. Empty catalog and parser refusals follow without executing routes. Reviewed public CLI assertion association only. This manual map does not establish observed execution or correctness."
-    },
-    {
-      "id": "682e8dfa8b9ee023",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 386,
-        "end": 395,
-        "sha256": "f7de3e1daa17784fb1080e2c4e2182d919c1d164a9d41f66e02ca8227b184e0c"
-      },
-      "actions": [
-        "Revalidate a stale snapshot and refuse a conflicting evidence digest in a later stage"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 900,
-        "end": 908,
-        "sha256": "dc8e4f26a33405c29eee99cba8f5dc64b82d1f16ccfe41cc00a0e6dbeb2b9084"
-      },
-      "why": "Each new invocation verifies changed source bytes. A later incorrect producer-evidence declaration is refused before any series report is emitted."
-    },
-    {
-      "id": "7b89b1b6532597ab",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 757,
-        "end": 767,
-        "sha256": "31e289230c5d11f61bdb2cf5c49f5bae2ae267235d809f695d8bf3688ee0d955"
-      },
-      "actions": [
-        "Compare baseline, first and next capture sets with the same reference"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 880,
-        "end": 898,
-        "sha256": "e55800de7308a9dd3b2bf25a102b0a449bcaba91763b69c8ecae9a87011d0c1a"
-      },
-      "why": "The public series reports equal separate comparisons in order, retain duplicate accounting and show the expected new passing lines. Oversized series are refused."
-    },
-    {
-      "id": "cf2b9bdefc6b68cf",
-      "source": {
-        "path": "bin/tracer.mjs",
-        "start": 222,
-        "end": 224,
-        "sha256": "a8b2aa395d2e1383490ec732a30e7219846c8634fd035dc7d0b19bd262ac1e11"
-      },
-      "actions": [
-        "Request both a gap series and a standalone capture set"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 895,
-        "end": 896,
-        "sha256": "098033237a89a9dfe2cb3d25f05fe6c48cae765983c25d2ee19afab535d753be"
-      },
-      "why": "The public CLI refuses ambiguous inputs after also printing the series summary for the valid command."
-    },
-    {
-      "id": "192394c0b887d523",
-      "source": {
-        "path": "src/proposals.mjs",
-        "start": 62,
-        "end": 69,
-        "sha256": "79a1c38e7eca9d7042d76306ec17408316adea607afe3f8a8858fbe9d586f3f4"
-      },
-      "actions": [
-        "tracer proposal bind --file proposal.json --routes routes.json --json"
-      ],
-      "step": {
-        "path": "tests/e2e/route-binding-journeys.test.mjs",
-        "start": 196,
-        "end": 206,
-        "sha256": "19db9671696d1f477f3dced803e4dec41f0c80e653fe1b96900e628aab19c011"
-      },
-      "why": "Public CLI rejects traversal in entry paths, empty action identifiers and restrictions, and an ambiguous discovered action identifier."
-    },
-    {
-      "id": "33579cb5158f24cd",
-      "source": {
-        "path": "src/route-bindings.mjs",
-        "start": 162,
-        "end": 178,
-        "sha256": "a6cd5fef39183834de211b5d2d917b4b02685d45408d9370c3b131887c29646e"
-      },
-      "actions": [
-        "tracer proposal bind --file proposal.json --routes routes.json --json"
-      ],
-      "step": {
-        "path": "tests/e2e/route-binding-journeys.test.mjs",
-        "start": 163,
-        "end": 195,
-        "sha256": "c3f968e35b1b327bba6b0ce105e9393342f25f62e9961c24dda5d35d62322233"
-      },
-      "why": "The public binding report distinguishes discovered actions, scenarios, missing entry points and restrictions, retaining ordered actions and shared source ranges."
-    },
-    {
-      "id": "3d3088ebac6ffa22",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 299,
-        "end": 350,
-        "sha256": "cf4463ef0b41bef4b52a7bbd0503f09fe290d76c78aafef4c5efe3ca6242da5a"
-      },
-      "actions": [
-        "tracer proposal worklist with a pinned proposal, discovered routes and a reference capture set",
-        "compare ranked action queues, deduplicated selectors, restricted alternatives and unique passing gaps"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 940,
-        "end": 955,
-        "sha256": "2b5b03466f2ae1da5673d161d98a5e294cc049ddb86de4f540e44fc66d238257"
-      },
-      "why": "A shared gap appears once under its CLI selector and blocked alternatives stay outside its selectable route list."
-    },
-    {
-      "id": "5aa4aa7da45a6385",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 352,
-        "end": 363,
-        "sha256": "8235a0d8f3f36c393a2a12ba1c574c3fb8c56ab3098ed3abc0edd853a2e3ea58"
-      },
-      "actions": [
-        "run tracer proposal worklist for a current and a changed source tree",
-        "check that current unmatched lines stay visible and stale reference lines are unavailable"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 952,
-        "end": 963,
-        "sha256": "66e3d33fa4ae0a7697ca77125a44a6f43250bc40341091315c38e330199f1ebc"
-      },
-      "why": "The current source and the reference instrumentation remain separate when reporting unmatched gaps."
-    },
-    {
-      "id": "998eb7b7c663eacb",
-      "source": {
-        "path": "bin/tracer.mjs",
-        "start": 147,
-        "end": 161,
-        "sha256": "3e782a638f1b85b9c80a96cff497e6cb63dee39522e3ee2f3bf9cfa1d5ac7ea2"
-      },
-      "actions": [
-        "tracer proposal worklist with exact current route catalog and reference capture"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 940,
-        "end": 955,
-        "sha256": "2b5b03466f2ae1da5673d161d98a5e294cc049ddb86de4f540e44fc66d238257"
-      },
-      "why": "The public command returns a read-only coverage worklist."
-    },
-    {
-      "id": "fc3fdec1c6dea5e8",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 513,
-        "end": 522,
-        "sha256": "c5686c637926de755cad9ea4a6582694de3b5ba021596599dd5b6191bc7b0d12"
-      },
-      "actions": [
-        "lookup three source ranges separately with tracer measure where",
-        "repeat the same selectors in one measure where call and compare the complete reports"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 976,
-        "end": 987,
-        "sha256": "d68c0a30b6553a3411a8a24b0e920e86ec66c5a442f3ec994e1c16a950454195"
-      },
-      "why": "The batched reports preserve input order, all evidence and atomic rejection."
-    },
-    {
-      "id": "b5f5d9570d1fd4d6",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 200,
-        "end": 282,
-        "sha256": "c2d87257b5fae1b5c33f900a132697fef7c57911429d4df03b33a6956b6acc79"
-      },
-      "actions": [
-        "tracer worklist with a capture set, discovered selectors and current witnessed links",
-        "inspect reused links, unmatched source ranges, restricted selector alternatives and unchanged map"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1014,
-        "end": 1038,
-        "sha256": "0a79d17b3ddd55604fc27cb6bdbfad7d679ec5656180b3577a8f85ecae3d58a1"
-      },
-      "why": "Current witnesses lead to candidate CLI selectors while stale or ambiguous links stay out of direct route selection."
-    },
-    {
-      "id": "3367a09dd1f0bb94",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 95,
-        "end": 132,
-        "sha256": "4c0ba6ecf591eed5df2c445cc98f83ebe581e5a2f93f836c7b52dbd56ec1877a"
-      },
-      "actions": [
-        "tracer worklist with discovered selectors and exact recorded journey labels",
-        "verify one-selector priority, deduplicated shared gaps and inherited restrictions"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1064,
-        "end": 1089,
-        "sha256": "7963a2d2f15bb4f9787c585265cba463f5e534a2803aa1712aa2a1b62b4f64c3"
-      },
-      "why": "One supported prior scenario is more actionable than several candidates around the same uncovered range."
-    },
-    {
-      "id": "e4957054852e86f8",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 547,
-        "end": 569,
-        "sha256": "1b702a16031549bbe1c6eea5a8add8e004818e8b09549c8c55902e4498dd5f92"
-      },
-      "actions": [
-        "import passing and failing intervals with identical source and instrumentation",
-        "run tracer worklist and match both neighboring counters within one passing interval"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1056,
-        "end": 1073,
-        "sha256": "5471c9fb99ccc0c9bf56ef7d730828075d7848537e34c0adbd430cccdf4fa0f8"
-      },
-      "why": "A capture on either side or a failing interval cannot by itself supply a passing scenario lead."
-    },
-    {
-      "id": "e6ca1297ed2aa4de",
-      "source": {
-        "path": "src/route-bindings.mjs",
-        "start": 33,
-        "end": 71,
-        "sha256": "6e2a67f3361db77619ba656e7c3ef626e034957ca8aeb49ba62151ab69a471d6"
-      },
-      "actions": [
-        "tracer worklist with unmodified native scenario discovery and group-specific captures",
-        "check exact selector arguments, blocked route details, and rejection of malformed discovery"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1141,
-        "end": 1173,
-        "sha256": "0d8297af172c362f85bbf71e09e50d980193e3c5b8bb9143e41801b55434c706"
-      },
-      "why": "Native discovery can supply recorded journey labels directly while preserving its original restrictions."
-    },
-    {
-      "id": "1ab3a6285d69c2ea",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 820,
-        "end": 869,
-        "sha256": "a8e4d7381e7783ebf3e986cbd5ad07c37779c53382b1e2eb6fe5bf7ee6bb5ead"
-      },
-      "actions": [
-        "import native coverage and run measure batch with its completed Scriv receipt",
-        "check scenario group, capture provenance, and mismatched outcome rejection"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1187,
-        "end": 1222,
-        "sha256": "80640713bd85b27effc4c0275e947be648548a65a3bef648f622399d3262ba04"
-      },
-      "why": "The added outcome is bound to the receipt and exact measured run."
-    },
-    {
-      "id": "30bea507a9bd7019",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 871,
-        "end": 912,
-        "sha256": "ac22b65894c315dc71ad642c54d8c80534a993c25de8ee76519be9c0aaf7b08b"
-      },
-      "actions": [
-        "run measure batch and replay the generated capture set through measure gaps",
-        "verify passing additions, preserved failed observations, and output refusal"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1204,
-        "end": 1236,
-        "sha256": "1aadc34de86151cb9cfd30b90acbef6356fe921d42c575f0242f17e7dfe8ff97"
-      },
-      "why": "A saved batch report reproduces exact measured comparison and protects the baseline and source."
-    },
-    {
-      "id": "55a535312b44b050",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 258,
-        "end": 270,
-        "sha256": "48f634e49053bf6bbeabf10333fa216f664e2aeba26b4fa4d76014bd1b1d0832"
-      },
-      "actions": [
-        "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1268,
-        "end": 1303,
-        "sha256": "123b29a3a9fa39219a538ce2bb919b40ff8af861a3afd41acc39b65f46420345"
-      },
-      "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
-    },
-    {
-      "id": "f83939734ffcfc43",
-      "source": {
-        "path": "src/route-bindings.mjs",
-        "start": 83,
-        "end": 94,
-        "sha256": "53730295afb2547e28ec5b17166f9cf708574273d1afe12ff49c019dc56b5125"
-      },
-      "actions": [
-        "tracer worklist --file proposal.json --capabilities capabilities.json --routes discovery.json --capture-set captures.json --reference-root ."
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1268,
-        "end": 1286,
-        "sha256": "2cc3ad0c625d44acebfb42ff87b06cd8603382625a3262b284a1e16f2f6d9fed"
-      },
-      "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
-    },
-    {
-      "id": "034ef98f10850ec5",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 570,
-        "end": 669,
-        "sha256": "5e31a9f637b518464e12d61247b7f6e97584900b64dc60606053555be35264d7"
-      },
-      "actions": [
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1327,
-        "end": 1388,
-        "sha256": "919a79cf88779757674d64bf2eb242c3849962fe87a71818deb3ec4203d64d22"
-      },
-      "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
-    },
-    {
-      "id": "0dc104fa30534f2d",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 134,
-        "end": 151,
-        "sha256": "540e31d100ddfbb91ca673c798c22de0ed72122df687f030dc467e3990aee6f8"
-      },
-      "actions": [
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1340,
-        "end": 1388,
-        "sha256": "924abdb983be1abd3afb3790449c5202f7100eaa89bba499ce30537d925caab9"
-      },
-      "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
-    },
-    {
-      "id": "d8d411cb313c61f0",
-      "source": {
-        "path": "src/measured.mjs",
-        "start": 582,
-        "end": 603,
-        "sha256": "52e9ff1964e8d2a00ad6f5e62c4e16a584d2bff52f01cb565b9c6fa588c17fc5"
-      },
-      "actions": [
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --replay"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1357,
-        "end": 1383,
-        "sha256": "37fd2a187eb0b9dd751a1cf0ed018b7e1f5b9ba590b1ee165c24219d64f583cb"
-      },
-      "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
-    },
-    {
-      "id": "df34762847760576",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 21,
-        "end": 62,
-        "sha256": "0f16ba0c5e5adf7673c2fac4009ceb0dc0901aeda2f2b4b02d95c0a7b83d210a"
-      },
-      "actions": [
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --source src/app.py:2-3 --source src/app.py:2 --source src/unmeasured.py"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1026,
-        "end": 1037,
-        "sha256": "e66237e414445ba159d1a6beccf84ad7e4cdc9f7bf8e7b0355ae152144ff244f"
-      },
-      "why": "Clip ranked source gaps to deduplicated exact selectors, retain project coverage and report a source without reference instrumentation."
-    },
-    {
-      "id": "5993e3818c8e37cd",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 77,
-        "end": 92,
-        "sha256": "b742daa09b93618783e9c9b807b6fd62b9c1ec35203648cedef7305e7ab24ed5"
-      },
-      "actions": [
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root . --limit 2"
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1091,
-        "end": 1100,
-        "sha256": "42dba4f8e0a18843379c1c43c1b181bc2dd7769e8c758454832ffc094f55225a"
-      },
-      "why": "Two selectors nominate the same gap lines. The shortlist returns just one of them and the selector with distinct candidate lines, with clipping before ranking."
-    },
-    {
-      "id": "754996828ac4d6ee",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 153,
-        "end": 184,
-        "sha256": "6b4c73f3f3cbb3faf047cdb0897bcf552132233946fea7f440e91104ace8585d"
-      },
-      "actions": [
-        "tracer dead-code src/app.py:4 --why candidate --evidence reviewed",
-        "tracer worklist --routes routes.json --capture-set captures.json --reference-root ."
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1102,
-        "end": 1127,
-        "sha256": "1224d6b1efb7c1296fcc5af7ee22a8c95dba0d4095f560e962c42c0b69a17f13"
-      },
-      "why": "Reviewed missing callers are held out of extension suggestions, while runtime observations, a current route witness and stale pins remain visible."
-    },
-    {
-      "id": "dcdc0c5c602d9851",
-      "source": {
-        "path": "src/coverage-worklist.mjs",
-        "start": 186,
-        "end": 197,
-        "sha256": "eb23cc27a7a40b766df5b35fc96b612dfc9db448bed145b09c3b41ef616724d0"
-      },
-      "actions": [
-        "tracer worklist --routes discovery.json --capture-set captures.json --reference-root ."
-      ],
-      "step": {
-        "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1153,
-        "end": 1162,
-        "sha256": "c57812c79c4c955da7d5fd403807305b55ed6e5eda23b98820de9c65515959df"
-      },
-      "why": "Only the exact captured alternate group supplies adjacent counter evidence in selector review; the passing gap is unchanged."
     }
   ],
   "ignoredSources": [

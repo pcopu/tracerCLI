@@ -1038,6 +1038,61 @@ test('direct coverage worklist reuses current witnessed links without preparing 
   assert.equal(existsSync(join(f.root, 'DIRECT_WORKLIST_RAN_APP')), false);
 });
 
+test('worklist finds discovered actions and the exact existing scenarios that recorded them', t => {
+  const f = project(t);
+  const interval = (run, action, line) => {
+    f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = run;
+    f.manifest.actions = [action, action];
+    f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0\nDA:4,0'));
+    f.put('after.lcov', f.record([1, 2, 3, 4].map(n => `DA:${n},${Number(n === line)}`).join('\n')));
+    f.refresh();
+    return f.json(...f.args).id;
+  };
+  const ids = [interval('run-in-source', 'scriv open', 1), interval('run-elsewhere', 'scriv open', 4),
+    interval('run-failed', 'scriv open', 2), interval('run-lookalike', 'scriv open-recent', 3),
+    interval('run-restricted', 'scriv open', 1)];
+  const path = 'tests/e2e/journeys/workspace.mjs', restricted = 'tests/e2e/journeys/device.mjs';
+  f.put(path, '// Grouped workspace fixture\n'); f.put(restricted, '// Device fixture\n');
+  f.jsonFile('routes.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 2, selectedScenarioCount: 2 },
+    scenarios: [{ id: 'journeys/workspace', path, groups: ['open', 'close', 'empty', 'recent'] },
+      { id: 'journeys/device', path: restricted, restriction: { status: 'blocked', reason: 'test-device', detail: 'Needs paired device' } }] });
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['open', 'save', 'open-recent'], semanticMenuActionScopes: ['panel'] });
+  f.jsonFile('evidence.json', {});
+  const labels = [path + '#open', path + '#close', path + '#empty', path + '#recent', restricted];
+  f.jsonFile('outcomes.json', { version: 1, intervals: ids.map((id, i) => ({ id, journey: labels[i],
+    status: i === 2 ? 'failed' : 'passed', evidence: { path: 'evidence.json', sha256: f.hash('evidence.json') } })) });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.', '--source', 'src/app.py:1-2'];
+  const baseline = f.json(...args);
+  const actionArgs = [...args, '--capabilities', 'capabilities.json', '--action'];
+  const { actionReview, ...report } = f.json(...actionArgs, 'open');
+  assert.deepEqual(report, baseline, 'Action planning leaves every other queue and coverage total unchanged');
+  assert.equal(report.sourceFocus.gapLines, 1, 'An actual failed run earns no passing credit');
+  assert.deepEqual([actionReview.id, actionReview.measurementAction, actionReview.next, actionReview.routeCount],
+    ['open', 'scriv open', 'extend-scenario', 2]);
+  assert.deepEqual(actionReview.routes.map(row => [row.argv.at(-1), row.observedLines, row.example]), [
+    ['open', 1, { journey: labels[0], intervalId: ids[0] }],
+    ['close', 0, { journey: labels[1], intervalId: ids[1] }],
+  ]);
+  assert.deepEqual(actionReview.routes[0].sources, [{ path: 'src/app.py', observedRanges: [[1, 1]] }]);
+  assert.deepEqual(actionReview.restrictedRoutes.items.map(row => row.restrictions), [['test-device (Needs paired device)']]);
+  assert.equal(f.json(...actionArgs, 'open-recent').actionReview.next, 'review-scenario');
+  assert.equal(f.json(...actionArgs, 'save').actionReview.next, 'find-or-add-scenario');
+  assert.equal(f.json(...actionArgs, 'delete').actionReview.next, 'review-cli-action');
+  assert.equal(f.json(...actionArgs, 'panel').actionReview.next, 'review-cli-action');
+  assert.equal(f.json(...args.slice(0, -2), '--source', 'src/app.py:1', '--capabilities', 'capabilities.json', '--action', 'open')
+    .actionReview.next, 'no-passing-gaps');
+  assert.match(f.run([...args, '--action', 'open'], 1).stderr, /requires discovered actions/);
+  f.jsonFile('routes.json', { version: 1, actions: [{ id: 'scriv open', restriction: 'Requires explicit consent' }],
+    routes: [{ id: 'open', paths: [path], argv: ['test', 'open'], journeys: [labels[0]] }] });
+  const blocked = f.json(...args, '--action', 'scriv open').actionReview;
+  assert.equal(blocked.next, 'blocked');
+  assert.deepEqual(blocked.routes, []);
+  assert.deepEqual(blocked.restrictedRoutes.items[0].restrictions, ['Requires explicit consent']);
+  assert.match(f.run([...args.slice(0, -2), '--capabilities', 'capabilities.json', '--action', 'open'], 1).stderr, /--action requires --source/);
+});
+
 test('direct worklist finds scenario extension leads from one passing interval around the same gap', t => {
   const f = project(t);
   f.put('src/app.py', source + 'fifth\nsixth\nseventh\n');

@@ -95,6 +95,16 @@ large gaps have stale or missing source links. `unavailable` flags reference
 lines whose current source is unavailable or changed. Size is a priority signal.
 Verify the route, then measure gains with a retained baseline.
 
+When you know the caller and discovered CLI action, use `worklist --action ID
+--source PATH[:RANGE]` with the retained captures and route catalog. For Scriv,
+also supply the app's saved `--capabilities` output. Start with the exact
+scenario group in `actionReview.routes` that has observed lines in that caller.
+Use the whole caller range to find a scenario that ran it. Read its scenario
+and actual control before extending it. Counts describe the interval containing
+the action. When no selector has a passing match, inspect the discovered
+scenarios before writing one. When the action is absent from discovery, verify
+the intended build and production entry point before adding an action.
+
 ## Look up existing execution before adding tests
 
 Before proposing a new test for a requested source range or claiming code is already covered, query the existing real captures with `tracer measure where --capture-set /external/captures.json --source PATH:START-END`. For a whole capture scope, run `tracer measure union --capture-set /external/captures.json --json` first. Use the resulting observations and bound scenario labels to reuse existing execution, then choose supported routes for actual gaps. Prefer the concise plaintext lookup, grouped by journey/outcome with merged ranges and interval counts. Use `--json` for programmatic inspection and keep detailed interval/action payloads in external artifacts instead of dumping them into the conversation. This required lookup adds no manual-link or assertion-review gate and grants no permission to force production branches.

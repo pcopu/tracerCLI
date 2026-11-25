@@ -83,14 +83,18 @@ function readCatalogDocument(root, file) {
 function nativeActionIds(input) {
   if (input?.protocol !== 1 || input.driver !== 'UIKit controls') fail('Expected Scriv UIKit CLI capabilities protocol 1.');
   list(input.commands);
-  const ids = new Set();
+  const ids = new Set(), commandIds = new Set();
   for (const key of ['commands', 'publicDelegateCommands', 'publicTextInputCommands', 'semanticApplicationCommands',
     'semanticGestureCommands', 'semanticMenuActionScopes', 'syntheticFixtureCommands']) {
     if (!Object.hasOwn(input, key)) continue;
     list(input[key], true);
-    for (const id of input[key]) { text(id); ids.add(id); }
+    for (const id of input[key]) {
+      text(id);
+      ids.add(id);
+      if (key !== 'semanticMenuActionScopes') commandIds.add(id);
+    }
   }
-  return ids;
+  return { ids, commandIds };
 }
 
 export function readRoutes(root, file, { capabilitiesFile } = {}) {
@@ -144,13 +148,15 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
       actions.set(action.id, action);
     }
   }
-  let capabilitiesSha256;
+  let capabilitiesSha256, commandIds;
   if (capabilitiesFile !== undefined) {
     const { input, sha256 } = readCatalogDocument(root, capabilitiesFile);
     capabilitiesSha256 = sha256;
-    actions = new Map([...nativeActionIds(input)].map(id => [id, actions?.get(id) ?? { id }]));
+    const discovered = nativeActionIds(input);
+    actions = new Map([...discovered.ids].map(id => [id, actions?.get(id) ?? { id }]));
+    commandIds = discovered.commandIds;
   }
-  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256 };
+  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, commandIds };
 }
 
 function sourcePrediction({ row, current, errors }) {

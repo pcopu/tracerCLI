@@ -281,19 +281,52 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, limit = 15 }) {
+function reviewAction(id, catalog, label, actionSources, sourceFocus, limit) {
+  const restrictions = [catalog.actions.get(id)?.restriction].filter(Boolean);
+  const candidates = [...(actionSources ?? [])].map(([execution, { files, example }]) => ({
+    routeIds: execution.routeIds, argv: execution.argv, restrictions: [...new Set([...restrictions, ...execution.restrictions])], example,
+    observedLines: [...files.values()].reduce((sum, lines) => sum + lines.size, 0),
+    sources: [...files].sort(([a], [b]) => a.localeCompare(b)).map(([path, lines]) =>
+      ({ path, observedRanges: compactRanges([...lines].sort((a, b) => a - b)) })),
+  })).sort((a, b) => b.observedLines - a.observedLines || a.routeIds[0].localeCompare(b.routeIds[0]));
+  const routes = candidates.filter(row => !row.restrictions.length), restricted = candidates.filter(row => row.restrictions.length);
+  const hasObservedSource = routes[0]?.observedLines > 0;
+  const allFocusedLinesPassed = sourceFocus.gapLines === 0 && !sourceFocus.unknown.length;
+  let next;
+  if (restrictions.length) next = 'blocked';
+  else if (!label) next = 'review-cli-action';
+  else if (hasObservedSource) next = allFocusedLinesPassed ? 'no-passing-gaps' : 'extend-scenario';
+  else next = routes.length ? 'review-scenario' : 'find-or-add-scenario';
+  return { id, next, measurementAction: label ?? null, restrictions,
+    ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
+    routeCount: routes.length, routes: routes.slice(0, limit),
+    restrictedRoutes: { count: restricted.length, items: restricted.slice(0, limit) },
+  };
+}
+
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
+  if (actionId !== undefined && !focus) throw new Error('--action requires --source.');
+  if (actionId !== undefined && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
+  let actionLabel;
+  if (actionId !== undefined) {
+    if (!catalog.commandIds) actionLabel = catalog.actions.get(actionId)?.id;
+    else if (catalog.commandIds.has(actionId)) actionLabel = `scriv ${actionId}`;
+  }
+  const actionQuery = actionLabel && { label: actionLabel, focus, journeys: catalog.journeys };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot,
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery,
     extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;
-  return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus });
+  const report = directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus });
+  if (actionId !== undefined) report.actionReview = reviewAction(actionId, catalog, actionLabel, measured.actionSources, scope.sourceFocus, limit);
+  return report;
 }
 
 function proposalWorklist({ binding, measured, current, unavailable, capabilitiesSha256, limit, focus }) {
