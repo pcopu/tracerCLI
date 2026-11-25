@@ -219,6 +219,48 @@ windows in `recordedActions.items`. A matched window can nominate source gaps
 and exact CLI cases without a preselected source range. Add `--source` to
 include whole-session action hints for a caller you are investigating.
 
+### From a gap to the next case
+
+Every worklist result includes `nextStep` before the detailed evidence. Its
+`kind`, `from` and `instruction` direct the agent to the existing result field
+to inspect. `recipe` names the facts to resolve: the production branch/caller,
+the exact public action and target/event, the triggering state and owned fixture,
+and the existing case with its observable assertion. These facts belong in a
+short working note; they do not require a new manual map or an approval step.
+`afterRun` directs the agent to compare real passing gains with `measure batch`
+for supported native receipts, or the adapter's retained capture set.
+
+Declared cases retain their exact selector, condition and `argv`, with an
+additional `next` field:
+
+| `next` | Agent action |
+| --- | --- |
+| `review-and-run-existing-case` | Inspect the fixture and assertion, choose the condition matching the branch, and capture that existing case. Missing evidence does not choose the condition. |
+| `extend-existing-case` | The case passed but the focused measured scope still has gaps. Add the missing condition and assertion before running again. |
+| `repair-existing-case` | Inspect the failure and fix the existing case or product behavior while preserving its oracle. |
+| `review-case-outcomes` | Passing and failed intervals coexist. Inspect their identities and chronology; a historical failure may already be repaired. |
+| `reuse-passing-evidence` | Reuse compatible observations before repeating an unchanged case. A complete focused union does not change an individual case's outcome. |
+| `review-cli-action` | Supplied capabilities do not advertise the command, or the focused range has a reviewed missing route. Check the actual build and discovery before using or adding it. |
+| `resolve-measurement` | A previously passing case lacks comparable focused evidence. Resolve the compatible evidence/build without calling unknown code uncovered; independent cases can still run to produce evidence. |
+| `resolve-blocker` | The remaining focused gaps are held by reviewed blockers. Read the recorded restriction and continue independent supported work. |
+
+With no action declaration, the top-level guidance points to existing scenario,
+replay or caller leads. If none exists, trace the production entry point and
+inspect existing tests before adding a case or CLI route. Missing/stale pins
+remain excluded from validated source matches and need review. Guidance never
+invents selectors, executes the app, changes mappings or creates coverage credit.
+Results remain JSON with or without `--json`.
+
+Reviewed held ranges take precedence over declared case advice when all remaining
+measured gaps in the scope are held. Discovery remains visible, but its cases do not gain
+permission to bypass a recorded blocker. Shared gaps with an eligible reviewed
+alternative remain actionable.
+
+For an asynchronous gap, change state at the real owned dependency boundary and
+use a full-session capture. A synchronous control window around opening a sheet
+cannot establish that a later sync callback ran. After a zero-gain passing run,
+review the state and capture boundary before repeating the same case unchanged.
+
 Native discovery can include `groupActions` keyed by the listed group name.
 Each entry names an action `id`, its CLI `command`, and the `condition` the
 case exercises. An optional `trigger` describes the actual public control or

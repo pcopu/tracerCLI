@@ -1962,6 +1962,10 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.equal(blocked.decisions.heldGapLines, 1);
   assert.equal(blocked.decisions.proposal.capabilitiesSha256, f.hash('capabilities.json'));
   assert.deepEqual(blocked.decisions.queues.blocked.items[0].restrictions, ['Fixture denies device pairing']);
+  assert.equal(blocked.nextStep.kind, 'resolve-blocker');
+  assert.equal(blocked.nextStep.from, 'decisions.queues.blocked.items');
+  const proposed = f.json('proposal', ...args);
+  assert.equal(proposed.nextStep.from, 'queues.blocked.items');
   const scoped = f.json(...args, '--source', 'src/app.py:1');
   assert.deepEqual(scoped.coverage, blocked.coverage);
   assert.equal(scoped.sourceFocus.observedPassingLines, 1);
@@ -1970,9 +1974,12 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   const missing = report(['missing']);
   assert.equal(missing.extensionCandidates.gapLines, 0);
   assert.deepEqual(missing.decisions.queues['needs-cli-action'].items[0].missingActionIds, ['drag']);
+  assert.equal(missing.nextStep.kind, 'review-cli-action');
+  assert.equal(missing.nextStep.from, 'decisions.queues.needs-cli-action.items');
   const shared = report(['held', 'allowed']);
   assert.equal(shared.decisions.heldGapLines, 0);
   assert.equal(shared.extensionCandidates.gapLines, 1);
+  assert.equal(shared.nextStep.kind, 'inspect-existing-case', 'Independent runnable work takes priority over a held alternative');
   assert.equal(shared.decisions.queues['needs-scenario'].items[0].planId, 'allowed');
   prepared.associations[0].source.fileSha256 = '0'.repeat(64);
   const stale = report(['held']);
@@ -1994,12 +2001,25 @@ test('combined worklist respects current reviewed dispositions without hiding sh
 
   f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
     selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
-    scenarios: [{ id: 'edit', path, groups: ['recover', 'review'] }] });
+    scenarios: [{ id: 'edit', path, groups: ['recover', 'review'], groupActions: { recover: [{
+      id: 'edit-line', command: 'activate', condition: 'valid-edit',
+      entryPoint: { path: 'src/app.py', start: 1, end: 4, sha256: f.hash('src/app.py') },
+    }] } }] });
+  report(['held']);
+  for (const selector of [['--source', 'src/app.py:2'], ['--source', 'src/app.py:2', '--action', 'edit-line'], ['--action', 'edit-line']]) {
+    const heldAction = f.json(...args, ...selector);
+    assert.equal(heldAction.actionCases.count, 1, 'Discovery remains visible without overriding the reviewed blocker');
+    assert.equal(heldAction.nextStep.kind, 'resolve-blocker');
+    assert.equal(heldAction.actionCases.items[0].cases[0].next, 'resolve-blocker');
+  }
+  report(['held', 'allowed']);
+  assert.equal(f.json(...args, '--source', 'src/app.py:2').nextStep.kind, 'use-action-cases');
   prepared.scenarios.find(row => row.id === 'allowed').routeIds = ['edit/group/recover'];
   const exact = report(['allowed']);
   assert.deepEqual(exact.decisions.queues['needs-scenario'].items[0].routeIds, ['edit/group/recover']);
   assert.deepEqual(exact.decisions.nativeBatch.argv, ['test', '--case', 'edit#recover']);
   assert.equal(exact.decisions.nativeBatch.candidateGapLines, 1);
+  assert.equal(exact.nextStep.from, 'decisions.nativeBatch');
   assert.deepEqual(exact.coverage, blocked.coverage, 'A planned selector adds no observations');
 
   const allowed = prepared.scenarios.find(row => row.id === 'allowed');
@@ -2012,6 +2032,7 @@ test('combined worklist respects current reviewed dispositions without hiding sh
   assert.deepEqual(startup.decisions.nativeBatch.argv, []);
   assert.deepEqual(startup.decisions.nativeStartupBatch.argv, ['test', '--coverage-startup', '--case', 'edit#recover']);
   assert.equal(startup.decisions.queues['needs-scenario'].items[0].captureMode, 'startup');
+  assert.equal(startup.nextStep.from, 'decisions.nativeStartupBatch');
   assert.deepEqual(startup.coverage, exact.coverage);
   allowed.captureMode = 'unknown';
   f.jsonFile('proposal.json', prepared);
@@ -2094,6 +2115,7 @@ test('worklist ranks fresh replays from retained passing evidence without credit
   assert.deepEqual(reviewed.coverage.passedOnlyKnown, report.coverage.passedOnlyKnown);
   assert.deepEqual(reviewed.replayCandidates.items.map(row => row.argv), [['test', 'beta'], ['test', 'table']]);
   assert.equal(reviewed.failedReplays.gapLines, 2);
+  assert.equal(reviewed.nextStep.kind, 'repair-existing-case');
   assert.deepEqual(reviewed.failedReplays.items[0].routeIds, ['alpha', 'alpha-alias']);
   assert.equal(reviewed.failedReplays.items[0].failure.journey, journey);
   assert.deepEqual(reviewed.failedReplays.items[0].failure.diagnostic, diagnostic);
@@ -2111,4 +2133,99 @@ test('worklist ranks fresh replays from retained passing evidence without credit
 
   old.put(path, previous + 'stale snapshot\n');
   assert.equal(f.json(...args, '--replay').replayCandidates.gapLines, 1);
+});
+
+test('worklist guides branch-state case reuse, extension and repair without executing the app', t => {
+  const f = project(t), path = 'src/app.py', journey = 'tests/e2e/journeys/editor.mjs';
+  f.manifest.actions = ['scriv key']; f.save();
+  const first = f.json(...f.args).id;
+  f.put(journey, '// Existing cases drive the edit shortcut and assert its result.\n');
+  f.put('sentinel.mjs', "import { writeFileSync } from 'node:fs'; writeFileSync('app-launched', 'unexpected');\n");
+  f.jsonFile('tracer.json', { version: 1, app: [process.execPath, 'sentinel.mjs'] });
+  f.run(['init']);
+  const action = { id: 'edit-line', command: 'key', trigger: 'Command-Return',
+    entryPoint: { path, start: 1, end: 4, sha256: f.hash(path) } };
+  const scenario = { id: 'journeys/editor', path: journey, groups: ['available', 'locked'], groupActions: {
+    available: [{ ...action, condition: 'lease-available' }],
+    locked: [{ ...action, condition: 'lease-held-by-peer' }],
+  } };
+  const discovery = { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 }, scenarios: [scenario] };
+  f.jsonFile('discovery.json', discovery);
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['key'] });
+  f.jsonFile('receipt.json', { fixture: 'synthetic producer receipt' });
+  const evidence = { path: 'receipt.json', sha256: f.hash('receipt.json') };
+  const outcome = (id, group, status) => ({ id, journey: `${journey}#${group}`, status, evidence });
+  const passed = outcome(first, 'available', 'passed');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [passed] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const lookup = ['worklist', '--routes', 'discovery.json'];
+  const measured = [...lookup, '--capture-set', 'captures.json', '--reference-root', '.'];
+  const cases = report => report.actionCases.items[0].cases;
+  const next = report => cases(report).map(row => row.next);
+  const protectedFiles = [path, 'docs/testing/code-e2e-links.json', 'before.lcov', 'after.lcov', dataPath, 'captures.json'];
+  const before = protectedFiles.map(file => [file, f.hash(file)]);
+
+  const preview = f.json(...lookup, '--action', 'edit-line');
+  assert.equal(preview.nextStep.kind, 'use-action-cases');
+  assert.equal(preview.nextStep.from, 'actionCases.items');
+  assert.ok(preview.nextStep.recipe.includes('triggering state and owned fixture setup'));
+  assert.deepEqual(next(preview), ['review-and-run-existing-case', 'review-and-run-existing-case']);
+  assert.deepEqual(cases(preview).map(row => row.argv), [
+    ['test', '--case', 'journeys/editor#available'], ['test', '--case', 'journeys/editor#locked'],
+  ]);
+  assert.equal(cases(preview)[0].evidence, undefined, 'Discovery guidance cannot manufacture outcomes');
+  assert.deepEqual(next(f.json(...measured, '--action', 'edit-line')),
+    ['reuse-passing-evidence', 'review-and-run-existing-case'], 'Reuse compatible evidence before rerunning');
+  for (const selector of [['--source', `${path}:2`], ['--action', 'edit-line', '--source', `${path}:2`]]) {
+    const focused = f.json(...measured, ...selector);
+    assert.equal(focused.sourceFocus.gapLines, 1);
+    assert.deepEqual(next(focused), ['extend-existing-case', 'review-and-run-existing-case']);
+    assert.equal(cases(focused)[0].evidence.observedLines, 0);
+  }
+  assert.deepEqual(next(f.json(...measured, '--action', 'edit-line', '--source', `${path}:4`)),
+    ['resolve-measurement', 'review-and-run-existing-case'], 'Missing instrumentation stays unknown');
+  assert.equal(f.json(...measured, '--source', `${path}:4`).nextStep.kind, 'resolve-measurement');
+  assert.deepEqual(protectedFiles.map(file => [file, f.hash(file)]), before);
+  assert.equal(existsSync(join(f.root, 'app-launched')), false);
+
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['snapshot'] });
+  assert.deepEqual(next(f.json(...lookup, '--action', 'edit-line', '--capabilities', 'capabilities.json')),
+    ['review-cli-action', 'review-cli-action']);
+  f.jsonFile('outcomes.json', { version: 1, intervals: [outcome(first, 'available', 'failed')] });
+  assert.deepEqual(next(f.json(...measured, '--action', 'edit-line', '--source', `${path}:2`)),
+    ['repair-existing-case', 'review-and-run-existing-case']);
+
+  f.manifest.runId = f.manifest.before.runId = f.manifest.after.runId = 'synthetic-guidance-run-2';
+  f.put('after.lcov', f.record('DA:1,3\nDA:2,1\nDA:3,10')); f.refresh();
+  const second = f.json(...f.args).id;
+  f.jsonFile('outcomes.json', { version: 1, intervals: [passed, outcome(second, 'available', 'failed')] });
+  assert.equal(next(f.json(...measured, '--action', 'edit-line'))[0], 'review-case-outcomes',
+    'Mixed historical outcomes require inspection, not an assumption that the failure is still unresolved');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [passed, outcome(second, 'locked', 'passed')] });
+  const closed = f.json(...measured, '--source', `${path}:2`);
+  assert.equal(closed.sourceFocus.gapLines, 0);
+  assert.deepEqual(next(closed), ['reuse-passing-evidence', 'reuse-passing-evidence']);
+  assert.deepEqual(next(f.json(...measured, '--action', 'edit-line', '--source', `${path}:2`)), next(closed));
+
+  delete scenario.groupActions;
+  f.jsonFile('discovery.json', discovery);
+  assert.equal(f.json(...measured, '--source', `${path}:2`).nextStep.kind, 'reuse-passing-evidence');
+  f.jsonFile('outcomes.json', { version: 1, intervals: [passed] });
+  const lead = f.json(...measured, '--source', `${path}:2`);
+  assert.equal(lead.nextStep.kind, 'inspect-existing-case');
+  assert.ok(lead.extensionCandidates.count > 0, 'Existing neighboring case remains a lead without action metadata');
+
+  scenario.groupActions = { locked: [{ ...action, condition: 'lease-held-by-peer',
+    entryPoint: { ...action.entryPoint, sha256: '0'.repeat(64) } }] };
+  f.jsonFile('discovery.json', discovery);
+  f.jsonFile('outcomes.json', { version: 1, intervals: [] });
+  const stale = f.json(...measured, '--source', `${path}:2`);
+  assert.deepEqual(stale.actionCases.items, []);
+  assert.equal(stale.nextStep.kind, 'trace-entry-point');
+  assert.match(stale.nextStep.instruction, /missing or stale entry-point/);
+  assert.match(stale.nextStep.instruction, /do not invent a selector/);
+  assert.equal(existsSync(join(f.root, 'app-launched')), false);
+  assert.equal(f.hash(path), before[0][1]);
+  assert.equal(f.hash('docs/testing/code-e2e-links.json'), before[1][1]);
 });
