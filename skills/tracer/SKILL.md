@@ -134,8 +134,13 @@ If you know the caller but need its CLI action, start with
 `worklist --source PATH[:RANGE]` and Scriv’s saved `--capabilities`. Inspect
 `recordedActions.items` for matching dispatch windows, advertised semantic
 actions and recorded control fingerprints. The result includes the exact
-scenario selectors. Pass its `actionArgs` with the same source selection to
-inspect that action. A recorded `--target-sha256` works as an evidence
+scenario selectors. Start with a recorded action's `dispatchBatch` when
+present. It offers exact cases and the observed anchors from a passing
+window around that control, even when the selected gap contains no hits.
+With a pinned function map, a hit on a nested callback declaration still
+leaves its unobserved body in entry-point review. Find the invoking action.
+Pass its `actionArgs` with the same source selection to inspect that action.
+A recorded `--target-sha256` works as an evidence
 filter. Use the scenario or a live CLI snapshot to find the control to
 activate. Read the relevant assertion and production caller before extending
 a scenario found in a whole-session interval.
@@ -158,9 +163,11 @@ the action. If it includes too much surrounding work, run the same Scriv
 scenario with the normal pinned coverage options plus
 `--coverage-activate CONTROL_ID`. It measures around the first matching
 dispatch in one app session while the full scenario still runs. Add the
-capture and rerun the same query. Read `actionReview.dispatchWindows` first
-for the bounded observation. Background work may overlap. Use the full
-scenario interval for outcomes that finish after the dispatch.
+capture and rerun the same query. Use `actionReview.dispatchBatch` for cases
+with anchors inside the bounded window and `actionReview.dispatchWindows`
+for observed lines. An empty dispatch batch leaves any whole-session leads
+in `actionReview.nativeBatch` for caller review. Background work may overlap.
+Use the full scenario interval for outcomes that finish after the dispatch.
 
 When no selector has a passing match, inspect the discovered
 scenarios before writing one. When the action is absent from discovery, verify

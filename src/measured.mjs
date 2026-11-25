@@ -561,7 +561,7 @@ function readReferenceFunctions(root, file, scope, referenceRoot) {
     fail('The function map does not match the reference build and source manifest.');
   }
   const reference = new Map(scope.files.map(file => [file.path, file.sha256]));
-  const store = new MeasuredStore(referenceRoot), files = new Map();
+  const store = new MeasuredStore(referenceRoot), files = new Map(), nested = new WeakSet();
   let count = 0;
   for (const row of map.files) {
     keys(row, ['path', 'sha256', 'ranges'], 'function map file');
@@ -574,9 +574,15 @@ function readReferenceFunctions(root, file, scope, referenceRoot) {
     }
     count += row.ranges.length;
     if (count > 200000) fail('The function map exceeds 200000 ranges.');
-    files.set(row.path, row.ranges.sort(([a, b], [c, d]) => a - c || d - b));
+    const ranges = row.ranges.sort(([a, b], [c, d]) => a - c || d - b);
+    let outer;
+    for (const range of ranges) {
+      if (outer && range[1] <= outer[1] && (range[0] > outer[0] || range[1] < outer[1])) nested.add(range);
+      if (!outer || range[1] > outer[1]) outer = range;
+    }
+    files.set(row.path, ranges);
   }
-  return { sha256, files };
+  return { sha256, files, nested };
 }
 
 function crossesFunction(ranges, left, right) {
@@ -585,9 +591,14 @@ function crossesFunction(ranges, left, right) {
     && !ranges.some(([start, end]) => start <= left && right <= end);
 }
 
+function addDispatchGap(gaps, label, example) {
+  if (!gaps.has(label)) gaps.set(label, []);
+  gaps.get(label).push(example);
+}
+
 // A terminal block has no second anchor inside its function. Use only the
 // immediate surviving anchor in the smallest compiler range for that block.
-function collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges }) {
+function collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges, dispatchGaps, nested }) {
   if (!ranges?.length) return;
   for (let start = first; start <= last;) {
     const owner = ownerAt(start);
@@ -596,11 +607,12 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
     const left = start - 1, right = end + 1;
     if (owner) {
       const before = ownerAt(left) === owner, after = ownerAt(right) === owner;
-      if (before !== after) {
-        const anchor = before ? left : right;
+      const anchor = before ? left : right;
+      // A containing function can count creation of a nested closure.
+      if (before !== after && (lines[anchor] !== owner[0] || !nested.has(owner))) {
         const range = [lines[start], lines[end]];
         const matched = new Set(), startupMatched = new Set(), exactMatched = new Set();
-        for (const { journey, intervalId, rows, startup, actionIds, matchesAction } of passing) {
+        for (const { journey, intervalId, rows, startup, actionIds, matchesAction, windowAction } of passing) {
           if (rows[anchor][2] <= rows[anchor][1]) continue;
           const example = { path, range, functionRange: owner, observedAnchor: lines[anchor], intervalId, journey,
             ...(actionIds?.length && { actionIds }) };
@@ -613,6 +625,7 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
             exactMatched.add(journey);
             edges.action.push(example);
           }
+          if (windowAction) addDispatchGap(dispatchGaps, windowAction, example);
         }
       }
     }
@@ -624,6 +637,7 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
 // can split the physical ranges of a single gap in the instrumented sequence.
 function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions) {
   const surroundingIntervals = [], startupIntervals = [], actionIntervals = [], crossFunctionGaps = [];
+  const dispatchGaps = new Map();
   const edges = functions && { scenario: [], startup: [], action: [] };
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
@@ -650,32 +664,39 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath,
       const [first, initialLast] = gaps[cursor++];
       let last = initialLast;
       while (gaps[cursor]?.[0] === last + 1) last = gaps[cursor++][1];
-      collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges });
+      collectFunctionEdges({ path, lines, first, last, ranges, passing, ownerAt, edges, dispatchGaps, nested: functions?.nested });
       const left = first - 1, right = last + 1;
       if (left < 0 || right >= lines.length) continue;
       const range = [lines[first], lines[last]];
       const gapRanges = last - first === range[1] - range[0] ? undefined : compactRanges(lines.slice(first, right));
-      const found = new Map(), atStartup = new Map(), exactAction = new Map();
-      for (const { journey, intervalId, rows, startup, actionIds, matchesAction } of passing) {
+      const found = new Map(), atStartup = new Map(), exactAction = new Map(), windowMatches = [];
+      for (const { journey, intervalId, rows, startup, actionIds, matchesAction, windowAction } of passing) {
         const group = startup ? atStartup : found;
-        if (group.has(journey) && (!matchesAction || exactAction.has(journey))) continue;
+        if (group.has(journey) && (!matchesAction || exactAction.has(journey)) && !windowAction) continue;
         if (rows[left][2] <= rows[left][1] || rows[right][2] <= rows[right][1]) continue;
         const example = { path, range, ...(gapRanges && { gapRanges }),
           observedAround: [lines[left], lines[right]], intervalId, journey,
           ...(actionIds?.length && { actionIds }) };
         if (!group.has(journey)) group.set(journey, example);
         if (matchesAction && !exactAction.has(journey)) exactAction.set(journey, example);
+        if (windowAction) windowMatches.push([windowAction, example]);
       }
       if ((found.size || atStartup.size) && crossesFunction(functions?.files.get(path), lines[left], lines[right])) {
         crossFunctionGaps.push({ path, ranges: gapRanges ?? [range] });
         continue;
       }
       for (const example of exactAction.values()) actionIntervals.push(example);
+      if (windowMatches.length) {
+        const owner = ranges?.length ? ownerAt(left) : undefined;
+        const sameFunction = !ranges?.length || (owner && ownerAt(right) === owner && lines.slice(first, right)
+          .every((_, index) => ownerAt(first + index) === owner));
+        if (sameFunction) for (const [label, example] of windowMatches) addDispatchGap(dispatchGaps, label, example);
+      }
       if (found.size) for (const example of found.values()) surroundingIntervals.push(example);
       else for (const example of atStartup.values()) startupIntervals.push(example);
     }
   }
-  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps, ...(edges && { functionEdges: edges }) };
+  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps, dispatchGaps, ...(edges && { functionEdges: edges }) };
 }
 
 function uniqueLineContexts(lines) {
@@ -824,6 +845,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     const dispatchWindow = dispatchWindowSources && actionExecution && record.actionLabels?.includes(actionQuery.windowLabel);
     const recordedExecution = actionDiscovery && extensionJourney && !startup && extensionJourneys.get(declaration.journey);
     const discovered = recordedExecution && actionDiscovery.actions(record);
+    const windowActions = discovered ? discovered.filter(({ window }) => window) : [];
+    const windowAction = windowActions.length === 1 ? windowActions[0].action.label : undefined;
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
     for (const captured of record.captureFiles) {
@@ -847,18 +870,17 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
           recordActionSource(actionSources, actionExecution, captured.path, lines, example);
           if (dispatchWindow) recordActionSource(dispatchWindowSources, actionExecution, captured.path, lines, example);
         }
-        if (lines.length) {
-          for (const { action, window } of discovered || []) {
-            if (!recordedActions.has(action.label)) recordedActions.set(action.label, { action, sessions: new Map(), windows: new Map() });
-            const { sessions, windows } = recordedActions.get(action.label);
-            recordActionSource(window ? windows : sessions, recordedExecution, captured.path, lines, example);
-          }
+        for (const { action, window } of discovered || []) {
+          if (!lines.length && !window) continue;
+          if (!recordedActions.has(action.label)) recordedActions.set(action.label, { action, sessions: new Map(), windows: new Map() });
+          const { sessions, windows } = recordedActions.get(action.label);
+          if (lines.length) recordActionSource(window ? windows : sessions, recordedExecution, captured.path, lines, example);
         }
       }
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
         extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id,
-          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution) });
+          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution), windowAction });
       }
       for (const [line, before, after] of captured.rows) {
         if (after <= before) continue;

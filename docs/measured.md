@@ -234,6 +234,17 @@ and each selected case's marginal candidate lines. Session and startup
 captures have separate lists. Run the scenarios after adding the missing
 conditions, then use the resulting receipts to measure actual changes.
 
+With native capabilities and a focused source range, a recorded control's
+`dispatchBatch` offers exact cases backed by passing neighbor counters in
+the same matching dispatch window. A pinned function map also allows a
+single anchor at a function edge. The anchor lines can be outside the source
+selection. An explicit control query shows the same batch in
+`actionReview.dispatchBatch`. Use `actionReview.nativeBatch` to review
+whole-session leads and `actionReview.dispatchWindows` for observed lines.
+With pinned function boundaries, a containing function's hit at a nested
+callback declaration leaves the callback body in entry-point review.
+The gap candidates still need a new condition and a passing capture.
+
 Repeat `--receipt` to include several completed runs. Tracer binds each
 measured interval to its import receipt and its declared scenario, group, and
 outcome. It checks the run, build, probe, source and receipt digests before

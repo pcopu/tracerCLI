@@ -1213,7 +1213,19 @@ test('worklist matches an exact completed Scriv control target without falling b
   assert.deepEqual(menu.routes.map(row => row.routeIds), [['journeys/legacy']]);
   assert.equal(other.evidence, 'session', 'A different target’s window marker cannot upgrade an activation');
   assert.deepEqual(other.actionArgs, ['--action', 'activate', '--target-sha256', sha('workspace-open-recent')]);
-  assert.equal(f.json(...args.slice(0, -3), '--source', 'src/app.py:2').recordedActions.count, 0);
+  const focused = f.json(...args.slice(0, -3), '--source', 'src/app.py:2');
+  const [lead] = focused.recordedActions.items;
+  assert.equal(focused.sourceFocus.observedPassingLines, 0);
+  assert.equal(focused.recordedActions.count, 1, 'Only a bounded matching control can nominate a gap with no hits itself');
+  assert.deepEqual(lead.actionArgs, window.actionArgs);
+  assert.equal(lead.observedLines, 0);
+  assert.deepEqual(lead.dispatchBatch.argv, ['test', '--case', 'journeys/window']);
+  assert.equal(lead.dispatchBatch.candidateGapLines, 1);
+  assert.deepEqual(lead.dispatchBatch.cases[0].sources, [{ path: 'src/app.py', gapLines: 1, gapRanges: [[2, 2]] }]);
+  assert.deepEqual(lead.dispatchBatch.cases[0].examples, [{
+    path: 'src/app.py', range: [2, 2], observedAround: [1, 3],
+    intervalId: intervals[3].id, journey: routes[3].path, actionIds: ['snapshot', 'activate'],
+  }]);
   assert.deepEqual(f.json(...args.slice(0, -1), ...window.actionArgs).actionReview.dispatchWindows.items, window.routes);
   assert.match(f.run([...args, 'activate', '--target-sha256', 'wrong'], 1).stderr, /64 lowercase hexadecimal/);
   assert.match(f.run([...args, 'activate', '--target', 'workspace-open', '--target-sha256', sha('workspace-open')], 1).stderr, /one of/);
@@ -1227,8 +1239,29 @@ test('worklist matches an exact completed Scriv control target without falling b
   assert.deepEqual(exact.dispatchWindows.items[0].sources,
     exact.routes.find(route => route.routeIds.includes('journeys/window')).sources);
   assert.equal(broad.dispatchWindows, undefined);
+  assert.deepEqual(exact.dispatchBatch.argv, ['test', '--case', 'journeys/window']);
+  assert.deepEqual(exact.dispatchBatch, window.dispatchBatch);
   assert.deepEqual(exact.extensionCandidates.items.map(route => route.routeIds), [['journeys/captured']]);
-  assert.equal(f.json(...args, 'activate', '--target', 'workspace-open-recent').actionReview.dispatchWindows.count, 0);
+  const different = f.json(...args, 'activate', '--target', 'workspace-open-recent').actionReview;
+  assert.equal(different.dispatchWindows.count, 0);
+  assert.deepEqual(different.dispatchBatch.argv, []);
+  const functions = { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256,
+    files: [{ path: 'src/app.py', sha256: f.hash('src/app.py'), ranges: [[1, 1], [2, 3]] }] };
+  f.jsonFile('functions.json', functions);
+  const edge = f.json(...args.slice(0, -1), '--function-map', 'functions.json', ...window.actionArgs).actionReview.dispatchBatch;
+  assert.equal(edge.candidateGapLines, 1);
+  assert.equal(edge.cases[0].examples[0].observedAnchor, 3);
+  functions.files[0].ranges = [[1, 4], [1, 2], [3, 3]];
+  f.jsonFile('functions.json', functions);
+  const declaration = f.json(...args.slice(0, -1), '--function-map', 'functions.json', ...window.actionArgs);
+  assert.deepEqual(declaration.actionReview.dispatchBatch.argv, [], 'A containing function can account for the closure declaration count');
+  assert.ok(declaration.functionReview.entryPoints.items.some(row => row.start === 1 && row.end === 2
+    && row.gapRanges[0][0] === 2), 'The nested callback body still needs its own entry point');
+  functions.files[0].ranges = [[1, 1], [2, 2], [3, 3]];
+  f.jsonFile('functions.json', functions);
+  assert.deepEqual(f.json(...args.slice(0, -1), '--function-map', 'functions.json', ...window.actionArgs)
+    .actionReview.dispatchBatch.argv, [], 'Do not cross compiler function boundaries in a dispatch window');
   assert.equal(f.json(...args, 'activate', '--target', 'workspace').actionReview.routeCount, 0);
   assert.match(f.run([...args, 'snapshot', '--target', 'workspace-open'], 1).stderr, /--target requires.*activate/);
   assert.match(f.run([...args, 'activate', '--target', '0.1.2'], 1).stderr, /stable control identifier/);

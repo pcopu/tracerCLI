@@ -133,13 +133,14 @@ function extensionCandidates(surroundingIntervals, journeys, current, assigned, 
     restricted: { count: restricted.length, gapLines: restrictedGapLines, items: restricted.slice(0, limit).map(publicRow) } };
 }
 
-function nativeCaseBatch(candidates, { limit, held, pending, startup = false }) {
+function nativeCaseBatch(candidates, { limit, held, pending, startup = false, includeExamples = false }) {
   const bySelector = new Map();
-  for (const { argv, routeIds, files } of candidates) {
+  for (const { argv, routeIds, files, examples } of candidates) {
     // Only use argv from the validated native discovery catalog.
     const [, , id, , group] = argv;
     const selector = group ? `${id}#${group}` : id;
-    if (!bySelector.has(selector)) bySelector.set(selector, { selector, routeIds, files: new Map() });
+    if (!bySelector.has(selector)) bySelector.set(selector, { selector, routeIds, files: new Map(),
+      ...(includeExamples && { examples }) });
     const target = bySelector.get(selector).files;
     for (const [path, lines] of files) {
       const eligible = [...lines].filter(line => !held?.get(path)?.has(line) && !pending?.get(path)?.has(line));
@@ -232,8 +233,10 @@ function reviewFunctions(measured, current, assigned, pending, limit) {
     const ranges = functions.files.get(file.path), gaps = current.get(file.path)?.lines;
     if (!ranges || !gaps?.length) continue;
     const listed = new Set();
-    for (const [start, end] of ranges) {
-      if (file.passedOnlyKnown.observedRanges.some(([lo, hi]) => start <= hi && lo <= end)) continue;
+    for (const range of ranges) {
+      const [start, end] = range;
+      const bodyStart = functions.nested.has(range) ? start + 1 : start;
+      if (file.passedOnlyKnown.observedRanges.some(([lo, hi]) => bodyStart <= end && bodyStart <= hi && lo <= end)) continue;
       const lines = gaps.filter(line => start <= line && line <= end && !excluded(file.path, line) && !listed.has(line));
       if (!lines.length) continue;
       for (const line of lines) listed.add(line);
@@ -333,6 +336,12 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     catalog.journeys, current, assigned, pending, limit, batches?.session);
   const startupEdgeCandidates = catalog.launchActions && measured.functionEdges
     && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit, batches?.startup);
+  const dispatchPlans = new Map();
+  if (batches) for (const [label, examples] of measured.dispatchGaps ?? []) {
+    const candidates = [];
+    extensionCandidates(examples, catalog.journeys, current, held, pending, 0, candidates);
+    dispatchPlans.set(label, nativeCaseBatch(candidates, { limit, includeExamples: true }));
+  }
   if (actionReview) {
     if (actionTarget !== undefined) actionReview.target = actionTarget;
     if (actionTargetSha256 !== undefined) actionReview.targetSha256 = actionTargetSha256;
@@ -344,6 +353,8 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       actionReview.functionEdgeCandidates = extensionCandidates(exactEdges, catalog.journeys, current, held, pending, limit, exactBatch);
     }
     if (exactBatch) actionReview.nativeBatch = nativeCaseBatch(exactBatch, { limit, held, pending });
+    if (batches && actionReview.dispatchWindows) actionReview.dispatchBatch = (!actionReview.restrictions.length && dispatchPlans.get(actionLabel))
+      || nativeCaseBatch([], { limit });
   }
   if (decisions) for (const [path, lines] of decisions.assigned) addLines(assigned, path, lines);
   const decisionSummary = decisions && {
@@ -365,7 +376,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       startup: nativeCaseBatch(batches.startup, { limit, held, pending, startup: true }),
     } }),
     ...(actionReview && { actionReview }),
-    ...(measured.recordedActions && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit) }),
+    ...(measured.recordedActions && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit, dispatchPlans) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
     ...(replays && { replayCandidates: replayCandidates(replays.eligible, { held, pending, limit, focus }),
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
@@ -443,7 +454,7 @@ function discoverRecordedActions(catalog, focus) {
   } };
 }
 
-function reviewRecordedActions(matches, catalog, limit) {
+function reviewRecordedActions(matches, catalog, limit, dispatchPlans) {
   const items = [], restricted = [];
   for (const { action, sessions, windows } of matches.values()) {
     const { id } = action;
@@ -452,16 +463,21 @@ function reviewRecordedActions(matches, catalog, limit) {
     const sessionRoutes = observedActionRoutes(sessions, restrictions);
     for (const [rows, wantRestricted] of [[items, false], [restricted, true]]) {
       const focused = windowRoutes.filter(row => Boolean(row.restrictions.length) === wantRestricted);
-      const routes = focused.length ? focused : sessionRoutes.filter(row => Boolean(row.restrictions.length) === wantRestricted);
-      if (routes.length) rows.push({ ...action, evidence: focused.length ? 'dispatch-window' : 'session',
-        observedLines: routes[0].observedLines, routeCount: routes.length, routes: routes.slice(0, limit) });
+      const batch = !wantRestricted && !restrictions.length ? dispatchPlans.get(action.label) : undefined;
+      const hasCandidates = batch?.cases.length > 0;
+      const bounded = hasCandidates || focused.length > 0;
+      const routes = bounded ? focused : sessionRoutes.filter(row => Boolean(row.restrictions.length) === wantRestricted);
+      if (hasCandidates || routes.length) rows.push({ ...action, evidence: bounded ? 'dispatch-window' : 'session',
+        observedLines: routes[0]?.observedLines ?? 0, routeCount: routes.length, routes: routes.slice(0, limit),
+        ...(hasCandidates && { dispatchBatch: batch }) });
     }
   }
-  const priority = row => row.evidence === 'dispatch-window' ? 0 : row.targetSha256 ? 2 : 1;
+  const priority = row => row.dispatchBatch ? 0 : row.evidence === 'dispatch-window' ? 1 : row.targetSha256 ? 3 : 2;
   const summarize = rows => ({ count: rows.length, items: rows.sort((a, b) => priority(a) - priority(b)
+    || (b.dispatchBatch?.candidateGapLines ?? 0) - (a.dispatchBatch?.candidateGapLines ?? 0)
     || b.observedLines - a.observedLines || a.label.localeCompare(b.label)).slice(0, limit) });
   return { ...summarize(items), restricted: summarize(restricted),
-    notice: 'Matches current source to passing recorded CLI intervals. Session matches need caller review. Background work can overlap a dispatch window.' };
+    notice: 'Dispatch batches use passing anchors inside a matched control window. Candidate lines remain unobserved. Session matches need caller review. Background work can overlap a dispatch window.' };
 }
 
 export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, actionTargetSha256, functionMapFile, limit = 15 }) {
