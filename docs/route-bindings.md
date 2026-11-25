@@ -218,6 +218,21 @@ A whole-scope worklist with UIKit capabilities lists exact passing control
 windows in `recordedActions.items`. A matched window can nominate source gaps
 and exact CLI cases without a preselected source range. Add `--source` to
 include whole-session action hints for a caller you are investigating.
+
+Native discovery can include `groupActions` keyed by the listed group name.
+Each entry names an action `id`, its CLI `command`, and the `condition` the
+case exercises. An optional `trigger` describes the actual public control or
+shortcut. An optional `entryPoint` pins a production function with its source
+`path`, `start`, `end`, and SHA-256 of the exact range bytes. Define these
+alongside the runnable cases.
+
+`tracer worklist --routes CATALOG --action edit-line` returns the named cases
+and ready-to-use `test --case` arguments directly from discovery. Supply the
+reference and capture set to include retained outcomes, observed source ranges
+and whether the passing interval recorded the declared CLI command. With a
+source-focused worklist, `actionCases` matches the selected gap to a current
+declared function or its compiler-resolved callee. Shared functions can have
+several candidates. Captures still describe case intervals.
 With a pinned function map containing compiler calls, `dispatchBatch` can
 also nominate an unobserved callee when the same exact control window observed
 its caller's body. The example gives the call site, observed caller line and

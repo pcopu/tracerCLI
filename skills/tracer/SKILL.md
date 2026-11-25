@@ -65,9 +65,19 @@ missing from this discovery.
 A startup plan with `captureMode: "startup"` goes in
 `decisions.nativeStartupBatch` with the startup capture flag.
 Start with the largest actionable group and keep the original denominator.
+When native discovery advertises case actions, use
+`tracer worklist --routes CATALOG --action DECLARED_ID` to find existing
+conditions and the exact case to rerun. Add the reference and capture set for
+retained outcomes and observed ranges. Maintain action and condition
+declarations in the runnable cases, and pin the production function once
+for cases exercising the same action.
 Add `worklist --source PATH[:RANGE]` to rank CLI routes for a specific
 behavior. Repeat `--source` for its controller, store and shared helpers.
 Read `sourceFocus` for the selected counts and `coverage` for the full scope.
+Start with `actionCases` when the focused gap matches a declared entry
+point or a compiler-resolved direct callee. Otherwise use
+`functionReview.scenarioExtensions` to inspect the missing blocks by
+function, with deduplicated case candidates and their recorded action IDs.
 Use `extensionCandidates.items` as the shortlist of existing scenarios to inspect.
 Prefer the largest `marginalGapLines` and confirm the production caller and
 missing condition. The shortlist skips scenarios that only duplicate candidate

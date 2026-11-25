@@ -56,6 +56,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   proposal bind --file PROPOSAL --routes CATALOG [--json]
   worklist --routes CATALOG --capture-set FILE --reference-root DIR
            [--source PATH[:RANGE] ...] [--action ID [--target CONTROL_ID | --target-sha256 HASH]] [--file PROPOSAL] [--capabilities FILE] [--function-map FILE] [--replay] [--limit N] [--json]
+           or --routes CATALOG --action DECLARED_ID [--capture-set FILE --reference-root DIR] [--capabilities FILE] [--limit N] [--json]
   proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR
                     [--capabilities FILE] [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]
@@ -144,7 +145,9 @@ async function main(args) {
     }
     if (!options['--file'] && command !== 'worklist' && mode !== 'next') fail(`proposal ${mode} requires --file.`);
     if (mode === 'bind' && !options['--routes']) fail('proposal bind requires --routes.');
-    if (mode === 'worklist' && (!options['--routes'] || !options['--capture-set'] || !options['--reference-root'])) {
+    const catalogLookup = command === 'worklist' && options['--action']
+      && !['--capture-set', '--reference-root', '--source', '--target', '--target-sha256', '--function-map', '--file', '--replay'].some(flag => options[flag]);
+    if (mode === 'worklist' && (!options['--routes'] || !catalogLookup && (!options['--capture-set'] || !options['--reference-root']))) {
       fail('worklist requires --routes, --capture-set and --reference-root.');
     }
     for (const flag of ['--offset', '--limit']) if (options[flag] !== undefined && !/^(0|[1-9]\d*)$/.test(options[flag])) fail(`${flag} requires a nonnegative integer.`);

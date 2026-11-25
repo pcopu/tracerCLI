@@ -586,7 +586,7 @@ function readReferenceFunctions(root, file, scope, referenceRoot) {
   return { sha256, files, nested, ...(calls && { calls }) };
 }
 
-function innermostFunction(ranges, line) {
+export function innermostFunction(ranges, line) {
   let nearest;
   for (const range of ranges) {
     if (range[0] > line) break;
@@ -722,6 +722,7 @@ function collectFunctionEdges({ path, lines, first, last, ranges, passing, owner
 function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions, dispatchGaps) {
   const surroundingIntervals = [], startupIntervals = [], actionIntervals = [], crossFunctionGaps = [];
   const edges = functions && { scenario: [], startup: [], action: [] };
+  const functionIntervals = functions && [];
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
     if (!passing?.length || !passedOnlyKnown.gapRanges.length) continue;
@@ -761,17 +762,21 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath,
         continue;
       }
       for (const example of exactAction.values()) actionIntervals.push(example);
-      if (windowMatches.length) {
+      if (windowMatches.length || (ranges?.length && found.size)) {
         const owner = ranges?.length ? ownerAt(left) : undefined;
         const sameFunction = !ranges?.length || (owner && ownerAt(right) === owner && lines.slice(first, right)
           .every((_, index) => ownerAt(first + index) === owner));
-        if (sameFunction) for (const [label, example] of windowMatches) addDispatchGap(dispatchGaps, label, example);
+        if (sameFunction) {
+          if (owner) for (const example of found.values()) functionIntervals.push({ ...example, functionRange: owner });
+          for (const [label, example] of windowMatches) addDispatchGap(dispatchGaps, label, example);
+        }
       }
       if (found.size) for (const example of found.values()) surroundingIntervals.push(example);
       else for (const example of atStartup.values()) startupIntervals.push(example);
     }
   }
-  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps, dispatchGaps, ...(edges && { functionEdges: edges }) };
+  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps, dispatchGaps,
+    ...(edges && { functionEdges: edges, functionIntervals }) };
 }
 
 function uniqueLineContexts(lines) {
@@ -889,7 +894,7 @@ function recordActionSource(sources, execution, path, lines, example) {
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, actionDiscovery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, actionDiscovery, launchActions, actionIdsByLabel, functionMapFile, caseQuery }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   if (baselineReferenceRoot) baselineReferenceRoot = realpathSync(resolve(root, baselineReferenceRoot));
@@ -908,6 +913,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
   const actionSources = actionQuery && new Map();
   const dispatchWindowSources = actionQuery?.windowLabel && new Map();
   const recordedActions = actionDiscovery && new Map();
+  const caseEvidence = caseQuery && new Map();
   for (const record of loaded.records.values()) {
     const declaration = loaded.declarations.get(record.id), outcome = declaration?.status ?? 'unknown';
     const extensionJourney = outcome === 'passed' && extensionJourneys?.has(declaration.journey);
@@ -924,6 +930,13 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     const windowAction = windowActions.length === 1 ? windowActions[0].action.label : undefined;
     outcomeCounts[outcome]++;
     const provenanceId = record.provenanceId;
+    const provenance = loaded.provenance.get(provenanceId);
+    // A runner or exporter update can change the probe identity while keeping
+    // the signed binary, sources and measured line counters comparable.
+    const matchingCase = caseQuery?.journeys.has(declaration?.journey)
+      && provenance.buildSha256 === referenceIdentity.buildSha256
+      && provenance.sourceManifestSha256 === referenceIdentity.sourceManifestSha256;
+    let caseEntry;
     for (const captured of record.captureFiles) {
       const target = referenceFilesByPath.get(captured.path);
       if (!target) {
@@ -938,6 +951,21 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
         entry.intervals++; target.incompatible.set(key, entry); continue;
       }
       if (!target.comparable) continue;
+      if (matchingCase && !caseEntry) {
+        const journey = declaration.journey;
+        if (!caseEvidence.has(journey)) caseEvidence.set(journey, { passed: 0, failed: 0, files: new Map(), actions: new Set() });
+        caseEntry = caseEvidence.get(journey);
+        caseEntry[outcome]++;
+        if (outcome === 'passed') for (const action of record.actions) caseEntry.actions.add(action);
+      }
+      if (caseEntry && outcome === 'passed') {
+        const lines = observedSourceLines(captured, caseQuery.focus);
+        if (lines.length) {
+          if (!caseEntry.files.has(captured.path)) caseEntry.files.set(captured.path, new Set());
+          const observed = caseEntry.files.get(captured.path);
+          for (const line of lines) observed.add(line);
+        }
+      }
       if (actionExecution || discovered?.length) {
         const example = { journey: declaration.journey, intervalId: record.id };
         const lines = observedSourceLines(captured, (actionQuery ?? actionDiscovery).focus);
@@ -1008,6 +1036,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     ...(actionSources && { actionSources }),
     ...(dispatchWindowSources && { dispatchWindowSources }),
     ...(recordedActions && { recordedActions }),
+    ...(caseEvidence && { caseEvidence }),
     ...(functions && { functions }),
     ...(passingCallers && { passingCallers }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions, dispatchGaps)),

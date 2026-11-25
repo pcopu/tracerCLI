@@ -6,6 +6,7 @@ import { readProposal, inspectProposal } from './proposals.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = message => { throw new Error(message); };
+const actionSlug = /^[a-z][a-z0-9-]{0,79}$/;
 function object(value, required, optional = []) {
   if (!value || typeof value !== 'object' || Array.isArray(value)
       || required.some(key => !Object.hasOwn(value, key))
@@ -30,7 +31,32 @@ function regularFile(root, file) {
   }
   return path;
 }
-function nativeScenarioRoutes(discovery) {
+function addNativeCaseActions(actionCases, entries, selector, journey) {
+  list(entries);
+  const declared = new Set();
+  for (const entry of entries) {
+    object(entry, ['id', 'command', 'condition'], ['trigger', 'entryPoint']);
+    const { id, command, condition, trigger, entryPoint } = entry;
+    if (![id, command, condition].every(part => typeof part === 'string' && actionSlug.test(part))) fail('Invalid native group action.');
+    if (trigger !== undefined) { text(trigger); if (trigger.length > 128) fail('Invalid native group action trigger.'); }
+    if (entryPoint !== undefined) {
+      object(entryPoint, ['path', 'start', 'end', 'sha256']);
+      safePath(entryPoint.path);
+      const { start, end, sha256 } = entryPoint;
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start
+        || typeof sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(sha256)) fail('Invalid native group action entry point.');
+    }
+    const key = JSON.stringify([id, condition]);
+    if (declared.has(key)) fail('Duplicate native group action condition.');
+    declared.add(key);
+    if (!actionCases.has(id)) actionCases.set(id, { id, command, trigger, cases: [] });
+    const action = actionCases.get(id);
+    if (action.command !== command || action.trigger !== trigger) fail('Conflicting native group action definition.');
+    action.cases.push({ condition, selector, journey, ...(entryPoint && { entryPoint }) });
+  }
+}
+
+function nativeScenarioRoutes(discovery, actionCases) {
   object(discovery, ['schemaVersion', 'kind', 'selection', 'scenarios'], ['launchModes']);
   if (discovery.schemaVersion !== 1) fail('Expected version-1 native CLI scenario discovery.');
   list(discovery.scenarios, true);
@@ -49,7 +75,7 @@ function nativeScenarioRoutes(discovery) {
 
   const ids = new Set(), routes = [];
   for (const scenario of discovery.scenarios) {
-    object(scenario, ['id', 'path'], ['groups', 'restriction', 'groupWitnessPaths']);
+    object(scenario, ['id', 'path'], ['groups', 'restriction', 'groupWitnessPaths', 'groupActions']);
     const { id, path } = scenario;
     if (typeof id !== 'string' || !/^(?:journeys\/)?[A-Za-z0-9_-]+$/.test(id)
         || ids.has(id) || path !== `tests/e2e/${id}.mjs`) fail('Invalid or duplicate native scenario identity.');
@@ -64,7 +90,7 @@ function nativeScenarioRoutes(discovery) {
       route.restriction = `${restriction.reason} (${restriction.detail})`;
     }
     routes.push(route);
-    const { groupWitnessPaths } = scenario;
+    const { groupWitnessPaths, groupActions } = scenario;
     if (Object.hasOwn(scenario, 'groupWitnessPaths')) {
       if (!Array.isArray(scenario.groups)) fail('Native group witnesses require listed groups.');
       object(groupWitnessPaths, [], scenario.groups);
@@ -76,6 +102,10 @@ function nativeScenarioRoutes(discovery) {
         }
       }
     }
+    if (groupActions !== undefined) {
+      if (!Array.isArray(scenario.groups)) fail('Native group actions require listed groups.');
+      object(groupActions, [], scenario.groups);
+    }
     if (Object.hasOwn(scenario, 'groups')) {
       list(scenario.groups);
       if (new Set(scenario.groups).size !== scenario.groups.length) fail('Duplicate native scenario group.');
@@ -83,6 +113,9 @@ function nativeScenarioRoutes(discovery) {
         if (typeof group !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(group)) fail('Invalid native scenario group.');
         const witnesses = groupWitnessPaths && Object.hasOwn(groupWitnessPaths, group) ? groupWitnessPaths[group] : [];
         routes.push({ id: `${id}/group/${group}`, paths: [path, ...witnesses], argv: [...argv, '--group', group], journeys: [`${path}#${group}`] });
+        if (groupActions && Object.hasOwn(groupActions, group)) {
+          addNativeCaseActions(actionCases, groupActions[group], `${id}#${group}`, `${path}#${group}`);
+        }
       }
     }
   }
@@ -127,7 +160,8 @@ function nativeActionIds(input) {
 export function readRoutes(root, file, { capabilitiesFile } = {}) {
   const { input, sha256: routesSha256 } = readCatalogDocument(root, file);
   const native = input?.kind === 'native-cli-scenario-catalog';
-  const catalog = native ? nativeScenarioRoutes(input) : input;
+  const actionCases = new Map();
+  const catalog = native ? nativeScenarioRoutes(input, actionCases) : input;
   object(catalog, ['version', 'routes'], ['actions']);
   if (catalog.version !== 1) fail('Expected version-1 route catalog.');
   list(catalog.routes, true);
@@ -183,7 +217,7 @@ export function readRoutes(root, file, { capabilitiesFile } = {}) {
     actions = new Map([...discovered.ids, ...(native ? input.launchModes ?? [] : [])].map(id => [id, actions?.get(id) ?? { id }]));
     ({ measurementActions, semanticActionIds } = discovered);
   }
-  return { routesSha256, executions: [...executions.values()], actions, journeys, capabilitiesSha256, measurementActions, semanticActionIds,
+  return { routesSha256, executions: [...executions.values()], actions, journeys, actionCases, capabilitiesSha256, measurementActions, semanticActionIds,
     ...(native && { launchActions: ['launch isolated Scriv through the CLI', 'scriv capabilities'] }) };
 }
 

@@ -744,6 +744,7 @@ Usage: tracer [--root REPOSITORY] [--map PATH] [--include-ext .zig] COMMAND
   proposal bind --file PROPOSAL --routes CATALOG [--json]
   worklist --routes CATALOG --capture-set FILE --reference-root DIR
            [--source PATH[:RANGE] ...] [--action ID [--target CONTROL_ID | --target-sha256 HASH]] [--file PROPOSAL] [--capabilities FILE] [--function-map FILE] [--replay] [--limit N] [--json]
+           or --routes CATALOG --action DECLARED_ID [--capture-set FILE --reference-root DIR] [--capabilities FILE] [--limit N] [--json]
   proposal worklist --file PROPOSAL --routes CATALOG --capture-set FILE --reference-root DIR
                     [--capabilities FILE] [--limit N] [--json]
   proposal audit --file PROPOSAL [--offset N] [--limit N] [--json]

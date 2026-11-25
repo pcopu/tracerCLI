@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { bindCatalogPlans, readRoutes } from './route-bindings.mjs';
-import { gapsMeasured } from './measured.mjs';
+import { gapsMeasured, innermostFunction } from './measured.mjs';
 import { compactRanges, parseRange } from './tracer.mjs';
 
 const nextSteps = ['action-and-scenario', 'needs-scenario', 'needs-cli-action', 'review-cli-match', 'review-runtime-path', 'blocked'];
@@ -248,9 +248,98 @@ function reviewFunctions(measured, current, assigned, pending, limit) {
     entryPoints: { count: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) } };
 }
 
+function functionScenarioExtensions(measured, journeys, current, held, pending, limit) {
+  const groups = new Map(), union = new Map();
+  for (const examples of [measured.functionIntervals, measured.functionEdges?.scenario, measured.passingCallers?.scenario]) {
+    for (const example of examples ?? []) {
+      const { path, functionRange } = example;
+      const key = JSON.stringify([path, functionRange]);
+      if (!groups.has(key)) groups.set(key, { path, functionRange, examples: [] });
+      groups.get(key).examples.push(example);
+    }
+  }
+  const rows = [];
+  for (const { path, functionRange, examples } of groups.values()) {
+    const eligible = [];
+    const { count, items: cases } = extensionCandidates(examples, journeys, current, held, pending, Math.min(limit, 3), eligible);
+    if (!count) continue;
+    const lines = new Set();
+    for (const { files } of eligible) for (const line of files.get(path)) lines.add(line);
+    addLines(union, path, lines);
+    rows.push({ path, functionRange, gapLines: lines.size, gapRanges: compactRanges([...lines].sort((a, b) => a - b)), cases });
+  }
+  rows.sort((a, b) => b.gapLines - a.gapLines || a.path.localeCompare(b.path) || a.functionRange[0] - b.functionRange[0]);
+  return { count: rows.length, gapLines: summarize(union).gapLines, items: rows.slice(0, limit),
+    notice: 'Each function is shown with passing scenario anchors and discovered actions from those intervals. Inspect the condition before extending a case.' };
+}
+
+function reviewCaseActions(catalog, { actions, evidence, matchEntry, limit }) {
+  const items = [];
+  for (const { id, command, trigger, cases } of actions) {
+    const matches = matchEntry && cases.map(row => matchEntry(row.entryPoint)).filter(Boolean);
+    const match = matches && (matches.find(row => row.kind === 'entry-point') ?? matches[0]);
+    if (matchEntry && !match) continue;
+    const commandAvailable = catalog.capabilitiesSha256 && catalog.measurementActions.has(command);
+    items.push({ id, command, ...(trigger && { trigger }), ...(match && { match }),
+      ...(catalog.capabilitiesSha256 && { commandAvailable }), caseCount: cases.length,
+      cases: cases.slice(0, limit).map(({ condition, selector, journey }) => {
+        const row = { condition, selector, argv: ['test', '--case', selector] };
+        if (!evidence) return row;
+        const recorded = evidence.get(journey);
+        const passed = recorded?.passed ?? 0, failed = recorded?.failed ?? 0;
+        const observed = summarize(recorded?.files ?? new Map());
+        return { ...row, evidence: { status: passed ? failed ? 'mixed' : 'passed' : failed ? 'failed' : 'unknown',
+          passedIntervals: passed, failedIntervals: failed, commandRecorded: recorded?.actions.has(`scriv ${command}`) ?? false,
+          observedLines: observed.gapLines,
+          sources: observed.sources.slice(0, limit).map(({ path, gapRanges }) => ({ path, observedRanges: gapRanges })) } };
+      }) });
+  }
+  return { count: items.length, items: items.slice(0, limit),
+    notice: 'Actions and conditions are declared by discovery. Counters and outcomes describe retained case intervals.' };
+}
+
+function matchCaseEntryPoint(tracer, state, measured, focus) {
+  const { functions } = measured;
+  const key = (path, start, end) => JSON.stringify([path, start, end]);
+  const owners = new Set(), callers = new Map(), selected = new Map();
+  const compatible = measured.files.filter(file => file.status === 'current');
+  for (const { path, instrumentedRanges } of compatible) {
+    if (!focus.intersects(path, 1, Infinity)) continue;
+    selected.set(path, expandRanges(instrumentedRanges).filter(line => focus.intersects(path, line)));
+  }
+  if (functions) {
+    const verifiedPaths = new Set(compatible.map(file => file.path));
+    for (const [path, lines] of selected) {
+      const ranges = functions.files.get(path) ?? [];
+      for (const line of lines) {
+        const owner = innermostFunction(ranges, line);
+        if (owner) owners.add(key(path, ...owner));
+      }
+    }
+    for (const { caller, path, targetRange } of functions.calls ?? []) {
+      if (!verifiedPaths.has(caller.path) || !owners.has(key(path, ...targetRange))) continue;
+      const id = key(caller.path, ...caller.functionRange);
+      if (!callers.has(id)) callers.set(id, { kind: 'compiler-call', caller, callee: { path, range: targetRange } });
+    }
+  }
+  return entryPoint => {
+    if (!entryPoint) return undefined;
+    const { path, start, end, sha256 } = entryPoint;
+    if (!state.files.has(path) || end > state.files.get(path).length || tracer.snapshot(entryPoint, state).sha256 !== sha256) return undefined;
+    const id = key(path, start, end);
+    const exactFunction = functions?.files.get(path)?.some(range => range[0] === start && range[1] === end);
+    const direct = exactFunction ? owners.has(id) : selected.get(path)?.some(line => start <= line && line <= end);
+    return direct ? { kind: 'entry-point', entryPoint } : callers.get(id);
+  };
+}
+
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel, actionTarget, actionTargetSha256 }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
+  const actionCases = focus && catalog.actionCases.size && reviewCaseActions(catalog, {
+    actions: catalog.actionCases.values(), evidence: measured.caseEvidence, limit,
+    matchEntry: matchCaseEntryPoint(tracer, state, measured, focus),
+  });
   const executionsByPath = new Map(), workByRoute = new Map(), reviewByPath = new Map(), assigned = new Map();
   for (const execution of catalog.executions) {
     for (const path of execution.paths) {
@@ -395,6 +484,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       startup: nativeCaseBatch(batches.startup, { limit, held, pending, startup: true }),
     } }),
     ...(actionReview && { actionReview }),
+    ...(actionCases && { actionCases }),
     ...(measured.recordedActions && (focus || measured.recordedActions.size)
       && { recordedActions: reviewRecordedActions(measured.recordedActions, catalog, limit, dispatchPlans) }),
     ...(catalog.capabilitiesSha256 && { capabilitiesSha256: catalog.capabilitiesSha256 }),
@@ -403,6 +493,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     ...(runtime && { runtimeReview: runtime.report }),
     ...(sourceFocus && { sourceFocus }),
     ...(measured.functions && { functionReview: { ...reviewFunctions(measured, current, assigned, pending, limit),
+      scenarioExtensions: functionScenarioExtensions(measured, catalog.journeys, current, held, pending, limit),
       ...(edgeCandidates && { edgeCandidates,
         edgeNotice: 'An adjacent counter increased inside the same compiler function. The missing block needs a new condition or assertion.' }),
       ...(startupEdgeCandidates && { startupEdgeCandidates }), ...(callers && { callers }) } }),
@@ -508,6 +599,9 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
+  const declaredAction = actionTarget === undefined && actionTargetSha256 === undefined && catalog.actionCases.get(actionId);
+  const caseActions = declaredAction ? [declaredAction] : focus ? [...catalog.actionCases.values()] : [];
+  if (!captureSet && !declaredAction) throw new Error('Action lookup requires an ID declared by native case discovery.');
   if (actionTarget !== undefined && actionTargetSha256 !== undefined) {
     throw new Error('Use one of --target or --target-sha256.');
   }
@@ -522,10 +616,10 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
       throw new Error('--target-sha256 requires 64 lowercase hexadecimal digits.');
     }
   }
-  if (actionId !== undefined && !focus) throw new Error('--action requires --source.');
-  if (actionId !== undefined && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
+  if (actionId !== undefined && !declaredAction && !focus) throw new Error('--action requires --source for CLI commands.');
+  if (actionId !== undefined && !declaredAction && !catalog.actions) throw new Error('--action requires discovered actions in the route catalog or --capabilities.');
   let actionLabel, windowLabel;
-  if (actionId !== undefined) {
+  if (actionId !== undefined && !declaredAction) {
     actionLabel = catalog.measurementActions ? catalog.measurementActions.get(actionId) : catalog.actions.get(actionId)?.id;
   }
   const digest = actionTargetSha256 ?? (actionTarget === undefined ? undefined : createHash('sha256').update(actionTarget).digest('hex'));
@@ -534,14 +628,21 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
     windowLabel = windowLabelFor(digest);
   }
   const actionQuery = actionLabel && { label: actionLabel, windowLabel, focus, journeys: catalog.journeys };
+  const caseQuery = caseActions.length ? { focus, journeys: new Set(caseActions.flatMap(action => action.cases.map(row => row.journey))) } : undefined;
+  if (declaredAction && !captureSet) return { kind: 'action-case-worklist', version: 1, routesSha256: catalog.routesSha256,
+    actionCases: reviewCaseActions(catalog, { actions: caseActions, limit }) };
   const binding = file === undefined ? null : bindCatalogPlans(tracer, file, catalog);
   if (binding && !binding.behaviorRanges) throw new Error('Proposal worklist requires discovered actions or --capabilities.');
   const direct = sourceFirst || !binding;
   const labels = catalog.measurementActions ?? (catalog.actions && [...catalog.actions.keys()].map(id => [id, id]));
   const actionIdsByLabel = direct && labels && new Map([...labels].map(([id, label]) => [label, id]));
   const actionDiscovery = direct && discoverRecordedActions(catalog, focus);
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, actionDiscovery, launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile,
-    extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, actionDiscovery: declaredAction ? undefined : actionDiscovery,
+    launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile, caseQuery,
+    extensionJourneys: direct && !declaredAction ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
+  if (declaredAction) return { kind: 'action-case-worklist', version: 1, routesSha256: catalog.routesSha256,
+    reference: measured.reference, captureSet: measured.captureSet,
+    actionCases: reviewCaseActions(catalog, { actions: caseActions, evidence: measured.caseEvidence, limit }) };
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
   if (!direct) return decisions.report;

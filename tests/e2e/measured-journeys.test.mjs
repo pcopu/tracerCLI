@@ -1477,6 +1477,84 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   }
 });
 
+test('worklist finds declared action cases directly and from measured source gaps', t => {
+  const f = project(t), path = 'src/app.py', helper = 'src/lease.py';
+  f.put(helper, 'def acquire():\n    return lease()\n');
+  const files = [path, helper].map(path => ({ path, sha256: f.hash(path) }));
+  f.jsonFile('sources.json', { files });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 =
+    f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const unavailable = f.record('DA:1,0\nDA:2,0').replace(path, helper);
+  f.manifest.actions = ['scriv key'];
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0') + unavailable);
+  f.put('after.lcov', f.record('DA:1,1\nDA:2,0\nDA:3,1') + unavailable);
+  f.refresh();
+  const { id } = f.json(...f.args);
+  const journey = 'tests/e2e/journeys/editor.mjs';
+  f.put(journey, '// Run the real native edit shortcut from named conditions.\n');
+  const action = { id: 'edit-line', command: 'key',
+    entryPoint: { path, start: 1, end: 4, sha256: f.hash(path) } };
+  const scenario = { id: 'journeys/editor', path: journey, groups: ['available', 'locked'], groupActions: {
+    available: [{ ...action, condition: 'lease-available' }],
+    locked: [{ ...action, condition: 'lease-held-by-peer' }],
+  } };
+  const discovery = { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 }, scenarios: [scenario] };
+  f.jsonFile('discovery.json', discovery);
+  f.jsonFile('capabilities.json', { protocol: 1, driver: 'UIKit controls', commands: ['key'] });
+  f.jsonFile('receipt.json', { status: 'passed' });
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey: `${journey}#available`, status: 'passed',
+    evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.jsonFile('functions.json', { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256,
+    files: [{ ...files[0], ranges: [[1, 4]] }, { ...files[1], ranges: [[1, 2]] }],
+    calls: [{ caller: { path, line: 2 }, callee: { path: helper, start: 1, end: 2 } }] });
+  const lookup = ['worklist', '--routes', 'discovery.json'];
+  const args = [...lookup, '--capabilities', 'capabilities.json', '--capture-set', 'captures.json', '--reference-root', '.',
+    '--function-map', 'functions.json'];
+  const preview = f.json(...lookup, '--action', action.id);
+  assert.deepEqual(preview.actionCases.items[0].cases.map(({ condition, argv }) => [condition, argv]), [
+    ['lease-available', ['test', '--case', 'journeys/editor#available']],
+    ['lease-held-by-peer', ['test', '--case', 'journeys/editor#locked']],
+  ]);
+  const measured = f.json(...args, '--action', action.id).actionCases.items[0];
+  assert.equal(measured.command, 'key');
+  assert.deepEqual(measured.cases.map(({ evidence }) => evidence.status), ['passed', 'unknown']);
+  assert.equal(measured.cases[0].evidence.observedLines, 2);
+  assert.equal(measured.cases[0].evidence.commandRecorded, true);
+  for (const [source, kind] of [[`${path}:2`, 'entry-point'], [`${helper}:2`, 'compiler-call']]) {
+    const report = f.json(...args, '--source', source);
+    assert.equal(report.sourceFocus.gapLines, 1);
+    assert.equal(report.actionCases.items[0].id, action.id);
+    assert.equal(report.actionCases.items[0].match.kind, kind);
+    assert.equal(report.actionCases.items[0].cases[0].evidence.observedLines, 0);
+  }
+  const newer = project(t);
+  for (const file of [path, helper, 'sources.json', 'before.lcov']) newer.put(file, readFileSync(join(f.root, file)));
+  Object.assign(newer.manifest, structuredClone(f.manifest), { runId: 'newer-probe-run', probeSha256: sha('newer-probe') });
+  newer.manifest.before.runId = newer.manifest.after.runId = newer.manifest.runId;
+  newer.put('after.lcov', newer.record('DA:1,0\nDA:2,1\nDA:3,0') + unavailable);
+  newer.refresh();
+  const locked = newer.json(...newer.args).id;
+  const evidence = { path: 'receipt.json', sha256: f.hash('receipt.json') };
+  f.jsonFile('outcomes.json', { version: 1, intervals: [
+    { id, journey: `${journey}#available`, status: 'passed', evidence },
+    { id: locked, journey: `${journey}#locked`, status: 'passed', evidence },
+  ] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.', newer.root], outcomes: 'outcomes.json' });
+  const evidenceAfter = f.json(...args, '--action', action.id).actionCases.items[0].cases.map(row => row.evidence);
+  assert.deepEqual(evidenceAfter.map(row => row.status), ['passed', 'passed']);
+  assert.equal(evidenceAfter[1].observedLines, 1, 'A changed probe can still provide compatible case evidence for the signed build');
+  action.entryPoint.sha256 = '0'.repeat(64);
+  f.jsonFile('discovery.json', discovery);
+  assert.deepEqual(f.json(...args, '--source', `${path}:2`).actionCases.items, []);
+  assert.deepEqual(f.json(...args, '--source', `${helper}:2`).actionCases.items, []);
+  scenario.groupActions.unknown = scenario.groupActions.locked;
+  f.jsonFile('discovery.json', discovery);
+  assert.match(f.run([...lookup, '--action', action.id], 1).stderr, /route catalog|group action/i);
+});
+
 test('worklist reuses a recorded CLI scenario at the end of a reached function', t => {
   const f = project(t), path = 'src/app.py';
   f.put(path, source + 'fifth\nsixth\nseventh\n');
@@ -1521,12 +1599,21 @@ test('worklist reuses a recorded CLI scenario at the end of a reached function',
   assert.equal(example.observedAnchor, 2);
   assert.deepEqual(example.functionRange, [1, 4]);
   assert.deepEqual(example.actionIds, ['edit']);
+  const shortlist = report.functionReview.scenarioExtensions;
+  assert.equal(shortlist.count, 1);
+  const [editFunction] = shortlist.items;
+  assert.deepEqual([editFunction.path, editFunction.functionRange, editFunction.gapRanges], [path, [1, 4], [[3, 4]]]);
+  assert.equal(editFunction.gapLines, 2);
+  assert.equal(editFunction.cases.length, 1, 'Equivalent gap leads need one scenario to extend');
+  assert.deepEqual(editFunction.cases[0].examples[0].actionIds, ['edit']);
+  assert.deepEqual(f.json(...args, '--source', path + ':4').functionReview.scenarioExtensions.items[0].gapRanges, [[4, 4]]);
   assert.deepEqual(report.functionReview.entryPoints.items[0].gapRanges, [[5, 7]], 'Adjacent functions require their own evidence');
   assert.equal(f.json(...args, '--source', path + ':3', '--action', 'edit').actionReview.functionEdgeCandidates.gapLines, 1);
   assert.equal(f.json(...args, '--source', path, '--action', 'inspect').actionReview.functionEdgeCandidates.gapLines, 0);
   functions.files[0].ranges.push([3, 4]);
   f.jsonFile('functions.json', functions);
   assert.equal(f.json(...args).functionReview.edgeCandidates.gapLines, 0, 'Do not borrow an anchor from the enclosing function for an unentered closure');
+  assert.deepEqual(f.json(...args).functionReview.scenarioExtensions.items, []);
 });
 
 test('worklist uses pinned function boundaries to distinguish a missing entry point from a scenario extension', t => {
