@@ -198,6 +198,32 @@ function neighboringEvidence(files, examples) {
   return { gapLines: [...supported.values()].reduce((sum, lines) => sum + lines.size, 0), example };
 }
 
+function reviewFunctions(measured, current, assigned, pending, limit) {
+  const { functions, crossFunctionGaps = [] } = measured;
+  const excluded = (path, line) => assigned.get(path)?.has(line) || pending?.get(path)?.has(line);
+  let crossBoundaryGapLines = 0;
+  for (const { path, ranges } of crossFunctionGaps) {
+    crossBoundaryGapLines += current.get(path)?.lines.filter(line => !excluded(path, line)
+      && ranges.some(([start, end]) => start <= line && line <= end)).length ?? 0;
+  }
+  const rows = [];
+  for (const file of measured.files) {
+    const ranges = functions.files.get(file.path), gaps = current.get(file.path)?.lines;
+    if (!ranges || !gaps?.length) continue;
+    const listed = new Set();
+    for (const [start, end] of ranges) {
+      if (file.passedOnlyKnown.observedRanges.some(([lo, hi]) => start <= hi && lo <= end)) continue;
+      const lines = gaps.filter(line => start <= line && line <= end && !excluded(file.path, line) && !listed.has(line));
+      if (!lines.length) continue;
+      for (const line of lines) listed.add(line);
+      rows.push({ path: file.path, start, end, gapLines: lines.length, gapRanges: compactRanges(lines) });
+    }
+  }
+  rows.sort((a, b) => b.gapLines - a.gapLines || a.path.localeCompare(b.path) || a.start - b.start);
+  return { sha256: functions.sha256, crossBoundaryGapLines,
+    entryPoints: { count: rows.length, gapLines: rows.reduce((sum, row) => sum + row.gapLines, 0), items: rows.slice(0, limit) } };
+}
+
 function directWorklist(tracer, { catalog, measured, current, unavailable, decisions, limit, focus, sourceFocus, actionId, actionLabel, actionTarget }) {
   const held = decisions?.held, replays = measured.replaySources;
   const { data, mapSha256 } = tracer.readMap({ withHash: true }), state = tracer.inventory();
@@ -302,6 +328,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
       failedReplays: replayCandidates(replays.failed, { held, pending, limit, focus, failures: replays.failures }) }),
     ...(runtime && { runtimeReview: runtime.report }),
     ...(sourceFocus && { sourceFocus }),
+    ...(measured.functions && { functionReview: reviewFunctions(measured, current, assigned, pending, limit) }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
@@ -329,7 +356,7 @@ function reviewAction(id, catalog, label, actionSources, sourceFocus, limit) {
   };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, limit = 15 }) {
+export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, functionMapFile, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
@@ -357,7 +384,7 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   const direct = sourceFirst || !binding;
   const labels = catalog.measurementActions ?? (catalog.actions && [...catalog.actions.keys()].map(id => [id, id]));
   const actionIdsByLabel = direct && labels && new Map([...labels].map(([id, label]) => [label, id]));
-  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, launchActions: catalog.launchActions, actionIdsByLabel,
+  const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile,
     extensionJourneys: direct ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });

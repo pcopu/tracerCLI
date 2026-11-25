@@ -1305,6 +1305,43 @@ test('worklist reads native CLI discovery and matches exact capture group labels
   }
 });
 
+test('worklist uses pinned function boundaries to distinguish a missing entry point from a scenario extension', t => {
+  const f = project(t), path = 'src/app.py', journey = 'tests/editor.mjs';
+  f.put(journey, '// An observed editing scenario.\n');
+  f.jsonFile('routes.json', { version: 1, routes: [{ id: 'edit', argv: ['test', 'edit'], paths: [journey], journeys: [journey] }] });
+  const { id } = f.json(...f.args);
+  f.jsonFile('receipt.json', {});
+  f.jsonFile('outcomes.json', { version: 1, intervals: [{ id, journey, status: 'passed',
+    evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } }] });
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  const args = ['worklist', '--routes', 'routes.json', '--capture-set', 'captures.json', '--reference-root', '.'];
+  const baseline = f.json(...args);
+  assert.equal(baseline.extensionCandidates.gapLines, 1);
+  const map = { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256,
+    files: [{ path, sha256: f.hash(path), ranges: [[1, 1], [2, 2], [3, 4]] }] };
+  f.jsonFile('functions.json', map);
+  const usingFunctions = [...args, '--function-map', 'functions.json'];
+  const bounded = f.json(...usingFunctions);
+  assert.deepEqual(bounded.coverage, baseline.coverage);
+  assert.equal(bounded.extensionCandidates.gapLines, 0);
+  assert.equal(bounded.functionReview.crossBoundaryGapLines, 1);
+  assert.deepEqual(bounded.functionReview.entryPoints.items, [
+    { path, start: 2, end: 2, gapLines: 1, gapRanges: [[2, 2]] },
+  ]);
+  assert.equal(f.json(...usingFunctions, '--source', 'src/app.py:3').functionReview.crossBoundaryGapLines, 0);
+  map.files[0].ranges = [[1, 4], [2, 2]];
+  f.jsonFile('functions.json', map);
+  assert.equal(f.json(...usingFunctions).extensionCandidates.gapLines, 1);
+  map.files[0].sha256 = '0'.repeat(64);
+  f.jsonFile('functions.json', map);
+  assert.match(f.run([...usingFunctions, '--json'], 1).stderr, /function map source/i);
+  map.files[0].sha256 = f.hash(path);
+  map.buildSha256 = '0'.repeat(64);
+  f.jsonFile('functions.json', map);
+  assert.match(f.run([...usingFunctions, '--json'], 1).stderr, /function map.*reference build/i);
+});
+
 test('native worklist separates launch evidence from recorded CLI actions and joins sparse instrumented gap lines', t => {
   const f = project(t);
   const scenario = id => ({ id: `journeys/${id}`, path: `tests/e2e/journeys/${id}.mjs` });

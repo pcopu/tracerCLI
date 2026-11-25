@@ -61,6 +61,14 @@ Prefer the largest `marginalGapLines` and confirm the production caller and
 missing condition. The shortlist skips scenarios that only duplicate candidate
 lines. Read `extensionCandidates.restricted` for unavailable alternatives.
 
+If the adapter exports an exact compiler function map, pass
+`worklist --function-map FILE` with the same reference build and capture set.
+Use the narrowed extension shortlist first. Check
+`functionReview.entryPoints` for whole functions with no passing lines and
+trace those functions to a real CLI action or callback. For Scriv, the
+measurement-first coverage guide shows how to export a map from one retained
+native session. Reuse it across capture batches on the same signed build.
+
 Use `runtimeReview` for pinned `dead-code` declarations. Inspect callers,
 registrations and supported builds before marking or removing code. Resolve
 observed executions and current CLI witness conflicts before removal.

@@ -551,10 +551,44 @@ function measurementSnapshot(maxDatasets) {
     missingDatasets: new Set(), intervals: new WeakMap(), scopes: new Map(), evidenceDigests: new Map() };
 }
 
+function readReferenceFunctions(root, file, scope, referenceRoot) {
+  const { content, sha256 } = readInput(resolve(root, file));
+  const map = JSON.parse(content);
+  keys(map, ['version', 'kind', 'buildSha256', 'sourceManifestSha256', 'files'], 'function map');
+  if (map.version !== 1 || map.kind !== 'llvm-function-map' || !Array.isArray(map.files) || !map.files.length
+      || map.files.length > scope.files.length) fail('Invalid version-1 function map.');
+  if (scope.buildSha256 !== map.buildSha256 || scope.sourceManifestSha256 !== map.sourceManifestSha256) {
+    fail('The function map does not match the reference build and source manifest.');
+  }
+  const reference = new Map(scope.files.map(file => [file.path, file.sha256]));
+  const store = new MeasuredStore(referenceRoot), files = new Map();
+  let count = 0;
+  for (const row of map.files) {
+    keys(row, ['path', 'sha256', 'ranges'], 'function map file');
+    if (!hex(row.sha256) || reference.get(row.path) !== row.sha256 || files.has(row.path)) fail('Invalid function map source identity.');
+    if (!Array.isArray(row.ranges) || !row.ranges.length) fail('Invalid function map ranges.');
+    const lastLine = store.readLines(row.path).length;
+    for (const range of row.ranges) {
+      if (!Array.isArray(range) || range.length !== 2 || !range.every(Number.isSafeInteger)
+          || range[0] < 1 || range[0] > range[1] || range[1] > lastLine) fail('Invalid function map range.');
+    }
+    count += row.ranges.length;
+    if (count > 200000) fail('The function map exceeds 200000 ranges.');
+    files.set(row.path, row.ranges.sort(([a, b], [c, d]) => a - c || d - b));
+  }
+  return { sha256, files };
+}
+
+function crossesFunction(ranges, left, right) {
+  const covers = (line, [start, end]) => start <= line && line <= end;
+  return ranges && ranges.some(range => covers(left, range)) && ranges.some(range => covers(right, range))
+    && !ranges.some(([start, end]) => start <= left && right <= end);
+}
+
 // Both anchors must increase in the same interval. Lines without counters
 // can split the physical ranges of a single gap in the instrumented sequence.
-function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath) {
-  const surroundingIntervals = [], startupIntervals = [], actionIntervals = [];
+function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath, functions) {
+  const surroundingIntervals = [], startupIntervals = [], actionIntervals = [], crossFunctionGaps = [];
   for (const { path, passedOnlyKnown } of files) {
     const passing = recordsByFile.get(path);
     if (!passing?.length || !passedOnlyKnown.gapRanges.length) continue;
@@ -580,12 +614,16 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath)
         if (!group.has(journey)) group.set(journey, example);
         if (matchesAction && !exactAction.has(journey)) exactAction.set(journey, example);
       }
+      if ((found.size || atStartup.size) && crossesFunction(functions?.files.get(path), lines[left], lines[right])) {
+        crossFunctionGaps.push({ path, ranges: gapRanges ?? [range] });
+        continue;
+      }
       for (const example of exactAction.values()) actionIntervals.push(example);
       if (found.size) for (const example of found.values()) surroundingIntervals.push(example);
       else for (const example of atStartup.values()) startupIntervals.push(example);
     }
   }
-  return { surroundingIntervals, startupIntervals, actionIntervals };
+  return { surroundingIntervals, startupIntervals, actionIntervals, crossFunctionGaps };
 }
 
 function uniqueLineContexts(lines) {
@@ -700,11 +738,12 @@ function recordActionSource(sources, execution, { path, rows }, example, focus) 
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, extensionJourneys, replayJourneys, actionQuery, launchActions, actionIdsByLabel, functionMapFile }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   const baseline = baselineCaptureSet && loadMeasuredRecords(root, { captureSet: baselineCaptureSet }, { retainFiles: true, shared });
   const { files: referenceFiles, ...referenceIdentity } = loaded.scope;
+  const functions = functionMapFile && readReferenceFunctions(root, functionMapFile, loaded.scope, referenceRoot);
   const store = new MeasuredStore(root), referenceFilesByPath = new Map();
   for (const file of referenceFiles) {
     const current = currentSource(store, file.path);
@@ -792,7 +831,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     passedOnlyKnown: totals(files.reduce((sum, file) => sum + file.passedOnlyKnown.observedLines, 0)), files,
     outOfReferenceFiles: [...outOfReference.keys()].sort().map(path => ({ path, provenanceIds: [...outOfReference.get(path)] })),
     ...(actionSources && { actionSources }),
-    ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath)),
+    ...(functions && { functions }),
+    ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline ? { comparison: comparePassingEvidence(loaded, baseline, referenceFilesByPath, files) } : {}) };
 }

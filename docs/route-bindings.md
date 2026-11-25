@@ -264,6 +264,24 @@ and cannot use up the shortlist limit. Neither list changes passing totals or
 assigns an uncovered line. Review the anchor examples and trace the required
 condition before extending a journey.
 
+## Match gaps within compiler-mapped functions
+
+Use `worklist --function-map FILE` with an export from the signed reference
+build. The version-1 JSON has kind `llvm-function-map`, the reference
+`buildSha256` and `sourceManifestSha256`, and a `files` array. Each entry
+contains the reference-relative `path`, its exact full-file `sha256`, and
+inclusive physical line pairs in `ranges`. Tracer checks the build, source
+manifest, and file pins against the selected reference. Producers must also
+verify their compiler export and profile. The map contributes no observations.
+
+When both anchors belong to compiler-mapped functions, at least one function
+must contain both before Tracer recommends extending that scenario from their
+proximity. `functionReview.crossBoundaryGapLines` counts remaining lines that
+lost that lead. `functionReview.entryPoints` ranks functions with no passing
+line in the full function, after existing witnesses and reviewed dispositions.
+Trace them to the real CLI registration, a callback, or another production
+caller. A wholly unobserved function can still have a valid runtime entry point.
+
 ## Rank the routes for a source range
 
 ```sh
