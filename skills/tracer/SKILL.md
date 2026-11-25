@@ -307,6 +307,8 @@ After a Scriv run completes and imports coverage, use `tracer measure batch
 --baseline-capture-set BASELINE --receipt EVIDENCE --reference-root REFERENCE
 --output NEW_DIR`. This validates the receipt, reports passing gains and losses,
 and writes the next reusable capture set. Repeat `--receipt` for several runs.
+The batch tracks the exact reference source even while another checkout is
+being edited. Use `measure gaps` for the separate working-checkout view.
 Keep the output outside pinned source. See `docs/measured.md` for the artifacts
 and failure handling.
 

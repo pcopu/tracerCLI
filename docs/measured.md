@@ -222,6 +222,9 @@ Shared manifests, dataset payloads, captured source snapshots, and producer evid
 
 Pass the `evidence.json` from a finished Scriv CLI run with imported coverage.
 The output directory must be new and outside all source roots.
+The batch compares source and counters against the pinned `--reference-root`.
+Edits in the calling checkout cannot remove passing lines from that build.
+Use `measure gaps` to check which files are stale in a live checkout.
 
 ```sh
 tracer measure batch --baseline-capture-set /external/baseline/captures.json \

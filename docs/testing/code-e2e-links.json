@@ -478,8 +478,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2292,
-        "end": 2300,
+        "start": 2302,
+        "end": 2310,
         "sha256": "1e4a04ccda7960277188995ddc93ec776fd1553a910f35327777d5f08c22c6d4"
       },
       "why": "Explicit declared-action lookups retain the selected measured gap and unknown-instrumentation state so case guidance distinguishes extension from measurement preparation."
@@ -924,8 +924,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2057,
-        "end": 2101,
+        "start": 2067,
+        "end": 2111,
         "sha256": "5a9d84777d348976d80af87f933336c6d9c0d9a0c7df31d860a77570d455dd15"
       },
       "why": "Binds only the reviewed group and leaves a missing group explicit while retaining the measured gap."
@@ -987,8 +987,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2013,
-        "end": 2055,
+        "start": 2023,
+        "end": 2065,
         "sha256": "e2196ea600bbd6db96aca0a809fe15ece3f6d9b688444780a48e333acc1851ce"
       },
       "why": "Apply current reviewed holds to measured scenario leads while retaining the whole denominator, shared routes, and unassigned stale gaps."
@@ -1032,8 +1032,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2281,
-        "end": 2302,
+        "start": 2291,
+        "end": 2312,
         "sha256": "1b9d563b0cf2c2338576c73e2e35c2a860f002c3020bf4be13c26e6968f0c499"
       },
       "why": "The existing public worklist wraps discovery and measured results with guidance without replacing their case selectors, creating outcomes or executing the app."
@@ -1393,8 +1393,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2141,
-        "end": 2190,
+        "start": 2151,
+        "end": 2200,
         "sha256": "06e00a363554f3f40f40aafb10a7d0194ec946fd04cf222dca7b9946224e2574"
       },
       "why": "Combine route aliases and rank independent marginal gap lines while retaining the full candidate count under a presentation limit. Rank eligible and failed replays independently without discarding failure evidence."
@@ -1434,8 +1434,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1874,
-        "end": 1909,
-        "sha256": "80640713bd85b27effc4c0275e947be648548a65a3bef648f622399d3262ba04"
+        "end": 1919,
+        "sha256": "81926df7687ca872d37fdbadbe19e6b639543d44c435848fed08dc2ef30bf655"
       },
       "why": "The added outcome is bound to the receipt and exact measured run."
     },
@@ -2230,8 +2230,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2168,
-        "end": 2177,
+        "start": 2178,
+        "end": 2187,
         "sha256": "d66261c3b8b42794f8ce10ad9bb49e1fdc6fc4eb5bccd5bcc3ae2e7499251b2f"
       },
       "why": "A retained failed replay selects repair guidance and retains its typed diagnostic and receipt instead of scheduling an unrelated inferred replacement."
@@ -2266,8 +2266,8 @@
       "source": {
         "path": "src/measured.mjs",
         "start": 1270,
-        "end": 1312,
-        "sha256": "d66f8429e6b39019b8b8876c69c06be4a15167c26ee60fe6d9a9a5ae338702d9"
+        "end": 1313,
+        "sha256": "1718b51de8c549bae528081bf0b8c2f30a50d3e7c35a512c4bc922cc89c55ad4"
       },
       "actions": [
         "run measure batch and replay the generated capture set through measure gaps",
@@ -2276,8 +2276,8 @@
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
         "start": 1891,
-        "end": 1923,
-        "sha256": "1aadc34de86151cb9cfd30b90acbef6356fe921d42c575f0242f17e7dfe8ff97"
+        "end": 1933,
+        "sha256": "8830441aaaaa63690970cf3c76c77e6eefe4df16d14146660ad1552323758948"
       },
       "why": "A saved batch report reproduces exact measured comparison and protects the baseline and source."
     },
@@ -3501,8 +3501,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2326,
-        "end": 2329,
+        "start": 2336,
+        "end": 2339,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An available existing extension lead receives inspect-existing-case guidance so the fixture and observable assertion are reviewed before a run."
@@ -3719,6 +3719,26 @@
         "sha256": "a9862f45217096cf1512a9071e11e0fd816a5b39a56f69e70d04290ab55c2597"
       },
       "why": "Safe path, exclusive lock, atomic queue replacement and stored evidence digests guard the workflow. Inner snapshot consistency and generic I/O failures are defense-in-depth; the negative tamper test exercises the outer digest boundary."
+    },
+    {
+      "id": "492adfeaf504be58",
+      "source": {
+        "path": "src/measured.mjs",
+        "start": 1297,
+        "end": 1298,
+        "sha256": "0925f2d00a22868fabc5a801a9676614dc3f085feaf636c0d11648aaa11b7924"
+      },
+      "actions": [
+        "measure batch with an edited checkout and a separate exact reference root",
+        "measure gaps with the edited checkout and that reference"
+      ],
+      "step": {
+        "path": "tests/e2e/measured-journeys.test.mjs",
+        "start": 1902,
+        "end": 1911,
+        "sha256": "731515550fa84c2d69bc2ec00f6831e9a62049e0e22b71d14bfd5c290b8e34b2"
+      },
+      "why": "The batch totals and comparable gain still match the pinned build. The separate live-source gap query recognizes the unbuilt edit."
     },
     {
       "id": "49499f237ca5a545",
@@ -4143,8 +4163,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2013,
-        "end": 2038,
+        "start": 2023,
+        "end": 2048,
         "sha256": "23d4c1e182e87d61d3e1f2adf432b769b8b68cf7ac50b1d72d9f5ffafc332b6f"
       },
       "why": "Read native command and menu scopes from the UIKit discovery, classifying missing actions separately from discovered actions that need a scenario."
@@ -5126,8 +5146,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2326,
-        "end": 2329,
+        "start": 2336,
+        "end": 2339,
         "sha256": "73163f6c61bb3e6a597ecbdbd1f86bac126d37c8d8b99997bf8452927a50f4da"
       },
       "why": "An existing passing neighboring scenario remains a concrete extension lead when discovery has no action declaration."
@@ -5433,8 +5453,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2323,
-        "end": 2325,
+        "start": 2333,
+        "end": 2335,
         "sha256": "38e373fe0c7dbeaf453a8c0652dd378f4f243e3ecb8d4364fb1f6e93a2a118dd"
       },
       "why": "When action declarations are removed and the compatible passing union already observes the focused line, guidance reuses that evidence."
@@ -5806,8 +5826,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2013,
-        "end": 2033,
+        "start": 2023,
+        "end": 2043,
         "sha256": "e8eb6079f0ff909bdf8acfa39b5171002ce13ed89792df9a7b8d0232aa835cef"
       },
       "why": "Current blocked and missing-action plans direct the agent to the existing decision queue and preserve the measured denominator; the proposal-only report uses its own queue path."
@@ -6626,8 +6646,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2298,
-        "end": 2300,
+        "start": 2308,
+        "end": 2310,
         "sha256": "958dff8a54ad5328910b7cf735310071c315fd38d98314cb4fca3e439746f127"
       },
       "why": "A selected line with no instrumentation produces resolve-measurement guidance; it is not presented as an uncovered branch."
@@ -6882,8 +6902,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2063,
-        "end": 2071,
+        "start": 2073,
+        "end": 2081,
         "sha256": "e015771dab26f916a466d17a96526d44740c3422425514b1581dba1e391a0cd8"
       },
       "why": "An entirely held measured gap overrides declared action-case run advice in focused and explicit-action lookups. A shared allowed alternative restores action-case guidance without hiding the restriction."
@@ -7827,8 +7847,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2022,
-        "end": 2023,
+        "start": 2032,
+        "end": 2033,
         "sha256": "cee098fa9674047d7e059437e9b5fe1bc05c7f9c83128af11b71b24608591c68"
       },
       "why": "A proposal-only worklist with no runnable lead points to the populated blocked queue instead of an empty source-tracing queue."
@@ -9446,8 +9466,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2128,
-        "end": 2190,
+        "start": 2138,
+        "end": 2200,
         "sha256": "8843156f790f1fc7d9074e89bc201e030a5a6247e50979a5d3852eb89a316ac7"
       },
       "why": "Use verified historical passing observations to nominate uniquely matched current gaps, skip stale or restricted observations and same-file selectors already captured, and retain exact passing counts. A compatible failed replay remains visible with its receipt until the later passing capture resolves the candidate."
@@ -9653,8 +9673,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2063,
-        "end": 2071,
+        "start": 2073,
+        "end": 2081,
         "sha256": "e015771dab26f916a466d17a96526d44740c3422425514b1581dba1e391a0cd8"
       },
       "why": "The declared-action return preserves current bound held-gap decisions in focused and whole-scope lookups; action metadata cannot override an entirely held measured scope."
@@ -9838,8 +9858,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2281,
-        "end": 2321,
+        "start": 2291,
+        "end": 2331,
         "sha256": "57aa40871ed67b59a97a986538bc398764474e854c1760d401efe0f2cef16977"
       },
       "why": "Discovery and retained synthetic intervals distinguish case reuse, a missing state to extend, absent instrumentation, an unavailable command, failed versus mixed outcomes and a completed focused union. These are guidance decisions, not new execution evidence."
@@ -9985,8 +10005,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2158,
-        "end": 2185,
+        "start": 2168,
+        "end": 2195,
         "sha256": "58fc52e13cec3bb29ad6f60f68cd4d2cf459d9e34d022907e24ed8c9c8fbc773"
       },
       "why": "Expose only typed diagnostics bound to the exact failed scenario and receipt; ignore private fields and refuse unsafe source locations or match counts."
@@ -10336,8 +10356,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1925,
-        "end": 1980,
+        "start": 1935,
+        "end": 1990,
         "sha256": "f910d633e4ffd28e2cb16800e515a328d361511d3dd6e167a9bab2a26c2ea306"
       },
       "why": "The same discovered script can run separate cases. The reducer verifies the exact group for every session, reports elapsed time, rejects swapped groups and counts overlapping source observations once."
@@ -10639,8 +10659,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2080,
-        "end": 2096,
+        "start": 2090,
+        "end": 2106,
         "sha256": "ff1ac6d3f3a1bf70f22e31acde85112a38fea19c0bd42ad323d65cef8270035c"
       },
       "why": "Keeps the reviewed startup case in its own executable batch with the startup capture flag and no measured credit."
@@ -10815,8 +10835,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2072,
-        "end": 2091,
+        "start": 2082,
+        "end": 2101,
         "sha256": "c98803778d91a57c2c7d10f22fce8ca3b3f4aca6779d36a5a1c35d8c3dc10f7f"
       },
       "why": "The public worklist points to the exact reviewed normal or startup case batch, preserving separate capture modes and unchanged measured coverage."
@@ -11225,8 +11245,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2072,
-        "end": 2101,
+        "start": 2082,
+        "end": 2111,
         "sha256": "415c3f2300031f989c0a0673ba75404252b4d9331059adf995281d0243c7872c"
       },
       "why": "Emits the exact runnable selector only when the discovered case matches the plan and applies no measured credit."
@@ -11693,8 +11713,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2278,
-        "end": 2302,
+        "start": 2288,
+        "end": 2312,
         "sha256": "c14f91285601680a8f79133533c6cee0a2354f8ec0556360862c3b988e4d3485"
       },
       "why": "The public worklist adds a state-and-fixture recipe while preserving exact discovered argv and outcome absence. Source, manual links, raw counters, imported measurements and capture set remain byte-identical, and the configured app sentinel never launches."
@@ -11712,8 +11732,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2331,
-        "end": 2339,
+        "start": 2341,
+        "end": 2349,
         "sha256": "bf03ba5ff70b0d108371249d14d7e79b0d211c2119f99a8d67ca4f82bfee9c30"
       },
       "why": "A stale entry-point pin produces no action-case match and requires caller/discovery review without inventing a selector or silently refreshing the pin."
@@ -12189,8 +12209,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 1952,
-        "end": 1973,
+        "start": 1962,
+        "end": 1983,
         "sha256": "45e61bfda1be8571e8cc20f9716cee73d08265e19659611a42496fbbf9ee5cf1"
       },
       "why": "A verified receipt extends a full multi-root baseline and a gap series can read its retained evidence with identical passing totals and no comparable losses."
@@ -12208,8 +12228,8 @@
       ],
       "step": {
         "path": "tests/e2e/measured-journeys.test.mjs",
-        "start": 2219,
-        "end": 2247,
+        "start": 2229,
+        "end": 2257,
         "sha256": "e0aa028a0e201a820632a458200d7fd6320babe776f0d17c3230981687c27eaf"
       },
       "why": "The same native selector keeps startup and ordinary successes and failures separate while reporting only observed counter gains."

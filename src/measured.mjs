@@ -932,7 +932,7 @@ function recordActionSource(sources, execution, path, lines, example) {
   for (const line of lines) entry.files.get(path).add(line);
 }
 
-export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, actionDiscovery, launchActions, actionIdsByLabel, functionMapFile, caseQuery }, shared = measurementSnapshot()) {
+export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureSet, baselineReferenceRoot, extensionJourneys, replayJourneys, actionQuery, actionDiscovery, launchActions, actionIdsByLabel, functionMapFile, caseQuery, useReferenceSource = false }, shared = measurementSnapshot()) {
   referenceRoot = realpathSync(resolve(root, referenceRoot));
   const loaded = loadMeasuredRecords(root, { captureSet }, { referenceRoot, shared });
   if (baselineReferenceRoot) baselineReferenceRoot = realpathSync(resolve(root, baselineReferenceRoot));
@@ -940,7 +940,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     { referenceRoot: baselineReferenceRoot, retainFiles: true, shared });
   const { files: referenceFiles, ...referenceIdentity } = loaded.scope;
   const functions = functionMapFile && readReferenceFunctions(root, functionMapFile, loaded.scope, referenceRoot);
-  const store = new MeasuredStore(root), referenceFilesByPath = new Map();
+  const store = new MeasuredStore(useReferenceSource ? referenceRoot : root), referenceFilesByPath = new Map();
   for (const file of referenceFiles) {
     const current = currentSource(store, file.path);
     referenceFilesByPath.set(file.path, { file, current, comparable: current.sha256 === file.sha256,
@@ -1294,7 +1294,8 @@ export function batchMeasured(root, { baselineCaptureSet, receiptPaths, referenc
   try {
     write('captures.json', { version: 1, scope: baseline.scopeMode, inputRoots, outcomes: 'outcomes.json' });
     write('outcomes.json', { version: 1, intervals: outcomes });
-    const report = gapsMeasured(root, { referenceRoot, captureSet: join(staging, 'captures.json'), baselineCaptureSet, baselineReferenceRoot }, shared);
+    const report = gapsMeasured(root, { referenceRoot, captureSet: join(staging, 'captures.json'),
+      baselineCaptureSet, baselineReferenceRoot, useReferenceSource: true }, shared);
     for (const receipt of receipts) {
       const origin = report.origins.find(origin => origin.root === receipt.root);
       if (origin?.sha256 !== receipt.datasetSha256 || origin.invalidSnapshotFiles?.length) fail('Native batch source or dataset changed after receipt validation.');

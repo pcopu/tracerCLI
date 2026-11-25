@@ -1899,6 +1899,16 @@ test('native batch builds a reusable capture set from a verified Scriv receipt',
   const quality = base.json('measure', 'gaps', '--capture-set', captures, '--baseline-capture-set', 'captures.json', '--reference-root', '.');
   assert.deepEqual(JSON.parse(readFileSync(join(out, 'report.json'))), quality);
   assert.equal(quality.outcomes.declarations.find(row => row.id === imported.id).journey, `${scenario}#${group}`);
+  const working = project(t);
+  working.put('src/app.py', source + '# Unbuilt working edit.\n');
+  const pinnedBatch = working.json('measure', 'batch', '--baseline-capture-set', join(base.root, 'captures.json'),
+    '--receipt', join(run.root, 'evidence.json'), '--reference-root', base.root,
+    '--output', join(run.root, 'pinned-build-from-edited-checkout'));
+  assert.deepEqual(pinnedBatch.passedOnlyKnown, result.passedOnlyKnown,
+    'An unrelated working edit must not remove passing observations from the pinned build');
+  assert.equal(pinnedBatch.comparison.gainedLines, 1);
+  const liveGaps = working.json('measure', 'gaps', '--capture-set', captures, '--reference-root', base.root);
+  assert.equal(liveGaps.passedOnlyKnown.observedLines, 0, 'The working-tree gap report still identifies an edited file');
   base.run([...args, '--output', out, '--json'], 1);
   assert.deepEqual(JSON.parse(readFileSync(join(out, 'report.json'))), quality);
   const rejected = join(run.root, 'rejected');
