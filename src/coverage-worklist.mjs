@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { bindCatalogPlans, readRoutes } from './route-bindings.mjs';
 import { gapsMeasured, innermostFunction } from './measured.mjs';
 import { compactRanges, parseRange } from './tracer.mjs';
+import { guideCoverageWorklist } from './coverage-guidance.mjs';
 
 const nextSteps = ['action-and-scenario', 'needs-scenario', 'needs-cli-action', 'review-cli-match', 'review-runtime-path', 'blocked'];
 const byImpact = (a, b) => b.gapLines - a.gapLines || a.id.localeCompare(b.id);
@@ -595,7 +596,11 @@ function reviewRecordedActions(matches, catalog, limit, dispatchPlans) {
     notice: 'Dispatch batches use passing anchors inside a matched control window. Candidate lines remain unobserved. Session matches need caller review. Background work can overlap a dispatch window.' };
 }
 
-export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, actionTargetSha256, functionMapFile, limit = 15 }) {
+export function coverageWorklist(tracer, options) {
+  return guideCoverageWorklist(buildCoverageWorklist(tracer, options));
+}
+
+function buildCoverageWorklist(tracer, { file, routesFile, capabilitiesFile, captureSet, referenceRoot, sourceFirst, replay, sources, actionId, actionTarget, actionTargetSha256, functionMapFile, limit = 15 }) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Worklist requires --limit 1-1000.');
   const focus = sourceSelection(sources);
   const catalog = readRoutes(tracer.root, routesFile, { capabilitiesFile });
@@ -640,11 +645,15 @@ export function coverageWorklist(tracer, { file, routesFile, capabilitiesFile, c
   const measured = gapsMeasured(tracer.root, { captureSet, referenceRoot, actionQuery, actionDiscovery: declaredAction ? undefined : actionDiscovery,
     launchActions: catalog.launchActions, actionIdsByLabel, functionMapFile, caseQuery,
     extensionJourneys: direct && !declaredAction ? catalog.journeys : undefined, replayJourneys: replay ? catalog.journeys : undefined });
-  if (declaredAction) return { kind: 'action-case-worklist', version: 1, routesSha256: catalog.routesSha256,
-    reference: measured.reference, captureSet: measured.captureSet,
-    actionCases: reviewCaseActions(catalog, { actions: caseActions, evidence: measured.caseEvidence, limit }) };
   const scope = gapFiles(measured, focus);
   const decisions = binding && proposalWorklist({ binding, measured, ...scope, focus, capabilitiesSha256: catalog.capabilitiesSha256, limit });
+  if (declaredAction) return { kind: 'action-case-worklist', version: 1, routesSha256: catalog.routesSha256,
+    reference: measured.reference, captureSet: measured.captureSet,
+    coverage: { allObserved: measured.allObserved, passedOnlyKnown: measured.passedOnlyKnown },
+    unavailable: fileSummary(scope.unavailable, limit), ...(scope.sourceFocus && { sourceFocus: scope.sourceFocus }),
+    ...(decisions && { decisions: { queues: decisions.report.queues,
+      heldGapLines: [...decisions.held.values()].reduce((sum, lines) => sum + lines.size, 0) } }),
+    actionCases: reviewCaseActions(catalog, { actions: caseActions, evidence: measured.caseEvidence, limit }) };
   if (!direct) return decisions.report;
   return directWorklist(tracer, { catalog, measured, ...scope, decisions, limit, focus, actionId, actionLabel, actionTarget, actionTargetSha256 });
 }

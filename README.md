@@ -120,7 +120,7 @@ Hashes are never silently refreshed. The version-1 sidecar lives at `docs/testin
 
 ## Agent skill
 
-The reusable [Tracer skill](skills/tracer/SKILL.md) requires agents to first audit and establish the complete authorized app CLI surface before new coverage/mapping work, then maintain CLI parity and links whenever app features change. If app changes are not authorized or a route is restricted, it requires explicit gaps rather than bypasses or claims of completion. It keeps manual mapping, CLI parity, real test results and measured coverage separate.
+The reusable [Tracer skill](skills/tracer/SKILL.md) directs agents to close each observed gap through its production branch, exact CLI action, triggering state, existing case and observable assertion. Worklist results now lead with `nextStep`; declared cases explain whether to run, extend, repair or reuse evidence. Agents inspect the relevant CLI route and run useful cases promptly, without waiting for a complete manual map or CLI audit. They maintain discovery and meaningful assertions as cases change, measure unique passing gains and continue until the requested scope is complete or specific blockers remain. Manual mapping, CLI parity, test results and measured execution stay separate. See the [worklist guidance contract](docs/route-bindings.md#from-a-gap-to-the-next-case).
 
 `tracer init` detects existing Codex/Claude configuration directories as a hint, not proof of agent availability. In an interactive terminal it asks before installing a missing skill, then asks separately before appending one short pointer to `AGENTS.md` or `CLAUDE.md`. In noninteractive use, no agent files change without explicit flags:
 

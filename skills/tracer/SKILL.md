@@ -1,6 +1,6 @@
 ---
 name: tracer
-description: Measure real CLI scenario execution, provisionally bind existing plans to discovered routes, deduplicate compatible observations and prioritize remaining gaps. Also maintain requested source/action/assertion mappings and semantic audits with separate evidence.
+description: "Close observed coverage gaps through real CLI journeys: identify the production branch, public action, triggering state, existing case and observable assertion, then run or extend the case and measure the gain. Also maintain requested source/action/assertion mappings with separate evidence."
 ---
 
 # Tracer
@@ -10,6 +10,56 @@ Documentation paths in this skill are relative to the selected trusted Tracer pa
 Use `tracer update --status --json` to check the active managed commit.
 Explicit managed upgrades reuse verified files that match the new Git tree.
 The JSON result shows downloaded and reused file counts.
+
+## Turn each gap into an executed case
+
+For coverage work, finish with new execution evidence or a concrete unresolved
+blocker. A ranked gap, source link, condition label or runnable selector is an
+intermediate result. Use the current `worklist.nextStep` and each declared
+case's `next` field to choose the next action.
+
+For the gap you are working on, establish this short recipe in your working
+notes: **source branch and caller -> exact public action/target or event ->
+triggering state and owned fixture -> existing discovered case -> observable
+assertion**. Read the branch and case to fill missing facts. Tracer does not
+infer state from nearby hits, and an unknown case is not automatically the
+right condition. This is a focused execution decision, not a requirement to
+complete a manual map or an approval gate.
+
+1. Query retained evidence first. Reuse compatible passing observations. If
+   source or instrumentation is unavailable, resolve that measurement input
+   while continuing independent supported work; do not call unknown code a gap.
+2. Read `nextStep.from` and preserve any recorded blocker. When eligible
+   `actionCases` match the source, inspect them first; otherwise inspect the
+   existing scenario, control-window, caller or entry-point leads. Check the
+   actual CLI catalog and the case's setup and oracle. Continue independent
+   supported work while a restricted range is held.
+3. For `review-and-run-existing-case`, run the case whose fixture actually
+   satisfies the branch. For `extend-existing-case`, change the missing state
+   and assertion in that existing journey. For `repair-existing-case`, fix its
+   failed behavior while keeping the assertion. For `review-case-outcomes`,
+   inspect which failures are historical before deciding that a repair is needed.
+4. When no existing case can reach the behavior, add a focused variant using
+   the production action. Add a narrow CLI action only if the production route
+   lacks one. Create failure, timing and remote-update conditions at the owned
+   dependency boundary. Keep production guards intact. Keep proposed selectors
+   explicitly proposed until implemented and returned by discovery.
+5. Run promptly through `tracer app -- test` with the compatible capture adapter.
+   Use full-session capture for asynchronous callbacks or remote changes; a
+   window around the opener does not measure a later event. Deduplicate compatible
+   case selectors and reuse the verified build when only permitted tests change.
+6. Compare unique passing gains with `measure batch` for supported native
+   receipts, or the adapter's retained capture set. Retain failures and report
+   the remaining ranges and elapsed time. If a passing run adds no target hits,
+   inspect its state, caller and capture boundary before repeating it unchanged.
+   Move to the next useful gap. Continue the authorized loop until the requested
+   scope is complete or only specific unresolved blockers remain.
+
+Maintain action/condition declarations beside the runnable cases as they change.
+Refresh discovery after adding a group. Preserve meaningful assertions and all
+measurement denominators; neither a declaration nor a line hit proves every
+branch or the behavior's correctness. Read `docs/route-bindings.md` for the
+worklist guidance fields and their evidence limits.
 
 ## Match the behavior to a CLI action
 
