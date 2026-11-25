@@ -554,7 +554,7 @@ function measurementSnapshot(maxDatasets) {
 function readReferenceFunctions(root, file, scope, referenceRoot) {
   const { content, sha256 } = readInput(resolve(root, file));
   const map = JSON.parse(content);
-  keys(map, ['version', 'kind', 'buildSha256', 'sourceManifestSha256', 'files'], 'function map');
+  keys(map, ['version', 'kind', 'buildSha256', 'sourceManifestSha256', 'files', 'calls'], 'function map');
   if (map.version !== 1 || map.kind !== 'llvm-function-map' || !Array.isArray(map.files) || !map.files.length
       || map.files.length > scope.files.length) fail('Invalid version-1 function map.');
   if (scope.buildSha256 !== map.buildSha256 || scope.sourceManifestSha256 !== map.sourceManifestSha256) {
@@ -582,7 +582,74 @@ function readReferenceFunctions(root, file, scope, referenceRoot) {
     }
     files.set(row.path, ranges);
   }
-  return { sha256, files, nested };
+  const calls = Object.hasOwn(map, 'calls') && readFunctionCalls(map.calls, files);
+  return { sha256, files, nested, ...(calls && { calls }) };
+}
+
+function innermostFunction(ranges, line) {
+  let nearest;
+  for (const range of ranges) {
+    if (range[0] > line) break;
+    if (line <= range[1] && (!nearest || range[1] - range[0] < nearest[1] - nearest[0])) nearest = range;
+  }
+  return nearest;
+}
+
+function readFunctionCalls(calls, files) {
+  if (!Array.isArray(calls) || calls.length > 200000) fail('The function map calls must be an array of at most 200000 entries.');
+  const unique = new Map();
+  for (const call of calls) {
+    keys(call, ['caller', 'callee'], 'function map call');
+    const { caller, callee } = call;
+    keys(caller, ['path', 'line'], 'function map call site');
+    keys(callee, ['path', 'start', 'end'], 'function map call destination');
+    const callerRange = integer(caller.line) && innermostFunction(files.get(caller.path) ?? [], caller.line);
+    const targetRange = files.get(callee.path)?.find(([start, end]) => start === callee.start && end === callee.end);
+    if (!callerRange || !targetRange) fail('Each call must name a call site and destination within the pinned function map.');
+    const key = JSON.stringify([caller.path, caller.line, callee.path, callee.start, callee.end]);
+    if (!unique.has(key)) unique.set(key, { caller: { ...caller, functionRange: callerRange }, path: callee.path, targetRange });
+  }
+  return [...unique.values()];
+}
+
+function collectPassingCallers(files, passingByFile, functions) {
+  const byPath = new Map(files.filter(file => file.status === 'current').map(file => [file.path, file.passedOnlyKnown]));
+  const candidates = { scenario: [], startup: [] };
+  const targetGaps = new Map();
+  for (const { caller, path, targetRange } of functions.calls) {
+    const target = byPath.get(path), passing = passingByFile.get(caller.path);
+    if (!target?.gapRanges.length || !passing) continue;
+    if (!targetGaps.has(targetRange)) {
+      const [start, end] = targetRange;
+      const body = functions.nested.has(targetRange) ? start + 1 : start;
+      const reached = target.observedRanges.some(([lo, hi]) => body <= end && body <= hi && lo <= end);
+      const lines = [];
+      if (!reached) for (const [lo, hi] of target.gapRanges) {
+        for (let line = Math.max(lo, start); line <= Math.min(hi, end); line++) {
+          if (innermostFunction(functions.files.get(path), line) === targetRange) lines.push(line);
+        }
+      }
+      targetGaps.set(targetRange, compactRanges(lines));
+    }
+    const ranges = targetGaps.get(targetRange);
+    if (!ranges.length) continue;
+    const [start, end] = caller.functionRange;
+    const body = functions.nested.has(caller.functionRange) ? start + 1 : start;
+    const callerRanges = functions.files.get(caller.path);
+    const seen = new Set();
+    for (const { journey, intervalId, rows, startup, actionIds, exactReference } of passing) {
+      const key = JSON.stringify([journey, startup]);
+      if (!exactReference || seen.has(key)) continue;
+      const anchor = rows.find(([line, before, after]) => line >= body && line <= end && after > before
+        && innermostFunction(callerRanges, line) === caller.functionRange);
+      if (!anchor) continue;
+      seen.add(key);
+      const examples = startup ? candidates.startup : candidates.scenario;
+      for (const range of ranges) examples.push({ path, range, functionRange: targetRange, caller,
+        observedAnchor: anchor[0], intervalId, journey, ...(actionIds?.length && { actionIds }) });
+    }
+  }
+  return candidates;
 }
 
 function crossesFunction(ranges, left, right) {
@@ -648,15 +715,7 @@ function surroundingPassingIntervals(files, recordsByFile, referenceFilesByPath,
     const owners = new Map();
     const ownerAt = position => {
       if (position < 0 || position >= lines.length) return;
-      if (!owners.has(position)) {
-        const line = lines[position];
-        let nearest;
-        for (const range of ranges) {
-          if (range[0] > line) break;
-          if (line <= range[1] && (!nearest || range[1] - range[0] < nearest[1] - nearest[0])) nearest = range;
-        }
-        owners.set(position, nearest);
-      }
+      if (!owners.has(position)) owners.set(position, innermostFunction(ranges, lines[position]));
       return owners.get(position);
     };
     const gaps = passedOnlyKnown.gapRanges.map(([start, end]) => [index.get(start), index.get(end)]);
@@ -880,7 +939,8 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
       if (extensionJourney) {
         if (!extensionRecords.has(captured.path)) extensionRecords.set(captured.path, []);
         extensionRecords.get(captured.path).push({ journey: declaration.journey, intervalId: record.id,
-          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution), windowAction });
+          rows: captured.rows, startup, actionIds, matchesAction: !startup && Boolean(actionExecution), windowAction,
+          exactReference: provenanceId === loaded.scopeId });
       }
       for (const [line, before, after] of captured.rows) {
         if (after <= before) continue;
@@ -931,6 +991,7 @@ export function gapsMeasured(root, { referenceRoot, captureSet, baselineCaptureS
     ...(dispatchWindowSources && { dispatchWindowSources }),
     ...(recordedActions && { recordedActions }),
     ...(functions && { functions }),
+    ...(functions?.calls && { passingCallers: collectPassingCallers(files, extensionRecords, functions) }),
     ...(extensionJourneys?.size && surroundingPassingIntervals(files, extensionRecords, referenceFilesByPath, functions)),
     ...(replayJourneys && { replaySources: replayPassingSources(store, files, referenceFilesByPath, loaded, replayJourneys, shared) }),
     ...(baseline && { comparison: {

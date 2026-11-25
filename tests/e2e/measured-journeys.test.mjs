@@ -1496,6 +1496,57 @@ test('worklist uses pinned function boundaries to distinguish a missing entry po
   assert.match(f.run([...usingFunctions, '--json'], 1).stderr, /function map.*reference build/i);
 });
 
+test('worklist follows compiler calls from a passing CLI caller to a cold function', t => {
+  const f = project(t), path = 'src/app.py', helper = 'src/recover.py';
+  f.put(helper, 'def recover():\n    return fallback()\n');
+  f.jsonFile('sources.json', { files: [path, helper].map(path => ({ path, sha256: f.hash(path) })) });
+  f.manifest.sourceManifestSha256 = f.manifest.before.sourceManifestSha256 = f.manifest.after.sourceManifestSha256 = f.hash('sources.json');
+  const helpers = f.record('DA:1,0\nDA:2,0').replace(path, helper);
+  f.put('before.lcov', f.record('DA:1,0\nDA:2,0\nDA:3,0\nDA:4,0') + helpers);
+  f.put('after.lcov', f.record('DA:1,1\nDA:2,0\nDA:3,0\nDA:4,1') + helpers);
+  f.refresh();
+  const { id } = f.json(...f.args);
+  f.jsonFile('receipt.json', {});
+  const outcome = { id, journey: 'tests/e2e/edit.mjs#recover', status: 'passed',
+    evidence: { path: 'receipt.json', sha256: f.hash('receipt.json') } };
+  const saveOutcomes = () => f.jsonFile('outcomes.json', { version: 1, intervals: [outcome] });
+  saveOutcomes();
+  f.jsonFile('captures.json', { version: 1, inputRoots: ['.'], outcomes: 'outcomes.json' });
+  f.put('tests/e2e/edit.mjs', '// Scenario exercises edit and failed sync recovery.\n');
+  f.jsonFile('discovery.json', { schemaVersion: 1, kind: 'native-cli-scenario-catalog',
+    selection: { mode: 'all', availableScenarioCount: 1, selectedScenarioCount: 1 },
+    scenarios: [{ id: 'edit', path: 'tests/e2e/edit.mjs', groups: ['recover'] }] });
+  const exactCall = { caller: { path, line: 2 }, callee: { path: helper, start: 1, end: 2 } };
+  const map = { version: 1, kind: 'llvm-function-map', buildSha256: f.manifest.before.buildSha256,
+    sourceManifestSha256: f.manifest.sourceManifestSha256, files: [
+      { path, sha256: f.hash(path), ranges: [[1, 2], [3, 3], [4, 4]] },
+      { path: helper, sha256: f.hash(helper), ranges: [[1, 2]] },
+    ], calls: [exactCall] };
+  f.jsonFile('functions.json', map);
+  const args = ['worklist', '--routes', 'discovery.json', '--capture-set', 'captures.json', '--reference-root', '.', '--function-map', 'functions.json'];
+  const report = f.json(...args, '--source', helper);
+  assert.equal(report.sourceFocus.gapLines, 2);
+  assert.equal(report.coverage.passedOnlyKnown.observedLines, 2);
+  assert.equal(report.functionReview.callers.session.gapLines, 2);
+  const [candidate] = report.functionReview.callers.session.items;
+  assert.deepEqual(candidate.argv, ['test', '--scenario', 'edit', '--group', 'recover']);
+  assert.equal(candidate.examples[0].observedAnchor, 1);
+  assert.deepEqual(candidate.examples[0].caller, { ...exactCall.caller, functionRange: [1, 2] });
+  assert.deepEqual(report.nativeBatches.session.argv, ['test', '--case', 'edit#recover']);
+
+  map.calls = [{ ...exactCall, caller: { path, line: 3 } }];
+  f.jsonFile('functions.json', map);
+  assert.equal(f.json(...args).functionReview.callers.session.gapLines, 0, 'Adjacent passing lines belong to other functions');
+  map.calls = [{ ...exactCall, callee: { path: helper, start: 1, end: 1 } }];
+  f.jsonFile('functions.json', map);
+  assert.match(f.run(args, 1).stderr, /call.*function map/i);
+  map.calls = [exactCall];
+  f.jsonFile('functions.json', map);
+  outcome.status = 'failed';
+  saveOutcomes();
+  assert.equal(f.json(...args).functionReview.callers.session.gapLines, 0);
+});
+
 test('native worklist separates launch evidence from recorded CLI actions and joins sparse instrumented gap lines', t => {
   const f = project(t);
   const scenario = id => ({ id: `journeys/${id}`, path: `tests/e2e/journeys/${id}.mjs` });

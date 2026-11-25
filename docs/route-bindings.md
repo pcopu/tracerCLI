@@ -299,6 +299,22 @@ line in the full function, after existing witnesses and reviewed dispositions.
 Trace them to the real CLI registration, a callback, or another production
 caller. A wholly unobserved function can still have a valid runtime entry point.
 
+A producer can include `calls` in the same function map. Each entry is
+`{"caller":{"path":"src/controller.swift","line":92},"callee":{"path":"src/service.swift","start":60,"end":124}}`.
+Use compiler-resolved source references from the exact build inputs. The
+call site must belong to a mapped caller function and the callee must name an
+exact mapped range. Leave unresolved dynamic dispatch and registrations for
+source review. An absent call is inconclusive.
+
+`functionReview.callers` proposes the exact discovered CLI cases whose passing
+reference intervals observed the caller's function while the callee has no
+passing body observation. Anchors belong to the caller's own function, and
+callers may be in a different file from the requested `--source` range.
+Each example gives the call location, observed caller line, callee range and
+interval ID. Inspect the condition at the call site before extending the case.
+Native batch suggestions deduplicate these lines with the other scenario
+leads. Reported lines are candidates until measured by a new passing run.
+
 ## Rank the routes for a source range
 
 ```sh

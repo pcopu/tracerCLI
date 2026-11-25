@@ -85,6 +85,13 @@ explicit `--action` or exact control target, use
 `actionReview.functionEdgeCandidates` for the corresponding action-specific
 evidence. The shortlists can overlap and their counts are candidate lines.
 
+When the producer includes compiler-resolved calls in that function map, use
+`functionReview.callers` to find the exact CLI cases that reached the caller of
+an unobserved function, including across source files. Read the call-site
+condition, extend the existing fixture and verify the delta. A static edge and
+a caller observation nominate a scenario. Execution of the callee still needs
+a passing capture. Look for callback registrations, dynamic dispatch and
+supported builds when the compiler map has no matching caller.
 Check `functionReview.entryPoints` for whole functions with no passing lines and
 trace those functions to a real CLI action or callback. For Scriv, the
 measurement-first coverage guide shows how to export a map from one retained

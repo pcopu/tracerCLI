@@ -336,6 +336,12 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     catalog.journeys, current, assigned, pending, limit, batches?.session);
   const startupEdgeCandidates = catalog.launchActions && measured.functionEdges
     && extensionCandidates(measured.functionEdges.startup, catalog.journeys, current, assigned, pending, limit, batches?.startup);
+  const callers = measured.passingCallers && {
+    notice: 'A passing interval observed the caller function. A static call points to the unobserved callee. Inspect the call site and extend the case for its missing condition.',
+    session: extensionCandidates(measured.passingCallers.scenario, catalog.journeys, current, assigned, pending, limit, batches?.session),
+    ...(catalog.launchActions && { startup: extensionCandidates(measured.passingCallers.startup,
+      catalog.journeys, current, assigned, pending, limit, batches?.startup) }),
+  };
   const dispatchPlans = new Map();
   if (batches) for (const [label, examples] of measured.dispatchGaps ?? []) {
     const candidates = [];
@@ -389,7 +395,7 @@ function directWorklist(tracer, { catalog, measured, current, unavailable, decis
     ...(measured.functions && { functionReview: { ...reviewFunctions(measured, current, assigned, pending, limit),
       ...(edgeCandidates && { edgeCandidates,
         edgeNotice: 'An adjacent counter increased inside the same compiler function. The missing block needs a new condition or assertion.' }),
-      ...(startupEdgeCandidates && { startupEdgeCandidates }) } }),
+      ...(startupEdgeCandidates && { startupEdgeCandidates }), ...(callers && { callers }) } }),
     ...(decisionSummary && { decisions: decisionSummary }),
     unassigned: fileSummary(remainingGaps(current, assigned), limit), unavailable: fileSummary(unavailable, limit) };
 }
